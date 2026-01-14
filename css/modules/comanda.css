@@ -1,0 +1,260 @@
+/* ==========================================
+   MÓDULO: COMANDA
+   ========================================== */
+
+/* ===== View da Comanda ===== */
+.comanda-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--cor-fundo);
+}
+
+/* ===== Layout do Corpo da Comanda ===== */
+.comanda-body {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: var(--spacing-xl);
+    flex-grow: 1;
+    min-height: 0;
+    height: calc(100vh - 150px);
+}
+
+/* ===== Coluna da Esquerda (Itens da Comanda) ===== */
+.comanda-itens {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 12px var(--cor-sombra-leve);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.lista-itens {
+    padding: var(--spacing-md);
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-bottom: var(--spacing-md);
+}
+
+/* ===== Item na Comanda ===== */
+.item-na-comanda {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--cor-borda);
+    background-color: var(--cor-fundo-card);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.item-na-comanda:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.item-info h4 {
+    margin: 0 0 0.25rem 0;
+    font-weight: var(--weight-medium);
+}
+
+.item-info p {
+    margin: 0;
+    font-size: var(--font-sm);
+    color: var(--cor-texto-claro);
+}
+
+.item-controles {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.item-controles .qtd-display {
+    font-weight: var(--weight-bold);
+    font-size: 1.1rem;
+    color: var(--cor-primaria);
+}
+
+.item-subtotal {
+    font-weight: var(--weight-bold);
+    min-width: 80px;
+    text-align: right;
+    color: var(--cor-primaria);
+}
+
+/* Lista de adicionais dentro do item */
+.lista-adicionais-item {
+    list-style: none;
+    padding-left: 10px;
+    margin: 5px 0 0 0;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.lista-adicionais-item li {
+    margin-top: 2px;
+}
+
+/* ===== Coluna da Direita (Seleção de Produtos) ===== */
+.produtos-selecao {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    min-height: 0;
+}
+
+/* Busca de produtos */
+.busca-produto {
+    position: relative;
+}
+
+#input-busca-produto {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    font-size: var(--font-base);
+    box-sizing: border-box;
+    padding-right: 2.5rem;
+}
+
+.btn-limpar-busca {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5rem;
+    color: #aaa;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.btn-limpar-busca:hover {
+    color: #333;
+}
+
+/* Grid de produtos */
+.produtos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    padding: 0.5rem;
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+    align-content: start;
+}
+
+/* Header da seleção de produtos (mobile) */
+.produtos-selecao-header {
+    display: none;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+/* ===== FAB (Floating Action Button) ===== */
+.fab-adicionar-produto {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--cor-primaria);
+    color: white;
+    font-size: 2.5rem;
+    line-height: 1;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: var(--z-fixed);
+    cursor: pointer;
+    transition: transform var(--transition-base);
+    display: none;
+}
+
+.fab-adicionar-produto:hover {
+    transform: scale(1.1);
+}
+
+/* ===== Overlay para Mobile ===== */
+body.overlay-ativo {
+    overflow: hidden !important;
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    .comanda-body {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .produtos-selecao {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--cor-fundo);
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1040 !important;
+        padding: var(--spacing-md);
+        box-sizing: border-box;
+    }
+    
+    .comanda-view.mostrando-produtos .produtos-selecao {
+        transform: translateX(0) !important;
+    }
+    
+    .comanda-view.mostrando-produtos .fab-adicionar-produto {
+        transform: rotate(45deg);
+    }
+    
+    .produtos-selecao-header {
+        display: flex;
+    }
+    
+    .produtos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        padding: 0.25rem;
+    }
+    
+    .fab-adicionar-produto {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .comanda-itens {
+        padding-bottom: 80px;
+    }
+    
+    .item-na-comanda {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+    
+    .item-controles {
+        justify-content: space-between;
+    }
+    
+    .item-subtotal {
+        text-align: left;
+    }
+}
+
+@media (max-width: 480px) {
+    .produtos-grid {
+        grid-template-columns: 1fr;
+    }
+}

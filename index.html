@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Restaurante</title>
+    <link rel="stylesheet" href="css/main.css" id="css-novo" disabled>
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- TELA DE LOGIN -->
+        <main id="tela-login" class="login-view">
+            <div class="login-box">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <form id="form-login">
+                    <div class="form-group">
+                        <label for="login-usuario">Usuário ou Email</label>
+                        <input type="text" id="login-usuario" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-senha">Senha</label>
+                        <input type="password" id="login-senha" required>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">Entrar</button>
+                </form>
+            </div>
+        </main>
+
+        <main id="tela-dashboard" class="dashboard">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button id="btn-nav-ajustes" class="nav-button">Ajustes</button>
+                    <button class="nav-button">Relatórios</button>
+                    <button id="btn-nav-logout" class="nav-button danger">Sair</button>
+                </nav>
+            </header>
+            <div class="dashboard-header">
+                <h2>Dashboard de Mesas</h2>
+                
+                <div class="dashboard-busca">
+                    <input type="text" id="busca-comanda-dashboard" placeholder="Pesquisar ou criar...">
+                    <button id="btn-busca-comanda-acao" class="btn-icon">🔎</button>
+                </div>
+
+                <div class="header-actions">
+                    <button class="btn-primary">+ Nova Mesa</button>
+                </div>
+            </div>
+            <div id="mesas-grid" class="mesas-grid"></div>
+        </main>
+
+        <main id="tela-ajustes" class="admin-hub-view hidden">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button class="nav-button" disabled>Ajustes</button>
+                    <button id="btn-nav-relatorios-ajustes" class="nav-button">Relatórios</button>
+                </nav>
+            </header>
+            <div class="dashboard-header">
+                <h2>Ajustes e Cadastros</h2>
+                <div class="header-actions">
+                    <button id="btn-voltar-dashboard-ajustes" class="btn-secondary">← Voltar ao Dashboard</button>
+                </div>
+            </div>
+            
+            <div class="hub-section">
+                <h3>Cadastros e Administração</h3>
+                <div class="hub-grid">
+                    <div id="card-nav-produtos" class="hub-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                        <span>Produtos</span>
+                    </div>
+                    <div id="card-nav-categorias" class="hub-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        <span>Categorias</span>
+                    </div>
+                    <div id="card-nav-adicionais" class="hub-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m-7-7h14"/></svg>
+                        <span>Adicionais</span>
+                    </div>
+                    <div id="card-nav-meios-pagamento" class="hub-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                        <span>Meios de Pag.</span>
+                    </div>
+                    <div id="card-nav-usuarios" class="hub-card hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <span>Usuários</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hub-section">
+                <h3>Impressão e Dispositivos</h3>
+                <div class="hub-grid">
+                    <div id="card-nav-impressoras" class="hub-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        <span>Impressoras</span>
+                    </div>
+                    <div id="card-nav-agentes" class="hub-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <path d="M12 11v0"></path>
+                        </svg>
+                        <span>Agentes de Hardware</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hub-section">
+                <h3>Configurações</h3>
+                <div class="hub-grid">
+                    <div id="card-nav-configs" class="hub-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                        <span>Geral</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <main id="tela-agentes" class="produtos-admin-view hidden">
+            <header class="tela-header">
+                <button id="btn-voltar-ajustes-agentes" class="btn-icon">←</button>
+                <h1>Agentes de Hardware</h1>
+                <button id="btn-adicionar-agente" class="btn-primary">+ Novo Agente</button>
+            </header>
+            <main class="tela-main-content">
+                <p class="view-description">
+                    Agentes são os computadores da sua rede (Caixa, Cozinha, Bar) que possuem impressoras conectadas.
+                    Cadastre um agente aqui e depois configure suas impressoras.
+                </p>
+                <div id="lista-agentes-container"></div>
+            </main>
+        </main>
+
+        <main id="tela-comanda" class="comanda-view hidden">
+            <div class="comanda-header">
+                <button id="btn-voltar-dashboard" class="btn-secondary">← Voltar</button>
+                <h2 id="comanda-titulo"></h2>
+            </div>
+            <div class="comanda-body">
+                <div class="comanda-itens">
+                    <div id="lista-itens-comanda" class="lista-itens"></div>
+                    
+                    <div class="comanda-total-container">
+                        <div class="total-summary">
+                            <div class="summary-item">
+                                <label>Total da Comanda</label>
+                                <span id="comanda-valor-total">R$ 0,00</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Total Pago</label>
+                                <span id="comanda-valor-pago" class="pago">R$ 0,00</span>
+                            </div>
+                            <button id="btn-mostrar-produtos-mobile" class="btn-adicionar-circulo">+</button>
+                        </div>
+
+                        <div class="total-restante-container">
+                            <span>Restante a Pagar</span>
+                            <strong id="comanda-valor-restante">R$ 0,00</strong>
+                        </div>
+
+                        <div class="comanda-header-actions">
+                            <button id="btn-previa-comanda" class="btn-secondary">Imprimir Prévia</button>
+                            <button id="btn-limpar-comanda" class="btn-secondary danger">Cancelar Comanda</button>
+                            <button id="btn-fechar-conta" class="btn-primary">Fechar Conta</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="produtos-selecao">
+                    <div class="produtos-selecao-header">
+                        <button id="btn-voltar-para-comanda" class="btn-icon">←</button>
+                        <h3>Adicionar Produtos</h3>
+                    </div>
+                    <div class="busca-produto">
+                        <input type="text" id="input-busca-produto" placeholder="Buscar produto...">
+                        <span id="btn-limpar-busca" class="btn-limpar-busca hidden">&times;</span>
+                    </div>
+                    <div id="categorias-produtos" class="categorias-tabs"></div>
+                    <div id="grid-produtos" class="produtos-grid"></div>
+                    <div id="container-btn-salvar" class="container-salvar hidden">
+                        <button id="btn-salvar-comanda" class="btn-salvar">
+                            Salvar Alterações na Comanda
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <main id="tela-produtos" class="produtos-admin-view hidden">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button id="btn-voltar-ajustes-produtos" class="nav-button">← Voltar para Ajustes</button>
+                </nav>
+            </header>
+            <div class="dashboard-header">
+                <h2>Gestão de Produtos</h2>
+                <div class="header-actions">
+                    <button id="btn-adicionar-produto" class="btn-primary">+ Adicionar Produto</button>
+                </div>
+            </div>
+            <div class="tabela-container">
+                <table id="tabela-produtos-admin" class="tabela-admin">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" /></th>
+                            <th>NOME</th>
+                            <th>COD</th>
+                            <th>CATEGORIA</th>
+                            <th>ESTOQUE</th>
+                            <th>VALOR DE CUSTO</th>
+                            <th>VALOR DE VENDA</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-tabela-produtos"></tbody>
+                </table>
+            </div>
+            <div id="lista-produtos-mobile" class="lista-mobile-container"></div>
+        </main>
+
+        <main id="tela-categorias" class="produtos-admin-view hidden">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button id="btn-voltar-ajustes-categorias" class="nav-button">← Voltar para Ajustes</button>
+                </nav>
+            </header>
+            <div class="dashboard-header">
+                <h2>Gestão de Categorias</h2>
+                <div class="header-actions">
+                    <button id="btn-adicionar-categoria" class="btn-primary">+ Nova Categoria</button>
+                </div>
+            </div>
+            <div id="categorias-grid-admin" class="categorias-grid-admin"></div>
+        </main>
+
+        <main id="tela-configuracoes" class="admin-view-split hidden">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button id="btn-voltar-ajustes-configs" class="nav-button">← Voltar para Ajustes</button>
+                </nav>
+            </header>
+
+            <div class="admin-split-container">
+                <aside class="admin-split-nav">
+                    <div class="nav-header">
+                        <span class="config-icon">⚙️</span>
+                        <h3>Configurações</h3>
+                    </div>
+                    <nav>
+                        <a href="#" class="nav-link active" data-tab="geral">Geral</a>
+                        <a href="#" class="nav-link" data-tab="restaurante">Restaurante</a>
+                        <a href="#" class="nav-link" data-tab="estoque">Estoque & Operação</a>
+                    </nav>
+                </aside>
+
+                <div class="admin-split-content">
+                    <div id="config-tab-geral" class="config-tab-pane active">
+                        <h2>Geral</h2>
+                        <div class="config-card">
+                            <h3>Nomenclatura</h3>
+                            <div class="config-item">
+                                <div class="config-item-info">
+                                    <label for="select-preset-comanda">Prefixo Padrão das Comandas</label>
+                                    <p class="form-hint">Termo usado ao criar uma nova comanda (Ex: Mesa 1).</p>
+                                </div>
+                                <select id="select-preset-comanda" class="form-control">
+                                    <option value="Mesa">Mesa</option>
+                                    <option value="Comanda">Comanda</option>
+                                    <option value="Ficha">Ficha</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="config-tab-restaurante" class="config-tab-pane">
+                        <h2>Informações do Restaurante</h2>
+                        <div class="config-card">
+                            <p class="form-hint" style="margin-bottom: 1.5rem;">Estes dados serão usados na impressão de recibos e relatórios.</p>
+                            <form id="form-config-restaurante">
+                                <div class="form-group">
+                                    <label for="config-nome-restaurante">Nome do Restaurante</label>
+                                    <input type="text" id="config-nome-restaurante" class="form-control" placeholder="Ex: Cantina do Marcão">
+                                </div>
+                                <div class="form-group">
+                                    <label for="config-cnpj">CNPJ</label>
+                                    <input type="text" id="config-cnpj" class="form-control" placeholder="00.000.000/0001-00">
+                                </div>
+                                <div class="form-group">
+                                    <label for="config-endereco">Endereço</label>
+                                    <input type="text" id="config-endereco" class="form-control" placeholder="Rua dos Pêndulos, 123, Bairro, Cidade - UF">
+                                </div>
+                                <button type="submit" class="btn-primary" style="float: right; margin-top: 1rem;">Salvar Informações</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="config-tab-estoque" class="config-tab-pane">
+                        <h2>Estoque</h2>
+                        <div class="config-card">
+                            <h3>Controle de Estoque</h3>
+                            <div class="config-item">
+                                <div class="config-item-info"><label for="toggle-controle-estoque">Ativar controle de estoque</label><p class="form-hint">Deduz itens do estoque ao fechar uma comanda.</p></div>
+                                <label class="switch"><input type="checkbox" id="toggle-controle-estoque"><span class="slider"></span></label>
+                            </div>
+                        </div>
+
+                        <div id="container-opcoes-estoque" class="hidden">
+                            <div class="config-card">
+                                <div class="config-item">
+                                    <div class="config-item-info"><label for="toggle-bloqueio-venda">Bloquear venda sem estoque</label><p class="form-hint">Impede que produtos sem estoque sejam adicionados à comanda.</p></div>
+                                    <label class="switch"><input type="checkbox" id="toggle-bloqueio-venda"><span class="slider"></span></label>
+                                </div>
+                            </div>
+
+                            <div class="config-card">
+                                <h3>Níveis de Alerta de Estoque</h3>
+                                <div class="config-item">
+                                    <div class="config-item-info"><label for="input-estoque-alerta">Nível de Alerta</label><p class="form-hint">Mostra um alerta quando o estoque atingir este nível.</p></div>
+                                    <input type="number" id="input-estoque-alerta" class="form-control" style="width: 80px;">
+                                </div>
+                                <div class="config-item">
+                                    <div class="config-item-info"><label for="input-estoque-critico">Nível Crítico</label><p class="form-hint">Mostra um alerta mais forte quando o estoque atingir este nível.</p></div>
+                                    <input type="number" id="input-estoque-critico" class="form-control" style="width: 80px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="config-card">
+                            <h3>Operação da Comanda</h3>
+                            <div class="config-item">
+                                <div class="config-item-info"><label for="toggle-exigir-motivo">Exigir motivo ao cancelar item</label><p class="form-hint">Obriga o usuário a justificar a remoção de um item.</p></div>
+                                <label class="switch"><input type="checkbox" id="toggle-exigir-motivo"><span class="slider"></span></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <main id="tela-relatorios" class="produtos-admin-view hidden">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button id="btn-voltar-dashboard-relatorios" class="nav-button">← Voltar ao Dashboard</button>
+                </nav>
+            </header>
+            <div class="dashboard-header">
+                <h2><span class="config-icon">📊</span> Relatórios</h2>
+            </div>
+
+            <div class="config-main-container">
+                <div class="config-tabs-nav">
+                    <button class="config-tab-button active" data-tab="diario">Diário</button>
+                    <button class="config-tab-button" data-tab="periodo">Por Período</button>
+                    <button class="config-tab-button" data-tab="meios">Meios de Pagamento</button>
+                    <button class="config-tab-button" data-tab="garcons">Garçons</button>
+                    <button class="config-tab-button" data-tab="produtos">Produtos</button>
+                </div>
+
+                <div class="config-tabs-content">
+                    <div id="relatorio-tab-diario" class="config-tab-pane active">
+                        <div id="relatorio-diario-resultados"></div>
+                    </div>
+
+                    <div id="relatorio-tab-periodo" class="config-tab-pane">
+                        <div class="relatorio-filtros">
+                            <div class="form-group">
+                                <label for="relatorio-data-inicio">Data de Início</label>
+                                <input type="date" id="relatorio-data-inicio">
+                            </div>
+                            <div class="form-group">
+                                <label for="relatorio-data-fim">Data de Fim</label>
+                                <input type="date" id="relatorio-data-fim">
+                            </div>
+                            <button id="btn-gerar-relatorio" class="btn-primary">Gerar Relatório</button>
+                        </div>
+                        <div id="relatorio-periodo-resultados"></div>
+                    </div>
+
+                    <div id="relatorio-tab-meios" class="config-tab-pane">
+                        <div class="relatorio-filtros">
+                            <div class="form-group">
+                                <label for="relatorio-meios-data-inicio">Data de Início</label>
+                                <input type="date" id="relatorio-meios-data-inicio">
+                            </div>
+                            <div class="form-group">
+                                <label for="relatorio-meios-data-fim">Data de Fim</label>
+                                <input type="date" id="relatorio-meios-data-fim">
+                            </div>
+                            <button id="btn-gerar-relatorio-meios" class="btn-primary">Gerar Relatório</button>
+                        </div>
+                        <div id="relatorio-meios-resultados" class="relatorio-coluna-principal">
+                            <canvas id="grafico-meios" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="relatorio-tab-garcons" class="config-tab-pane">
+                        <div class="relatorio-filtros">
+                            <div class="form-group">
+                                <label for="relatorio-garcons-data-inicio">Data de Início</label>
+                                <input type="date" id="relatorio-garcons-data-inicio">
+                            </div>
+                            <div class="form-group">
+                                <label for="relatorio-garcons-data-fim">Data de Fim</label>
+                                <input type="date" id="relatorio-garcons-data-fim">
+                            </div>
+                            <button id="btn-gerar-relatorio-garcons" class="btn-primary">Gerar Relatório</button>
+                        </div>
+                        <div id="relatorio-garcons-resultados">
+                            <div class="sub-tabs-nav">
+                                <button class="sub-tab-button active" data-sub-tab="grafico">Gráfico</button>
+                                <button class="sub-tab-button" data-sub-tab="tabela">Tabela</button>
+                            </div>
+                            <div id="sub-tab-grafico" class="sub-tab-pane active">
+                                <canvas id="grafico-garcons"></canvas>
+                            </div>
+                            <div id="sub-tab-tabela" class="sub-tab-pane">
+                                <div class="tabela-container">
+                                    <table class="tabela-admin">
+                                        <thead>
+                                            <tr>
+                                                <th>Garçom</th>
+                                                <th>Total Vendido</th>
+                                                <th>Itens Vendidos</th>
+                                                <th>Itens Cancelados</th>
+                                                <th>Ticket Médio por Item</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="corpo-tabela-relatorio-garcons"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="relatorio-tab-produtos" class="config-tab-pane">
+                        <div class="relatorio-filtros">
+                            <div class="form-group">
+                                <label for="relatorio-produtos-data-inicio">Data de Início</label>
+                                <input type="date" id="relatorio-produtos-data-inicio">
+                            </div>
+                            <div class="form-group">
+                                <label for="relatorio-produtos-data-fim">Data de Fim</label>
+                                <input type="date" id="relatorio-produtos-data-fim">
+                            </div>
+                            <button id="btn-gerar-relatorio-produtos" class="btn-primary">Gerar Relatório</button>
+                        </div>
+                        <div id="relatorio-produtos-resultados"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <main id="tela-adicionais" class="produtos-admin-view hidden">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button id="btn-voltar-ajustes-adicionais" class="nav-button">← Voltar para Ajustes</button>
+                </nav>
+            </header>
+            <div class="dashboard-header">
+                <h2>Gestão de Adicionais</h2>
+                <div class="header-actions">
+                    <button id="btn-adicionar-adicional" class="btn-primary">+ Novo Adicional</button>
+                </div>
+            </div>
+            <div class="tabela-container">
+                <table class="tabela-admin">
+                    <thead>
+                        <tr>
+                            <th>NOME</th>
+                            <th>PREÇO</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-tabela-adicionais"></tbody>
+                </table>
+            </div>
+            <div id="lista-adicionais-mobile" class="lista-mobile-container"></div>
+        </main>
+
+        <main id="tela-meios-pagamento" class="produtos-admin-view hidden">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button id="btn-voltar-ajustes-meios" class="nav-button">← Voltar para Ajustes</button>
+                </nav>
+            </header>
+            <div class="dashboard-header">
+                <h2>Gestão de Meios de Pagamento</h2>
+                <div class="header-actions">
+                    <button id="btn-adicionar-meio-pagamento" class="btn-primary">+ Novo Meio de Pagamento</button>
+                </div>
+            </div>
+            <div class="tabela-container">
+                <table id="tabela-meios-pagamento-admin" class="tabela-admin">
+                    <thead>
+                        <tr>
+                            <th>NOME</th>
+                            <th>TIPO (Finalidade)</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-tabela-meios-pagamento"></tbody>
+                </table>
+            </div>
+            <div id="lista-meios-pagamento-mobile" class="lista-mobile-container"></div>
+        </main>
+
+        <main id="tela-usuarios" class="produtos-admin-view hidden">
+            <header class="main-header">
+                <div class="logo"><h1>RestauranteOS</h1></div>
+                <nav class="main-nav">
+                    <button id="btn-voltar-ajustes-usuarios" class="nav-button">← Voltar para Ajustes</button>
+                </nav>
+            </header>
+            <div class="dashboard-header">
+                <h2>Gestão de Usuários</h2>
+                <div class="header-actions">
+                    <button id="btn-adicionar-usuario" class="btn-primary">+ Adicionar Usuário</button>
+                </div>
+            </div>
+            <div class="tabela-container">
+                <table id="tabela-usuarios-admin" class="tabela-admin">
+                    <thead>
+                        <tr>
+                            <th>NOME</th>
+                            <th>LOGIN</th>
+                            <th>CARGO</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-tabela-usuarios"></tbody>
+                </table>
+            </div>
+            <div id="lista-usuarios-mobile" class="lista-mobile-container"></div>
+        </main>
+
+        <main id="tela-impressoras" class="produtos-admin-view hidden">
+            <header class="tela-header">
+                <button id="btn-voltar-ajustes-impressoras" class="btn-icon">←</button>
+                <h1>Gerenciar Impressoras</h1>
+                <button id="btn-adicionar-impressora" class="btn-primary">+ Nova Impressora</button>
+            </header>
+            <main class="tela-main-content">
+                <div class="tabela-container">
+                    <table class="tabela-admin">
+                        <thead>
+                            <tr>
+                                <th>Nome da Impressora</th>
+                                <th>Local (Opcional)</th>
+                                <th>Tipo</th>
+                                <th>Agente</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-tabela-impressoras"></tbody>
+                    </table>
+                </div>
+                <div id="lista-impressoras-mobile" class="lista-mobile-container"></div>
+            </main>
+        </main>
+
+        <!-- MODAIS -->
+
+        <div id="modal-container" class="modal-container hidden">
+            <div class="modal-box">
+                <h3 id="modal-titulo"></h3>
+                <p id="modal-mensagem"></p>
+                <div id="modal-botoes" class="modal-botoes"></div>
+            </div>
+        </div>
+
+        <div id="modal-seletor-adicionais-container" class="modal-container hidden">
+            <div class="modal-box" style="max-width: 600px; padding: 0;">
+                <div class="modal-seletor-header">
+                    <div class="busca-container">
+                        <input type="text" id="busca-complemento-input" placeholder="🔎 Pesquisar complemento...">
+                    </div>
+                    <button class="btn-icon" title="Adicionar Novo Complemento" id="btn-novo-complemento-seletor">+</button>
+                </div>
+                <div id="lista-seletor-adicionais" class="modal-seletor-body"></div>
+                <div class="modal-seletor-footer">
+                    <button type="button" id="modal-seletor-cancelar" class="btn-modal secondary">Cancelar</button>
+                    <button type="button" id="modal-seletor-confirmar" class="btn-modal primary">+ Adicionar complementos marcados ao produto</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-produto-comanda-container" class="modal-container hidden">
+            <div class="modal-box modal-produto-comanda">
+                <div class="modal-produto-header">
+                    <img id="modal-produto-comanda-img" src="" alt="Imagem do Produto">
+                    <div class="modal-produto-info">
+                        <h3 id="modal-produto-comanda-nome">Nome do Produto</h3>
+                        <p id="modal-produto-comanda-preco-base">R$ 0,00</p>
+                    </div>
+                    <button id="modal-produto-comanda-fechar" class="btn-icon">&times;</button>
+                </div>
+                <div class="modal-produto-body">
+                    <div class="form-group">
+                        <input type="text" id="modal-produto-comanda-busca" placeholder="🔎 Buscar Complemento">
+                    </div>
+                    <div id="lista-opcoes-adicionais-comanda"></div>
+                </div>
+                <div class="modal-produto-footer">
+                    <div class="quantidade-seletor">
+                        <button id="btn-diminuir-qtd">-</button>
+                        <span id="span-qtd">1</span>
+                        <button id="btn-aumentar-qtd">+</button>
+                    </div>
+                    <button id="modal-produto-comanda-confirmar" class="btn-primary">
+                        Adicionar R$ 0,00
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-ajuste-pagador-container" class="modal-container hidden">
+            <div class="modal-box" style="max-width: 400px; text-align: left;">
+                <h3 id="modal-ajuste-titulo">Aplicar Ajuste</h3>
+                <p id="modal-ajuste-subtitulo" style="margin-bottom: 1.5rem;"></p>
+                <div class="modal-tabs">
+                    <button class="tab-button active" data-tab="valor-fixo">Valor Fixo</button>
+                    <button class="tab-button" data-tab="porcentagem">Porcentagem</button>
+                </div>
+                <div id="tab-content-valor-fixo" class="tab-content active">
+                    <div class="form-group">
+                        <label for="ajuste-valor-input">Valor do Ajuste (R$)</label>
+                        <input type="number" id="ajuste-valor-input" class="form-control" step="0.01" placeholder="Ex: 10.50">
+                    </div>
+                </div>
+                <div id="tab-content-porcentagem" class="tab-content">
+                    <div class="form-group">
+                        <label for="ajuste-porcentagem-input">Porcentagem do Ajuste (%)</label>
+                        <input type="number" id="ajuste-porcentagem-input" class="form-control" step="1" placeholder="Ex: 10">
+                    </div>
+                </div>
+                <div class="modal-botoes" style="margin-top: 1.5rem;">
+                    <button type="button" id="modal-ajuste-cancelar" class="btn-modal secondary">Cancelar</button>
+                    <button type="button" id="modal-ajuste-confirmar" class="btn-modal primary">Aplicar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-adicional-container" class="modal-container hidden">
+            <div class="modal-box" style="max-width: 450px;">
+                <h3 id="modal-adicional-titulo">Novo Adicional</h3>
+                <form id="form-adicional">
+                    <input type="hidden" id="adicional-id">
+                    <div class="form-group">
+                        <label for="adicional-nome">Nome do Adicional</label>
+                        <input type="text" id="adicional-nome" placeholder="Ex: Bacon Extra" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adicional-preco">Preço (R$ )</label>
+                        <input type="number" id="adicional-preco" step="0.01" min="0" placeholder="Ex: 4.50" required>
+                    </div>
+                    <div class="modal-botoes">
+                        <button type="button" id="modal-adicional-cancelar" class="btn-modal secondary">Cancelar</button>
+                        <button type="submit" class="btn-modal primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-meio-pagamento-container" class="modal-container hidden">
+            <div class="modal-box">
+                <h3 id="modal-meio-pagamento-titulo">Novo Meio de Pagamento</h3>
+                <form id="form-meio-pagamento">
+                    <input type="hidden" id="meio-pagamento-id">
+                    <div class="form-group">
+                        <label for="meio-pagamento-nome">Nome</label>
+                        <input type="text" id="meio-pagamento-nome" placeholder="Ex: Cartão de Crédito" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="meio-pagamento-tipo">Tipo</label>
+                        <select id="meio-pagamento-tipo" required>
+                            <option value="cartao">Cartão</option>
+                            <option value="dinheiro">Dinheiro</option>
+                            <option value="pix">PIX</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                        <small>Isso ajuda o sistema a entender a natureza do pagamento (ex: para cálculo de troco).</small>
+                    </div>
+                    <div class="modal-botoes">
+                        <button type="button" id="modal-meio-pagamento-cancelar" class="btn-modal secondary">Cancelar</button>
+                        <button type="submit" class="btn-modal primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-usuario-container" class="modal-container hidden">
+            <div class="modal-box" style="max-width: 700px; text-align: left;">
+                <h3 id="modal-usuario-titulo">Editar Usuário</h3>
+                <div class="modal-tabs">
+                    <button class="tab-button active" data-tab="detalhes">Detalhes</button>
+                    <button class="tab-button" data-tab="permissoes">Permissões</button>
+                </div>
+                <form id="form-usuario">
+                    <input type="hidden" id="usuario-id">
+                    <div id="tab-content-detalhes" class="tab-content active">
+                        <div class="form-group">
+                            <label for="usuario-nome">Nome Completo</label>
+                            <input type="text" id="usuario-nome" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="usuario-login">Login de Acesso</label>
+                                <input type="text" id="usuario-login" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="usuario-senha">Senha</label>
+                                <input type="password" id="usuario-senha">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="usuario-cargo">Cargo (Preset de Permissões)</label>
+                            <select id="usuario-cargo">
+                                <option value="personalizado">Personalizado</option>
+                                <option value="garcom">Garçom</option>
+                                <option value="gerente">Gerente</option>
+                                <option value="chefe">Chefe (Admin)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="tab-content-permissoes" class="tab-content">
+                        <div class="permissoes-grid">
+                            <div class="permissoes-coluna">
+                                <h4>Geral & Comandas</h4>
+                                <div class="config-item"><label class="config-item-info" for="perm-acessarAjustes">Acessar Ajustes</label><label class="switch"><input type="checkbox" id="perm-acessarAjustes"><span class="slider"></span></label></div>
+                                <div class="config-item"><label class="config-item-info" for="perm-acessarRelatorios">Acessar Relatórios</label><label class="switch"><input type="checkbox" id="perm-acessarRelatorios"><span class="slider"></span></label></div>
+                                <div class="config-item"><label class="config-item-info" for="perm-removerProduto">Remover produto da comanda</label><label class="switch"><input type="checkbox" id="perm-removerProduto"><span class="slider"></span></label></div>
+                            </div>
+                            <div class="permissoes-coluna">
+                                <h4>Financeiro</h4>
+                                <div class="config-item"><label class="config-item-info" for="perm-adicionarDesconto">Adicionar desconto</label><label class="switch"><input type="checkbox" id="perm-adicionarDesconto"><span class="slider"></span></label></div>
+                                <div class="config-item"><label class="config-item-info" for="perm-adicionarAcrescimo">Adicionar acréscimo</label><label class="switch"><input type="checkbox" id="perm-adicionarAcrescimo"><span class="slider"></span></label></div>
+                                <div class="config-item"><label class="config-item-info" for="perm-finalizarMesa">Finalizar mesa</label><label class="switch"><input type="checkbox" id="perm-finalizarMesa"><span class="slider"></span></label></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-botoes" style="margin-top: 1.5rem;">
+                        <button type="button" id="modal-usuario-cancelar" class="btn-modal secondary">Cancelar</button>
+                        <button type="submit" class="btn-modal primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-categoria-container" class="modal-container hidden">
+            <div class="modal-box">
+                <h3 id="modal-categoria-titulo">Nova Categoria</h3>
+                <form id="form-categoria">
+                    <input type="hidden" id="categoria-id">
+                    <div class="form-group">
+                        <label for="categoria-nome">Nome da Categoria</label>
+                        <input type="text" id="categoria-nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Foto da Categoria</label>
+                        <div class="upload-area" id="upload-area-categoria">
+                            <img id="imagem-preview-categoria" src="#" alt="Pré-visualização da Categoria" class="hidden">
+                            <div id="upload-placeholder-categoria">
+                                <span>Clique para enviar uma imagem</span>
+                                <small>Formatos: JPG, PNG, WEBP</small>
+                            </div>
+                        </div>
+                        <input type="file" id="categoria-imagem-input" class="hidden" accept="image/png, image/jpeg, image/webp">
+                    </div>
+                    <div class="modal-botoes">
+                        <button type="button" id="modal-categoria-cancelar" class="btn-modal secondary">Cancelar</button>
+                        <button type="submit" class="btn-modal primary">Salvar Categoria</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="payment-modal-container" class="modal-container hidden">
+            <div class="modal-box payment-modal-v3">
+                <div class="payment-header">
+                    <h3>Dividir e Pagar Conta</h3>
+                    <div class="payment-header-summary">
+                        <span>Total: <strong id="payment-v3-total">R$ 0,00</strong></span>
+                        <span class="restante">Restante: <strong id="payment-v3-remaining">R$ 0,00</strong></span>
+                    </div>
+                </div>
+                <div class="payment-body">
+                    <div class="modal-tabs-container">
+                        <button id="tab-pagadores" class="modal-tab active">Pagadores</button>
+                        <button id="tab-itens" class="modal-tab">Itens da Comanda</button>
+                    </div>
+                    <div id="payment-v3-item-list" class="payment-content"></div>
+                    <div id="payment-v3-payers-wrapper" class="payment-content active">
+                        <div class="payers-header">
+                            <h4>Pagadores</h4>
+                            <div class="payers-actions">
+                                <button id="btn-split-items" class="btn-link">Dividir Total</button>
+                                <button id="btn-split-remaining" class="btn-link">Dividir Restante</button>
+                                <button id="btn-add-payer" class="btn-primary-small">+ Pagador</button>
+                            </div>
+                        </div>
+                        <div id="payment-v3-history-list"></div>
+                        <div id="payment-v3-payers-list"></div>
+                    </div>
+                </div>
+                <div class="modal-botoes">
+                    <button id="payment-v3-cancel-btn" class="btn-modal secondary">Cancelar</button>
+                    <button id="payment-v3-save-btn" class="btn-modal secondary">Salvar Pagamentos</button>
+                    <button id="payment-v3-finalize-btn" class="btn-modal primary">Finalizar Pagamento</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="split-item-modal-container" class="modal-container hidden">
+            <div class="modal-box">
+                <h3 id="split-item-title"></h3>
+                <p id="split-item-remaining" style="margin-bottom: 1rem; font-weight: 500;"></p>
+                <div id="split-item-list" style="text-align: left;"></div>
+                <div class="modal-botoes" style="margin-top: 2rem;">
+                    <button id="split-item-cancel-btn" class="btn-modal secondary">Cancelar</button>
+                    <button id="split-item-confirm-btn" class="btn-modal primary">Confirmar Divisão</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-motivo-cancelamento-container" class="modal-container hidden">
+            <div class="modal-box" style="max-width: 480px;">
+                <h3 id="modal-motivo-titulo">Cancelar Item</h3>
+                <p id="modal-motivo-item-nome" style="margin-bottom: 1.5rem;"></p>
+                <div class="form-group">
+                    <label>Quantidade a Cancelar</label>
+                    <div class="quantidade-seletor-modal">
+                        <button id="btn-diminuir-qtd-cancelar">-</button>
+                        <span id="span-qtd-cancelar">1</span>
+                        <button id="btn-aumentar-qtd-cancelar">+</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="motivo-select">Motivo do Cancelamento</label>
+                    <select id="motivo-select" class="form-control">
+                        <option value="Erro de pedido">Erro de pedido</option>
+                        <option value="Cliente desistiu">Cliente desistiu</option>
+                        <option value="Produto em falta">Produto em falta</option>
+                        <option value="Outro">Outro (especificar)</option>
+                    </select>
+                </div>
+                <div class="form-group hidden" id="motivo-outro-container">
+                    <label for="motivo-outro-input">Especifique o motivo</label>
+                    <input type="text" id="motivo-outro-input" class="form-control">
+                </div>
+                <div class="modal-botoes">
+                    <button type="button" id="modal-motivo-cancelar" class="btn-modal secondary">Não Cancelar</button>
+                    <button type="button" id="modal-motivo-confirmar" class="btn-modal primary">Confirmar Cancelamento</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-produto-container" class="modal-container hidden">
+            <div class="modal-box" style="max-width: 800px; text-align: left;">
+                <h3 id="modal-produto-titulo">Editar Produto</h3>
+                <div class="modal-tabs">
+                    <button class="tab-button active" data-tab="detalhes-produto">Detalhes</button>
+                    <button class="tab-button" data-tab="complementos-produto">Adcionais</button>
+                </div>
+                <form id="form-produto">
+                    <input type="hidden" id="produto-id">
+                    <div id="tab-content-detalhes-produto" class="tab-content active">
+                        <div class="form-group">
+                            <label>Foto do Produto</label>
+                            <div class="upload-area" id="upload-area">
+                                <img id="imagem-preview" src="#" alt="Pré-visualização da Imagem" class="hidden">
+                                <div id="upload-placeholder">
+                                    <svg></svg>
+                                    <span>Clique para enviar uma imagem</span>
+                                </div>
+                            </div>
+                            <input type="file" id="produto-imagem-input" class="hidden" accept="image/png, image/jpeg, image/webp">
+                        </div>
+                        <div class="form-group">
+                            <label for="produto-nome">Nome do Produto</label>
+                            <input type="text" id="produto-nome" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="produto-cod">Código (SKU)</label>
+                                <input type="text" id="produto-cod">
+                            </div>
+                            <div class="form-group">
+                                <label for="produto-categoria-select">Categoria</label>
+                                <select id="produto-categoria-select" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="produto-impressora-select">Impressora de Produção</label>
+                                <select id="produto-impressora-select"></select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="produto-estoque">Estoque Atual</label>
+                                <input type="number" id="produto-estoque" step="1" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="produto-custo">Preço de Custo (R$)</label>
+                                <input type="number" id="produto-custo" step="0.01" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="produto-preco">Preço de Venda (R$)</label>
+                                <input type="number" id="produto-preco" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tab-content-complementos-produto" class="tab-content">
+                        <div class="form-group">
+                            <label>Complementos Vinculados a este Produto</label>
+                            <div id="container-adicionais-selecionados" class="pills-container"></div>
+                            <button type="button" id="btn-abrir-seletor-adicionais" class="btn-secondary" style="margin-top: 1rem;">
+                                + Gerenciar Complementos
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-botoes" style="margin-top: 1.5rem;">
+                        <button type="button" id="modal-produto-cancelar" class="btn-modal secondary">Cancelar</button>
+                        <button type="submit" class="btn-modal primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-impressora-container" class="modal-container hidden">
+    <div class="modal-box" style="max-width: 500px;">
+        <h3 id="modal-impressora-titulo">Adicionar Nova Impressora</h3>
+        <form id="form-impressora">
+            <input type="hidden" id="impressora-id">
+            
+            <div class="form-group">
+                <label for="impressora-nome-sistema">Nome da Impressora</label>
+                <input type="text" id="impressora-nome-sistema" placeholder="Ex: Cozinha, Caixa, Balcão" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="impressora-local">Local (Opcional)</label>
+                <input type="text" id="impressora-local" placeholder="Ex: Ao lado do fogão">
+            </div>
+
+            <!-- ✅ CAMPO DE TIPO ADICIONADO -->
+            <div class="form-group">
+                <label for="impressora-tipo">Tipo / Finalidade</label>
+                <select id="impressora-tipo" required>
+                    <option value="" disabled selected>Selecione a finalidade...</option>
+                    <option value="PEDIDO">Impressão de Pedido (Cozinha, Bar)</option>
+                    <option value="RECIBO">Impressão de Recibo (Caixa)</option>
+                    <option value="GERAL">Uso Geral</option>
+                </select>
+            </div>
+
+            <div class="modal-botoes">
+                <button type="button" id="modal-impressora-cancelar" class="btn-modal secondary">Cancelar</button>
+                <button type="submit" class="btn-modal primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <!-- SCRIPTS -->
+    <script src="js/modules/auth.js"></script>
+    <script src="js/modules/usuarios.js"></script>
+    <script src="js/modules/produtos.js"></script>
+    <script src="js/modules/configuracoes.js"></script>
+    <script src="js/modules/comanda.js"></script>
+    <script src="js/modules/categorias.js"></script>
+    <script src="js/modules/meiosPagamento.js"></script>
+    <script src="js/modules/adicionais.js"></script>
+    <script src="js/modules/relatorios.js"></script>
+    <script src="js/modules/impressoras.js"></script>
+    <script src="js/modules/agentes.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+/* ==========================================
+   ARQUIVO PRINCIPAL DOS LAYOUTS
+   ========================================== */
+
+/* Header (Cabeçalho) */
+@import url('header.css');
+
+/* Sistemas de Grid */
+@import url('grid.css');
+
+/* Sidebar (Barra Lateral) */
+@import url('sidebar.css');
+
+/* Footer (Rodapé) */
+@import url('footer.css');
+
+/* Containers (Contêineres) */
+@import url('container.css');

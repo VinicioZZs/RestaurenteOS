@@ -1,0 +1,402 @@
+/* ==========================================
+   COMPONENTE: FORMULÁRIOS
+   ========================================== */
+
+/* ===== Grupos de Formulário ===== */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    margin-bottom: var(--spacing-md);
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: var(--weight-medium);
+    font-size: var(--font-sm);
+    color: var(--cor-texto-claro);
+    display: block;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 0.75rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    font-size: var(--font-base);
+    width: 100%;
+    box-sizing: border-box;
+    background-color: white;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+}
+
+/* ===== Inputs Específicos ===== */
+/* Input numérico para configurações */
+.config-input-number {
+    padding: 0.5rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    font-size: var(--font-base);
+    width: 80px;
+    text-align: center;
+}
+
+.config-input-number:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+/* Input de data */
+input[type="date"] {
+    padding: 0.75rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    font-size: var(--font-base);
+}
+
+/* Input de busca */
+#input-busca-produto,
+#busca-comanda-dashboard,
+#busca-complemento-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    font-size: var(--font-base);
+    box-sizing: border-box;
+    transition: all var(--transition-base);
+}
+
+#input-busca-produto:focus,
+#busca-comanda-dashboard:focus,
+#busca-complemento-input:focus {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+    outline: none;
+}
+
+/* Ajuste de padding para inputs com botão de limpar */
+#input-busca-produto {
+    padding-right: 2.5rem;
+}
+
+#busca-comanda-dashboard {
+    padding-right: 3rem;
+    border-radius: 20px;
+    background-color: #f8f9fa;
+}
+
+#busca-complemento-input {
+    padding-left: 2.5rem;
+}
+
+/* ===== Select Personalizado ===== */
+.form-group select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E' );
+    background-repeat: no-repeat;
+    background-position: right .7em top 50%;
+    background-size: .65em auto, 100%;
+}
+
+/* ===== File Upload ===== */
+.upload-area {
+    border: 2px dashed var(--cor-borda);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    text-align: center;
+    cursor: pointer;
+    background-color: #f8f9fa;
+    transition: background-color var(--transition-base), border-color var(--transition-base);
+    position: relative;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-area:hover {
+    background-color: #f1f3f5;
+    border-color: var(--cor-primaria);
+}
+
+/* Placeholder do upload */
+#upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--cor-texto-claro);
+}
+
+#upload-placeholder svg {
+    color: var(--cor-primaria);
+}
+
+#upload-placeholder span {
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto);
+}
+
+#upload-placeholder small {
+    font-size: var(--font-xs);
+}
+
+/* Preview da imagem */
+#imagem-preview,
+#imagem-preview-categoria {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+}
+
+/* ===== Checkboxes e Radios ===== */
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--cor-fundo-card);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--cor-primaria);
+    flex-shrink: 0;
+}
+
+.checkbox-item label {
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    flex-grow: 1;
+}
+
+/* Opções de Rádio para Configurações */
+.config-item-radio {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+    cursor: pointer;
+    transition: border-color var(--transition-base), background-color var(--transition-base);
+}
+
+.config-item-radio:hover {
+    border-color: var(--cor-primaria);
+}
+
+.config-item-radio input[type="radio"] {
+    margin-top: 0.25rem;
+    accent-color: var(--cor-primaria);
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.config-item-radio label {
+    flex-grow: 1;
+    cursor: pointer;
+}
+
+.config-item-radio label strong {
+    font-size: 1.1rem;
+    font-weight: var(--weight-bold);
+}
+
+.config-item-radio label p {
+    margin: 0.25rem 0 0 0;
+    font-size: var(--font-sm);
+    color: var(--cor-texto-claro);
+}
+
+/* Container para níveis de configuração */
+.config-niveis-container {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--cor-borda);
+}
+
+/* ===== Interruptor (Toggle Switch) ===== */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 28px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--cor-primaria);
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* ===== Form Rows ===== */
+.form-row {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Form row específico para agentes */
+.form-row-agente {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: var(--spacing-md);
+    align-items: flex-end;
+    padding: 1.5rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.form-row-agente:last-child {
+    border-bottom: none;
+}
+
+.form-row-agente .btn-icon.danger {
+    margin-bottom: 0.5rem;
+}
+
+/* ===== Select Preset Comanda ===== */
+#select-preset-comanda {
+    flex-basis: 150px;
+    flex-grow: 0;
+}
+
+/* ===== Pills (Tags) ===== */
+.pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    min-height: 40px;
+}
+
+.pill-item {
+    background-color: var(--cor-primaria);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+}
+
+/* ===== Ajustes por Pagador ===== */
+.payer-adjustment-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-sm);
+    padding: 2px 12px;
+}
+
+.payer-adjustment-row.desconto {
+    color: var(--status-success);
+}
+
+.payer-adjustment-row.acrescimo {
+    color: var(--status-danger);
+}
+
+/* ===== Textarea ===== */
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* ===== Estados de Validação ===== */
+.form-group .error {
+    border-color: var(--status-danger);
+}
+
+.form-group .success {
+    border-color: var(--status-success);
+}
+
+.form-group .error-message {
+    color: var(--status-danger);
+    font-size: var(--font-xs);
+    margin-top: 0.25rem;
+}
+
+.form-group .success-message {
+    color: var(--status-success);
+    font-size: var(--font-xs);
+    margin-top: 0.25rem;
+}
+
+/* ===== Campo Desabilitado ===== */
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled {
+    background-color: var(--cor-fundo-disabled);
+    cursor: not-allowed;
+    opacity: var(--opacity-disabled);
+}

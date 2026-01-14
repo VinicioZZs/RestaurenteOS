@@ -1,0 +1,232 @@
+/* ==========================================
+   COMPONENTE: TABELAS
+   ========================================== */
+
+/* ===== Container da Tabela ===== */
+.tabela-container {
+    margin-top: var(--spacing-xl);
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--cor-sombra-leve);
+    overflow-x: auto;
+}
+
+/* ===== Tabela Base ===== */
+.tabela-admin {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-base);
+}
+
+.tabela-admin th,
+.tabela-admin td {
+    padding: var(--spacing-md);
+    text-align: left;
+    border-bottom: 1px solid var(--cor-borda);
+    vertical-align: middle;
+}
+
+/* ===== Cabeçalho da Tabela ===== */
+.tabela-admin thead th {
+    background-color: #f8f9fa;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-bold);
+    text-transform: uppercase;
+    color: var(--cor-texto-claro);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* ===== Corpo da Tabela ===== */
+.tabela-admin tbody tr {
+    transition: background-color var(--transition-fast);
+}
+
+.tabela-admin tbody tr:hover {
+    background-color: #f1f3f5;
+}
+
+.tabela-admin td:last-child {
+    text-align: right;
+}
+
+/* ===== Informações de Produto na Tabela ===== */
+.produto-tabela-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.produto-tabela-imagem {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    background-color: #f0f0f0;
+    flex-shrink: 0;
+}
+
+/* ===== Informações de Categoria na Tabela ===== */
+.categoria-tabela-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    overflow: hidden;
+}
+
+.categoria-tabela-imagem-container {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background-color: #f0f2f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.categoria-tabela-imagem-container svg {
+    width: 20px;
+    height: 20px;
+    color: #ced4da;
+}
+
+.categoria-tabela-imagem-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.categoria-tabela-info h4 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+    font-weight: var(--weight-medium);
+}
+
+/* ===== Ações na Tabela ===== */
+.produto-admin-acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+}
+
+/* ===== Estados de Estoque na Tabela ===== */
+
+/* Estoque em ALERTA (amarelo) */
+.tabela-admin tbody tr.estoque-alerta {
+    background-color: #fffbe6;
+    --cor-fundo-hover: #fff3cd;
+}
+
+.tabela-admin tbody tr.estoque-alerta:hover {
+    background-color: var(--cor-fundo-hover);
+}
+
+.tabela-admin tbody tr.estoque-alerta td:nth-child(5) {
+    font-weight: var(--weight-bold);
+    color: #856404;
+}
+
+/* Estoque CRÍTICO (vermelho) */
+.tabela-admin tbody tr.estoque-critico {
+    background-color: #fdeeee;
+    --cor-fundo-hover: #f8d7da;
+}
+
+.tabela-admin tbody tr.estoque-critico:hover {
+    background-color: var(--cor-fundo-hover);
+}
+
+.tabela-admin tbody tr.estoque-critico td:nth-child(5) {
+    font-weight: var(--weight-bold);
+    color: #721c24;
+}
+
+/* ===== Status Online/Offline ===== */
+.status-online {
+    color: var(--status-success);
+    font-weight: var(--weight-bold);
+}
+
+.status-offline {
+    color: var(--status-danger);
+}
+
+/* ===== Tabelas Responsivas (Mobile) ===== */
+@media (max-width: 768px) {
+    /* Esconde o cabeçalho da tabela no mobile */
+    .tabela-admin thead {
+        display: none;
+    }
+
+    /* Faz cada linha da tabela se comportar como um card */
+    .tabela-admin tr {
+        display: block;
+        margin-bottom: var(--spacing-md);
+        border: 1px solid var(--cor-borda);
+        border-radius: var(--radius-md);
+        box-shadow: var(--cor-sombra-leve);
+        overflow: hidden;
+    }
+
+    /* Faz cada célula da tabela ocupar uma linha inteira */
+    .tabela-admin td {
+        display: block;
+        text-align: right;
+        padding: 2.5rem var(--spacing-md) var(--spacing-md) var(--spacing-md);
+        padding-left: 50%;
+        position: relative;
+        border-bottom: 1px solid var(--cor-borda);
+    }
+
+    .tabela-admin td:last-child {
+        border-bottom: none;
+    }
+
+    /* Cria o "título" da célula usando o atributo data-title */
+    .tabela-admin td::before {
+        content: attr(data-title);
+        position: absolute;
+        top: 0.75rem;
+        left: 1rem;
+        font-weight: var(--weight-bold);
+        color: var(--cor-texto);
+    }
+
+    /* Ajustes para a primeira célula (checkbox) */
+    .tabela-admin td:first-child {
+        background-color: #f8f9fa;
+        text-align: left;
+    }
+
+    .tabela-admin td:first-child::before {
+        content: "";
+    }
+
+    /* Ajustes para a última célula (ações) */
+    .tabela-admin td:last-child {
+        text-align: center;
+    }
+
+    .tabela-admin td:last-child::before {
+        content: "";
+    }
+
+    /* Centraliza os botões de ação */
+    .tabela-admin .produto-admin-acoes {
+        justify-content: center;
+    }
+
+    /* Esconde tabelas específicas no mobile */
+    #tela-produtos .tabela-container,
+    #tela-usuarios .tabela-container,
+    #tela-adicionais .tabela-container,
+    #tela-impressoras .tabela-container,
+    #tela-meios-pagamento .tabela-container {
+        display: none;
+    }
+}

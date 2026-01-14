@@ -1,0 +1,18 @@
+/* css/style.css - Conteúdo SIMPLES para teste */
+body {
+    background-color: lightblue;
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    color: darkblue;
+    text-align: center;
+}
+
+button {
+    background: orange;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+}

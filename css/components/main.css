@@ -1,0 +1,21 @@
+/* ==========================================
+   ARQUIVO PRINCIPAL DOS COMPONENTES
+   ========================================== */
+
+/* Botões */
+@import url('buttons.css');
+
+/* Modais */
+@import url('modals.css');
+
+/* Cards */
+@import url('cards.css');
+
+/* Tabelas */
+@import url('tables.css');
+
+/* Formulários */
+@import url('forms.css');
+
+/* Navegação */
+@import url('navigation.css');

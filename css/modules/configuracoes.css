@@ -1,0 +1,323 @@
+/* ==========================================
+   MÓDULO: CONFIGURAÇÕES
+   ========================================== */
+
+/* ===== Hub de Administração ===== */
+.admin-hub-view {
+    background-color: var(--cor-fundo);
+    min-height: calc(100vh - var(--height-header));
+}
+
+.hub-section {
+    margin-top: 2.5rem;
+}
+
+.hub-section h3 {
+    font-size: 1.2rem;
+    color: var(--cor-texto-claro);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+/* Grid do hub */
+.hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1.5rem;
+    align-content: start;
+}
+
+/* Card do hub */
+.hub-card {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-md);
+    padding: 1.5rem 1rem;
+    box-shadow: var(--cor-sombra-leve);
+    border: 1px solid var(--cor-borda);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    min-height: 140px;
+}
+
+.hub-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: var(--cor-primaria);
+}
+
+.hub-card svg {
+    color: var(--cor-primaria);
+    transition: transform 0.3s ease;
+}
+
+.hub-card:hover svg {
+    transform: scale(1.1);
+}
+
+.hub-card span {
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto);
+}
+
+/* ===== Container de Configurações ===== */
+.config-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.config-card {
+    background-color: var(--cor-fundo-card);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    box-shadow: var(--cor-sombra-leve);
+    border: 1px solid var(--cor-borda);
+}
+
+.config-card h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+/* ===== Itens de Configuração ===== */
+.config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.config-item:last-child {
+    border-bottom: none;
+}
+
+.config-item-info {
+    flex-grow: 1;
+}
+
+.config-item-info label {
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto);
+    display: block;
+    cursor: pointer;
+    margin-bottom: 0.25rem;
+}
+
+.config-item-info p {
+    font-size: var(--font-sm);
+    color: var(--cor-texto-claro);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ===== Opções de Rádio ===== */
+.config-item-radio {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.config-item-radio:hover {
+    border-color: var(--cor-primaria);
+}
+
+.config-item-radio input[type="radio"] {
+    margin-top: 0.25rem;
+    accent-color: var(--cor-primaria);
+    width: 18px;
+    height: 18px;
+}
+
+.config-item-radio label {
+    flex-grow: 1;
+    cursor: pointer;
+}
+
+.config-item-radio label strong {
+    font-size: 1.1rem;
+    font-weight: var(--weight-bold);
+}
+
+.config-item-radio label p {
+    margin: 0.25rem 0 0 0;
+    font-size: var(--font-sm);
+    color: var(--cor-texto-claro);
+}
+
+/* ===== Input Numérico ===== */
+.config-input-number {
+    padding: 0.5rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    font-size: var(--font-base);
+    width: 80px;
+    text-align: center;
+}
+
+.config-input-number:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+/* ===== Container de Níveis ===== */
+.config-niveis-container {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--cor-borda);
+}
+
+/* ===== Select Preset Comanda ===== */
+#select-preset-comanda {
+    flex-basis: 150px;
+    flex-grow: 0;
+}
+
+/* ===== Abas de Configuração ===== */
+.config-tabs-nav {
+    display: flex;
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 0 1.5rem;
+    background-color: var(--cor-fundo-card);
+}
+
+.config-tab-button {
+    background: none;
+    border: none;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    font-size: var(--font-base);
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto-claro);
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    margin-bottom: -1px;
+}
+
+.config-tab-button:hover {
+    color: var(--cor-primaria);
+}
+
+.config-tab-button.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
+.config-tabs-content {
+    padding: 2rem;
+}
+
+.config-tab-pane {
+    display: none;
+}
+
+.config-tab-pane.active {
+    display: block;
+}
+
+.config-icon {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+/* ===== Botão de Navegação ===== */
+#btn-ir-para-meios-pagamento {
+    margin-top: 1rem;
+}
+
+/* ===== Grid de Configurações ===== */
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem 2.5rem;
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    .admin-hub-view .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .hub-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1rem;
+    }
+    
+    .hub-card {
+        padding: 1rem;
+        gap: 0.5rem;
+        min-height: 120px;
+    }
+    
+    .hub-card svg {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .hub-card span {
+        font-size: 0.9rem;
+    }
+    
+    .config-card {
+        padding: 1.5rem;
+    }
+    
+    .config-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem 0;
+    }
+    
+    .config-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .config-tabs-nav {
+        overflow-x: auto;
+        padding: 0;
+    }
+    
+    .config-tab-button {
+        flex: 1;
+        text-align: center;
+        white-space: nowrap;
+        padding: 0.8rem;
+        font-size: 0.9rem;
+    }
+    
+    .config-tabs-content {
+        padding: 1.5rem 1rem;
+    }
+    
+    .admin-split-nav {
+        display: none;
+    }
+    
+    .admin-split-content h2 {
+        display: none;
+    }
+    
+    .config-main-container {
+        margin-top: 1rem;
+    }
+}

@@ -1,0 +1,302 @@
+/* ==========================================
+   LAYOUT: CONTAINERS (CONTÊINERES)
+   ========================================== */
+
+/* ===== App Container ===== */
+#app {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* ===== View Containers ===== */
+.dashboard,
+.produtos-admin-view,
+.admin-view-split,
+.comanda-view,
+.relatorios-view,
+.admin-hub-view {
+    padding: var(--spacing-xl);
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+/* ===== Split Container ===== */
+.admin-view-split {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.admin-split-container {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.admin-split-content {
+    flex-grow: 1;
+    padding: var(--spacing-xl);
+    overflow-y: auto;
+    width: 100%;
+}
+
+/* ===== Container de Conteúdo Principal ===== */
+.config-main-container {
+    margin-top: var(--spacing-lg);
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--cor-sombra-leve);
+    overflow: hidden;
+}
+
+.config-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+/* ===== Container de Tabela ===== */
+.tabela-container {
+    margin-top: var(--spacing-xl);
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--cor-sombra-leve);
+    overflow-x: auto;
+}
+
+/* ===== Container de Lista Mobile ===== */
+.lista-mobile-container {
+    display: none;
+    margin-top: var(--spacing-md);
+}
+
+/* ===== Container de Busca ===== */
+.busca-produto,
+.relatorio-busca-container,
+.dashboard-busca {
+    position: relative;
+}
+
+.relatorio-busca-container {
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0 1rem 0;
+}
+
+.dashboard-busca {
+    flex-grow: 1;
+    max-width: 400px;
+}
+
+/* ===== Container de Upload ===== */
+.upload-area {
+    border: 2px dashed var(--cor-borda);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    text-align: center;
+    cursor: pointer;
+    background-color: #f8f9fa;
+    position: relative;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== Container de Paginação ===== */
+.paginacao-container {
+    width: 100%;
+}
+
+.paginacao-conteudo {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    gap: var(--spacing-md);
+    padding: 0.25rem;
+    margin-bottom: var(--spacing-md);
+}
+
+/* Esconde barra de rolagem */
+.paginacao-conteudo::-webkit-scrollbar {
+    display: none;
+}
+
+.paginacao-conteudo {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.paginacao-pagina {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ===== Container de Filtros ===== */
+.relatorio-filtros {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-end;
+    background-color: var(--cor-fundo-card);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* ===== Container de Complementos ===== */
+.complementos-header {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+/* ===== Container de Pills ===== */
+.pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    min-height: 40px;
+}
+
+/* ===== Container do Botão Salvar ===== */
+.container-salvar {
+    padding: var(--spacing-md);
+    background-color: var(--cor-fundo-card);
+    border-top: 1px solid var(--cor-borda);
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+/* ===== Container do Corpo da Comanda ===== */
+.comanda-itens {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 12px var(--cor-sombra-leve);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.lista-itens {
+    padding: var(--spacing-md);
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-bottom: var(--spacing-md);
+}
+
+/* ===== Container de Seleção de Produtos ===== */
+.produtos-selecao {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    min-height: 0;
+}
+
+/* ===== Container do Modal ===== */
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal-backdrop);
+}
+
+/* ===== Container de Níveis de Configuração ===== */
+.config-niveis-container {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--cor-borda);
+}
+
+/* ===== Container de Ações dos Pagadores ===== */
+.adjustment-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    .dashboard,
+    .produtos-admin-view,
+    .admin-view-split,
+    .comanda-view,
+    .relatorios-view,
+    .admin-hub-view {
+        padding: var(--spacing-md);
+    }
+    
+    .admin-split-content {
+        padding: var(--spacing-md);
+    }
+    
+    .config-main-container {
+        margin-top: var(--spacing-md);
+    }
+    
+    .config-container {
+        gap: var(--spacing-md);
+    }
+    
+    .tabela-container {
+        margin-top: var(--spacing-md);
+    }
+    
+    .lista-mobile-container {
+        display: block;
+    }
+    
+    .relatorio-filtros {
+        flex-direction: column;
+        align-items: stretch;
+        padding: var(--spacing-md);
+    }
+    
+    .produtos-selecao {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--cor-fundo);
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1040 !important;
+        padding: var(--spacing-md);
+        box-sizing: border-box;
+    }
+    
+    .comanda-view.mostrando-produtos .produtos-selecao {
+        transform: translateX(0) !important;
+    }
+    
+    .comanda-itens {
+        padding-bottom: 80px;
+    }
+}
+
+/* ===== Container Overlay para Mobile ===== */
+body.overlay-ativo {
+    overflow: hidden !important;
+}

@@ -1,0 +1,14 @@
+/* ==========================================
+   TEMA: LIGHT (PADRO)
+   ========================================== */
+
+/* Este tema herda todas as variveis do :root padro
+   e serve como base para o tema claro (que j o padro) */
+
+/* O tema light  o padro, ento este arquivo pode estar vazio
+   ou conter apenas ajustes especificos se necessario */
+
+/* Apenas para documentacao - todas as variaveis estao em variables.css */
+:root {
+    /* Todas as variaveis ja estao definidas no tema padrao */
+}

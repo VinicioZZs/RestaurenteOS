@@ -1,0 +1,24 @@
+/* ==========================================
+   ARQUIVO PRINCIPAL DOS MÓDULOS
+   ========================================== */
+
+/* Dashboard */
+@import url('dashboard.css');
+
+/* Comanda */
+@import url('comanda.css');
+
+/* Pagamento */
+@import url('pagamento.css');
+
+/* Produtos */
+@import url('produtos.css');
+
+/* Categorias */
+@import url('categorias.css');
+
+/* Configurações */
+@import url('configuracoes.css');
+
+/* Relatórios */
+@import url('relatorios.css');

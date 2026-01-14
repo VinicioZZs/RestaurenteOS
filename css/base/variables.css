@@ -1,0 +1,122 @@
+/* ==========================================
+   VARIÁVEIS CSS - DESIGN TOKENS
+   ========================================== */
+
+:root {
+    /* ===== Cores Primárias ===== */
+    --cor-primaria: #007bff;
+    --cor-primaria-hover: #0056b3;
+    --cor-primaria-light: #e7f1ff;
+    
+    /* ===== Cores de Status ===== */
+    --status-aberta: #28a745;
+    --status-preparo: #ffc107;
+    --status-finalizada: #dc3545;
+    --status-success: #28a745;
+    --status-warning: #ffc107;
+    --status-danger: #dc3545;
+    --status-info: #17a2b8;
+    
+    /* ===== Cores de Texto ===== */
+    --cor-texto: #333333;
+    --cor-texto-claro: #666666;
+    --cor-texto-secundario: #6c757d;
+    --cor-texto-desabilitado: #adb5bd;
+    
+    /* ===== Cores de Fundo ===== */
+    --cor-fundo: #f4f7fa;
+    --cor-fundo-card: #ffffff;
+    --cor-fundo-hover: #f8f9fa;
+    --cor-fundo-disabled: #e9ecef;
+    
+    /* ===== Cores de Borda ===== */
+    --cor-borda: #e9ecef;
+    --cor-borda-hover: #dee2e6;
+    --cor-borda-focus: #007bff;
+    
+    /* ===== Cores de Sombra ===== */
+    --cor-sombra-leve: rgba(0, 0, 0, 0.08);
+    --cor-sombra-media: rgba(0, 0, 0, 0.12);
+    --cor-sombra-forte: rgba(0, 0, 0, 0.2);
+    
+    /* ===== Espaçamentos (Spacing) ===== */
+    --spacing-xs: 0.25rem;   /* 4px */
+    --spacing-sm: 0.5rem;    /* 8px */
+    --spacing-md: 1rem;      /* 16px */
+    --spacing-lg: 1.5rem;    /* 24px */
+    --spacing-xl: 2rem;      /* 32px */
+    --spacing-xxl: 3rem;     /* 48px */
+    
+    /* ===== Border Radius ===== */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-circle: 50%;
+    
+    /* ===== Font Sizes ===== */
+    --font-xs: 0.75rem;    /* 12px */
+    --font-sm: 0.875rem;   /* 14px */
+    --font-base: 1rem;     /* 16px */
+    --font-lg: 1.125rem;   /* 18px */
+    --font-xl: 1.25rem;    /* 20px */
+    --font-xxl: 1.5rem;    /* 24px */
+    --font-xxxl: 1.8rem;   /* 28.8px */
+    
+    /* ===== Font Weights ===== */
+    --weight-light: 300;
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+    --weight-extrabold: 800;
+    
+    /* ===== Transições ===== */
+    --transition-fast: 0.15s ease;
+    --transition-base: 0.2s ease;
+    --transition-slow: 0.3s ease;
+    --transition-slower: 0.4s ease;
+    
+    /* ===== Z-index Layers ===== */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+    --z-toast: 1080;
+    
+    /* ===== Breakpoints ===== */
+    --breakpoint-xs: 0;
+    --breakpoint-sm: 576px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 992px;
+    --breakpoint-xl: 1200px;
+    --breakpoint-xxl: 1400px;
+    
+    /* ===== Alturas Fixas ===== */
+    --height-header: 64px;
+    --height-footer: 60px;
+    --height-input: 44px;
+    --height-button: 44px;
+    
+    /* ===== Larguras Fixas ===== */
+    --width-sidebar: 240px;
+    --width-modal-sm: 400px;
+    --width-modal-md: 600px;
+    --width-modal-lg: 800px;
+    --width-modal-xl: 1200px;
+    
+    /* ===== Shadows ===== */
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+    --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+    --shadow-inner: inset 0 2px 4px rgba(0,0,0,0.06);
+    
+    /* ===== Opacities ===== */
+    --opacity-disabled: 0.5;
+    --opacity-hover: 0.8;
+    --opacity-active: 0.9;
+}

@@ -1,0 +1,261 @@
+/* ==========================================
+   LAYOUT: SIDEBAR (BARRA LATERAL)
+   ========================================== */
+
+/* ===== Sidebar de Administração ===== */
+.admin-split-nav {
+    flex-shrink: 0;
+    width: var(--width-sidebar);
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    padding: var(--spacing-lg);
+    height: calc(100vh - var(--height-header));
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+}
+
+/* Header da sidebar */
+.admin-split-nav .nav-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid #e9ecef;
+}
+
+.admin-split-nav .nav-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: var(--weight-semibold);
+    color: var(--cor-texto);
+}
+
+/* Navegação da sidebar */
+.admin-split-nav nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Links da sidebar */
+.admin-split-nav .nav-link {
+    text-decoration: none;
+    color: #495057;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-medium);
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.admin-split-nav .nav-link:hover {
+    background-color: #e9ecef;
+    color: var(--cor-primaria);
+    transform: translateX(5px);
+}
+
+.admin-split-nav .nav-link.active {
+    background-color: var(--cor-primaria);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+}
+
+/* Ícones na sidebar */
+.admin-split-nav .nav-link .icon {
+    font-size: 1.2rem;
+    width: 24px;
+    text-align: center;
+}
+
+/* Seções da sidebar (opcional) */
+.admin-split-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.admin-split-section h4 {
+    font-size: var(--font-xs);
+    text-transform: uppercase;
+    color: var(--cor-texto-claro);
+    margin: 0 0 var(--spacing-sm) 0;
+    padding-left: 1rem;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Sidebar de Configurações (Abas) ===== */
+.config-tabs-nav {
+    display: flex;
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 0 1.5rem;
+    background-color: var(--cor-fundo-card);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.config-tab-button {
+    background: none;
+    border: none;
+    padding: var(--spacing-md) 1.25rem;
+    cursor: pointer;
+    font-size: var(--font-base);
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto-claro);
+    border-bottom: 3px solid transparent;
+    transition: all var(--transition-base);
+    margin-bottom: -1px;
+    position: relative;
+    overflow: hidden;
+}
+
+.config-tab-button:hover {
+    color: var(--cor-primaria);
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.config-tab-button.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+    font-weight: var(--weight-semibold);
+}
+
+.config-tab-button .config-icon {
+    margin-right: 0.5rem;
+    font-size: 1.1rem;
+    vertical-align: middle;
+}
+
+/* ===== Conteúdo da Sidebar ===== */
+.config-tabs-content {
+    padding: var(--spacing-xl);
+    background-color: var(--cor-fundo-card);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    min-height: 500px;
+}
+
+.config-tab-pane {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.config-tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Sub-sidebar para Relatórios ===== */
+.relatorio-filtros {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    background-color: var(--cor-fundo-card);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--cor-sombra-leve);
+    margin-bottom: var(--spacing-xl);
+}
+
+.relatorio-filtros .form-group {
+    margin-bottom: 0;
+}
+
+/* ===== Sidebar para Filtros Avançados ===== */
+.filtros-avancados {
+    background-color: var(--cor-fundo-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.filtros-avancados h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    font-size: var(--font-base);
+    font-weight: var(--weight-semibold);
+    color: var(--cor-texto);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    /* Esconde sidebar de administração no mobile */
+    .admin-split-nav {
+        display: none;
+    }
+    
+    /* Ajusta abas de configuração para mobile */
+    .config-tabs-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 0;
+    }
+    
+    .config-tab-button {
+        flex: 1;
+        text-align: center;
+        white-space: nowrap;
+        padding: var(--spacing-md);
+        font-size: var(--font-sm);
+    }
+    
+    .config-tab-button .config-icon {
+        display: none;
+    }
+    
+    /* Ajusta conteúdo das abas */
+    .config-tabs-content {
+        padding: var(--spacing-md);
+    }
+    
+    /* Ajusta filtros de relatório */
+    .relatorio-filtros {
+        padding: var(--spacing-md);
+    }
+    
+    /* Mostra abas de navegação no modal */
+    .modal-tabs-container {
+        display: flex;
+    }
+}
+
+@media (min-width: 769px) {
+    /* Sidebar fixa com scroll */
+    .admin-split-nav {
+        position: fixed;
+        left: 0;
+        top: var(--height-header);
+        height: calc(100vh - var(--height-header));
+    }
+    
+    /* Compensa conteúdo para sidebar fixa */
+    .admin-split-content {
+        margin-left: var(--width-sidebar);
+        width: calc(100% - var(--width-sidebar));
+    }
+}
+
+/* ===== Scrollbar Personalizada para Sidebar ===== */
+.admin-split-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.admin-split-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.admin-split-nav::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+.admin-split-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+}

@@ -1,0 +1,213 @@
+/* ==========================================
+   MÓDULO: CATEGORIAS
+   ========================================== */
+
+/* ===== Abas de Categoria ===== */
+.categorias-tabs {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding: 0.5rem;
+    margin-bottom: var(--spacing-md);
+}
+
+/* Esconde a barra de rolagem visualmente */
+.categorias-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.categorias-tabs {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* ===== Botão de Categoria Individual ===== */
+.tab-categoria {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 80px;
+    text-align: center;
+    border-radius: var(--radius-lg);
+    padding: 0.5rem 0;
+    transition: background-color var(--transition-base);
+}
+
+/* Container da imagem da categoria */
+.tab-categoria-imagem-container {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 3px solid #fff;
+    transition: border-color var(--transition-base);
+}
+
+/* Imagem dentro do container */
+.tab-categoria-imagem-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Placeholder para imagem de categoria */
+.tab-categoria-imagem-container svg {
+    width: 32px;
+    height: 32px;
+    color: #ced4da;
+}
+
+/* Texto da categoria */
+.tab-categoria span {
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto-claro);
+    transition: color var(--transition-base);
+}
+
+/* --- Estados --- */
+/* Hover */
+.tab-categoria:hover {
+    background-color: #f1f3f5;
+}
+
+.tab-categoria:hover span {
+    color: var(--cor-primaria);
+}
+
+/* Ativo */
+.tab-categoria.active {
+    background-color: #e7f1ff;
+}
+
+.tab-categoria.active .tab-categoria-imagem-container {
+    border-color: var(--cor-primaria);
+}
+
+.tab-categoria.active span {
+    color: var(--cor-primaria);
+    font-weight: var(--weight-bold);
+}
+
+/* ===== Grid de Categorias (Admin) ===== */
+.categorias-grid-admin {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+    padding: 0 var(--spacing-xl) var(--spacing-xl);
+}
+
+/* ===== Card de Categoria (Admin) ===== */
+.categoria-card-admin {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--cor-sombra-leve);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.categoria-card-admin:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+
+.categoria-card-admin h4 {
+    margin: 0;
+    font-weight: var(--weight-medium);
+}
+
+.categoria-card-acoes {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* ===== Informações de Categoria na Tabela ===== */
+.categoria-tabela-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    overflow: hidden;
+}
+
+.categoria-tabela-imagem-container {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background-color: #f0f2f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.categoria-tabela-imagem-container svg {
+    width: 20px;
+    height: 20px;
+    color: #ced4da;
+}
+
+.categoria-tabela-imagem-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.categoria-tabela-info h4 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+    font-weight: var(--weight-medium);
+}
+
+/* ===== Upload de Imagem de Categoria ===== */
+#imagem-preview-categoria {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    .categorias-tabs {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    
+    .categoria-item {
+        width: 60px;
+        height: 60px;
+        padding: 0.5rem;
+        flex-shrink: 0;
+    }
+    
+    .categoria-item span {
+        font-size: 0.75rem;
+        margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+    }
+    
+    .categorias-grid-admin {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        padding: 0 var(--spacing-md) var(--spacing-md);
+        gap: var(--spacing-md);
+    }
+}

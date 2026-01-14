@@ -1,0 +1,10 @@
+/* ==========================================
+   ARQUIVO PRINCIPAL DOS VENDORS
+   ========================================== */
+
+/* Chart.js */
+@import url('chartjs.css');
+
+/* Outras bibliotecas podem ser adicionadas aqui:
+   @import url('outra-biblioteca.css');
+*/

@@ -1,0 +1,216 @@
+/* ==========================================
+   LAYOUT: FOOTER (RODAPÉ)
+   ========================================== */
+
+/* ===== Rodapé da Comanda ===== */
+.comanda-total-container {
+    background-color: var(--cor-fundo-card);
+    border-top: 2px solid var(--cor-borda);
+    padding: var(--spacing-lg);
+    flex-shrink: 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Container dos totais */
+.total-summary {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Cada item do resumo */
+.summary-item {
+    flex: 1;
+    background-color: #f8f9fa;
+    border-radius: var(--radius-md);
+    padding: 0.5rem 1rem;
+    border: 1px solid #e9ecef;
+}
+
+.summary-item label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.summary-item span {
+    font-size: 1rem;
+    font-weight: var(--weight-bold);
+    color: #212529;
+}
+
+.summary-item span.pago {
+    color: var(--status-success);
+}
+
+/* Container do valor principal (Restante) */
+.total-restante-container {
+    background-color: var(--cor-primaria);
+    color: #fff;
+    padding: 0.5rem 1.5rem;
+    border-radius: var(--radius-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.total-restante-container label {
+    font-size: 0.9rem;
+    font-weight: var(--weight-medium);
+    opacity: 0.9;
+}
+
+.total-restante-container span {
+    font-size: 1.5rem;
+    font-weight: var(--weight-bold);
+}
+
+/* Ações do rodapé */
+.comanda-total-container .comanda-header-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+/* Botão de adicionar circular no rodapé */
+.btn-adicionar-circulo {
+    display: none;
+    background-color: var(--cor-primaria);
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    font-size: 2rem;
+    cursor: pointer;
+    align-self: center;
+    line-height: 1;
+    margin-left: 0.5rem;
+    transition: transform var(--transition-base);
+}
+
+.btn-adicionar-circulo:hover {
+    transform: scale(1.1);
+}
+
+/* Alinhamento dos cards de total com o botão circular */
+.total-summary {
+    align-items: center;
+}
+
+/* ===== Rodapé do Modal ===== */
+.modal-produto-footer,
+.modal-seletor-footer,
+.modal-botoes {
+    flex-shrink: 0;
+    background-color: var(--cor-fundo-card);
+    border-top: 1px solid var(--cor-borda);
+    padding: var(--spacing-md);
+}
+
+.modal-botoes {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+}
+
+/* Rodapé específico do modal de pagamento */
+.payment-modal-v3 .modal-botoes {
+    padding: 1rem;
+    border-top: 1px solid var(--cor-borda);
+}
+
+/* ===== Rodapé do Card de Pagador ===== */
+.payer-card-footer {
+    padding: 0.75rem 1rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid var(--cor-borda);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* ===== Rodapé do Formulário ===== */
+#form-config-restaurante .btn-salvar {
+    margin-top: var(--spacing-md);
+    float: right;
+}
+
+/* ===== Container de Salvar ===== */
+.container-salvar {
+    padding: var(--spacing-md);
+    background-color: var(--cor-fundo-card);
+    border-top: 1px solid var(--cor-borda);
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    /* Ajusta rodapé da comanda para mobile */
+    .comanda-total-container {
+        padding: var(--spacing-md);
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: var(--z-fixed);
+        box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* Mostra botão circular no mobile */
+    .btn-adicionar-circulo {
+        display: flex;
+    }
+    
+    /* Ajusta espaçamento dos cards de total */
+    .total-summary {
+        gap: 0.5rem;
+    }
+    
+    .summary-item {
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .summary-item span {
+        font-size: 0.9rem;
+    }
+    
+    .total-restante-container {
+        padding: 0.4rem 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .total-restante-container span {
+        font-size: 1.3rem;
+    }
+    
+    /* Ajusta rodapé do modal para mobile */
+    .modal-botoes {
+        padding: 1rem;
+        position: sticky;
+        bottom: 0;
+        background-color: #fff;
+        z-index: var(--z-fixed);
+    }
+    
+    /* Ajusta container de salvar */
+    .container-salvar {
+        padding: 1rem;
+    }
+}
+
+/* ===== Ajustes para Impressão ===== */
+@media print {
+    .comanda-total-container,
+    .modal-botoes,
+    .container-salvar,
+    .btn-adicionar-circulo {
+        display: none !important;
+    }
+}

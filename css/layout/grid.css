@@ -1,0 +1,213 @@
+/* ==========================================
+   LAYOUT: SISTEMAS DE GRID
+   ========================================== */
+
+/* ===== Grid de Mesas ===== */
+.mesas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--spacing-lg);
+    padding: 0 var(--spacing-xl) var(--spacing-xl);
+}
+
+/* ===== Grid de Produtos ===== */
+.produtos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    padding: 0.5rem;
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+    align-content: start;
+}
+
+/* ===== Grid de Categorias (Admin) ===== */
+.categorias-grid-admin {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+    padding: 0 var(--spacing-xl) var(--spacing-xl);
+}
+
+/* ===== Grid do Hub (Dashboard Admin) ===== */
+.hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--spacing-lg);
+    align-content: start;
+}
+
+/* ===== Grid de Configurações ===== */
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--spacing-lg) 2.5rem;
+}
+
+/* ===== Grid de Permissões ===== */
+.permissoes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xl);
+}
+
+/* ===== Grid de Relatórios (Resumo) ===== */
+.relatorio-cards-resumo {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+/* ===== Grid de Checkboxes ===== */
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+/* ===== Layout de Duas Colunas ===== */
+
+/* Layout de duas colunas para administração */
+.admin-split-container {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+/* Layout de duas colunas para relatórios */
+.relatorio-layout-container {
+    display: flex;
+    gap: var(--spacing-xl);
+    align-items: flex-start;
+}
+
+.relatorio-coluna-filtros {
+    flex: 0 0 300px;
+    position: sticky;
+    top: 2rem;
+}
+
+.relatorio-coluna-principal {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ===== Layout da Comanda ===== */
+.comanda-body {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: var(--spacing-xl);
+    flex-grow: 1;
+    min-height: 0;
+    height: calc(100vh - 150px);
+}
+
+/* Layout do modal de pagamento (desktop) */
+.payment-body {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: var(--spacing-xl);
+    flex-grow: 1;
+    min-height: 0;
+}
+
+/* ===== Grid de Categorias (Tabs) ===== */
+.categorias-tabs {
+    display: flex;
+    gap: var(--spacing-md);
+    overflow-x: auto;
+    padding: 0.5rem;
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    /* Grid de produtos vira 2 colunas */
+    .produtos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        padding: 0.25rem;
+    }
+    
+    /* Grid de hub adaptado */
+    .hub-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: var(--spacing-md);
+    }
+    
+    /* Grid de relatórios vira 2 colunas */
+    .relatorio-cards-resumo {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    /* Layout de uma coluna */
+    .comanda-body {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .relatorio-layout-container {
+        flex-direction: column;
+        gap: var(--spacing-lg);
+    }
+    
+    .relatorio-coluna-filtros {
+        position: static;
+        width: 100%;
+    }
+    
+    /* Grid de configurações vira 1 coluna */
+    .config-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+    
+    /* Grid de permissões vira 1 coluna */
+    .permissoes-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    /* Grid de categorias admin */
+    .categorias-grid-admin {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        padding: 0 var(--spacing-md) var(--spacing-md);
+    }
+    
+    /* Layout do modal de pagamento vira coluna única */
+    .payment-body {
+        grid-template-columns: 1fr !important;
+        height: auto;
+    }
+    
+    /* Grid de mesas ajustado */
+    .mesas-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        padding: 0 var(--spacing-md) var(--spacing-md);
+        gap: var(--spacing-md);
+    }
+}
+
+@media (max-width: 480px) {
+    .produtos-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .relatorio-cards-resumo {
+        grid-template-columns: 1fr;
+    }
+    
+    .mesas-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .hub-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}   

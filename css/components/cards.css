@@ -1,0 +1,381 @@
+/* ==========================================
+   COMPONENTE: CARDS
+   ========================================== */
+
+/* ===== Card de Mesa ===== */
+.mesa-card {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: 0 4px 12px var(--cor-sombra-leve);
+    border-top: 5px solid;
+    cursor: pointer;
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 180px;
+}
+
+.mesa-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.mesa-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    font-weight: var(--weight-semibold);
+}
+
+.mesa-card .valor-total {
+    font-size: 1.8rem;
+    font-weight: var(--weight-bold);
+    color: var(--cor-primaria);
+    margin: var(--spacing-md) 0;
+}
+
+.mesa-card .status {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    text-transform: uppercase;
+    align-self: flex-start;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* ===== Card de Produto ===== */
+.produto-card {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--cor-borda);
+    padding: var(--spacing-md);
+    text-align: center;
+    cursor: pointer;
+    transition: box-shadow var(--transition-base), border-color var(--transition-base);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.produto-card:hover {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 4px 12px var(--cor-sombra-leve);
+}
+
+.produto-card h5 {
+    margin: 0.5rem 0 0.25rem 0;
+    font-size: var(--font-base);
+    font-weight: var(--weight-medium);
+}
+
+.produto-card p {
+    margin: 0;
+    color: var(--cor-primaria);
+    font-weight: var(--weight-bold);
+    margin-top: auto;
+}
+
+/* Container de imagem do produto */
+.produto-card-imagem-container {
+    width: 100%;
+    height: 100px;
+    margin-bottom: 0.75rem;
+    border-radius: var(--radius-sm);
+    background-color: #f0f2f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.produto-card-imagem-container svg {
+    width: 48px;
+    height: 48px;
+    color: #ced4da;
+}
+
+.produto-card-imagem-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Alerta de estoque no card */
+.produto-card-alerta-estoque {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: var(--weight-bold);
+    font-size: 16px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+
+.produto-card-alerta-estoque.alerta {
+    background-color: var(--status-warning);
+}
+
+.produto-card-alerta-estoque.critico {
+    background-color: var(--status-danger);
+}
+
+/* ===== Card de Categoria (Admin) ===== */
+.categoria-card-admin {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--cor-sombra-leve);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.categoria-card-admin:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+
+.categoria-card-admin h4 {
+    margin: 0;
+    font-weight: var(--weight-medium);
+}
+
+.categoria-card-acoes {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* ===== Card de Hub (Dashboard Admin) ===== */
+.hub-card {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg) var(--spacing-md);
+    box-shadow: var(--cor-sombra-leve);
+    border: 1px solid var(--cor-borda);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    text-align: center;
+    min-height: 140px;
+}
+
+.hub-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: var(--cor-primaria);
+}
+
+.hub-card svg {
+    color: var(--cor-primaria);
+    transition: transform var(--transition-slow) ease;
+}
+
+.hub-card:hover svg {
+    transform: scale(1.1);
+}
+
+.hub-card span {
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto);
+}
+
+/* ===== Card de Configuração ===== */
+.config-card {
+    background-color: var(--cor-fundo-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    box-shadow: var(--cor-sombra-leve);
+    border: 1px solid var(--cor-borda);
+}
+
+.config-card h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+/* ===== Card de Resumo (Relatórios) ===== */
+.resumo-card {
+    background-color: var(--cor-fundo-card);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--cor-sombra-leve);
+}
+
+.resumo-card h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: var(--font-base);
+    color: var(--cor-texto-claro);
+    font-weight: var(--weight-medium);
+}
+
+.resumo-card p {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: var(--weight-bold);
+    color: var(--cor-primaria);
+}
+
+/* ===== Card de Venda (Mobile) ===== */
+.venda-card {
+    background: var(--cor-fundo-card);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: var(--spacing-md) 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.venda-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.venda-info {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.venda-comanda {
+    font-weight: var(--weight-semibold);
+    color: var(--cor-texto);
+}
+
+.venda-data {
+    font-size: 0.85rem;
+    color: var(--cor-texto-secundario);
+}
+
+.venda-valor {
+    font-weight: var(--weight-bold);
+    font-size: 1.1rem;
+    color: var(--cor-primaria);
+}
+
+/* Stack de valores para garçons */
+.venda-valores-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+    margin-left: var(--spacing-md);
+}
+
+.venda-ticket {
+    font-size: 0.85rem;
+    color: var(--cor-texto-secundario);
+    margin-top: 4px;
+}
+
+/* ===== Card de Pagador ===== */
+.payer-card {
+    background-color: var(--cor-fundo-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-left: 5px solid transparent;
+    transition: border-color var(--transition-base);
+}
+
+/* ===== Item na Comanda ===== */
+.item-na-comanda {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--cor-borda);
+    background-color: var(--cor-fundo-card);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.item-na-comanda:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.item-info {
+    flex-grow: 1;
+}
+
+.item-info h4 {
+    margin: 0 0 0.25rem 0;
+    font-weight: var(--weight-medium);
+}
+
+.item-info p {
+    margin: 0;
+    font-size: var(--font-sm);
+    color: var(--cor-texto-claro);
+}
+
+.item-controles {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.item-controles .qtd-display {
+    font-weight: var(--weight-bold);
+    font-size: 1.1rem;
+    color: var(--cor-primaria);
+}
+
+.item-subtotal {
+    font-weight: var(--weight-bold);
+    min-width: 80px;
+    text-align: right;
+    color: var(--cor-primaria);
+}
+
+/* ===== Tags ===== */
+.tag-tipo, .tag-agente {
+    background-color: #e9ecef;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+}
+
+/* ===== Estados de Status ===== */
+.mesa-card.status-aberta { border-color: var(--status-aberta); }
+.mesa-card.status-aberta .status { 
+    color: var(--status-aberta);
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.mesa-card.status-preparo { border-color: var(--status-preparo); }
+.mesa-card.status-preparo .status { 
+    color: var(--status-preparo);
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.mesa-card.status-finalizada { border-color: var(--status-finalizada); }
+.mesa-card.status-finalizada .status { 
+    color: var(--status-finalizada);
+    background-color: rgba(220, 53, 69, 0.1);
+}

@@ -1,0 +1,330 @@
+/* ==========================================
+   COMPONENTE: NAVEGAÇÃO
+   ========================================== */
+
+/* ===== Navegação Principal ===== */
+.main-nav {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+/* ===== Abas de Categoria ===== */
+.categorias-tabs {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding: 0.5rem;
+    margin-bottom: var(--spacing-md);
+}
+
+/* Esconde a barra de rolagem visualmente */
+.categorias-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.categorias-tabs {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Botão de categoria individual */
+.tab-categoria {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 80px;
+    text-align: center;
+    border-radius: var(--radius-lg);
+    padding: 0.5rem 0;
+    transition: background-color var(--transition-base);
+}
+
+/* Container da imagem da categoria */
+.tab-categoria-imagem-container {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 3px solid #fff;
+    transition: border-color var(--transition-base);
+}
+
+/* Imagem dentro do container */
+.tab-categoria-imagem-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Placeholder para imagem de categoria */
+.tab-categoria-imagem-container svg {
+    width: 32px;
+    height: 32px;
+    color: #ced4da;
+}
+
+/* Texto da categoria */
+.tab-categoria span {
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto-claro);
+    transition: color var(--transition-base);
+}
+
+/* --- Estados --- */
+/* Hover */
+.tab-categoria:hover {
+    background-color: #f1f3f5;
+}
+
+.tab-categoria:hover span {
+    color: var(--cor-primaria);
+}
+
+/* Ativo */
+.tab-categoria.active {
+    background-color: #e7f1ff;
+}
+
+.tab-categoria.active .tab-categoria-imagem-container {
+    border-color: var(--cor-primaria);
+}
+
+.tab-categoria.active span {
+    color: var(--cor-primaria);
+    font-weight: var(--weight-bold);
+}
+
+/* ===== Abas de Configuração ===== */
+.config-tabs-nav {
+    display: flex;
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 0 1.5rem;
+}
+
+.config-tab-button {
+    background: none;
+    border: none;
+    padding: var(--spacing-md) 1.25rem;
+    cursor: pointer;
+    font-size: var(--font-base);
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto-claro);
+    border-bottom: 3px solid transparent;
+    transition: color var(--transition-base), border-color var(--transition-base);
+    margin-bottom: -1px;
+}
+
+.config-tab-button:hover {
+    color: var(--cor-primaria);
+}
+
+.config-tab-button.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
+/* ===== Sub-abas (Relatórios) ===== */
+.sub-tabs-nav {
+    display: flex;
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: var(--spacing-md);
+}
+
+.sub-tab-button {
+    background: none;
+    border: none;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    font-size: var(--font-base);
+    font-weight: var(--weight-medium);
+    color: var(--cor-texto-claro);
+    border-bottom: 3px solid transparent;
+    transition: color var(--transition-base), border-color var(--transition-base);
+    margin-bottom: -1px;
+}
+
+.sub-tab-button:hover {
+    color: var(--cor-primaria);
+}
+
+.sub-tab-button.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
+/* ===== Abas do Modal ===== */
+.modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: var(--spacing-lg);
+}
+
+/* ===== Navegação Lateral (Admin) ===== */
+.admin-split-nav {
+    flex-shrink: 0;
+    width: var(--width-sidebar);
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    padding: var(--spacing-lg);
+}
+
+.admin-split-nav .nav-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid #e9ecef;
+}
+
+.admin-split-nav .nav-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.admin-split-nav nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.admin-split-nav .nav-link {
+    text-decoration: none;
+    color: #495057;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-medium);
+    transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+.admin-split-nav .nav-link:hover {
+    background-color: #e9ecef;
+}
+
+.admin-split-nav .nav-link.active {
+    background-color: var(--cor-primaria);
+    color: #fff;
+}
+
+/* ===== Navegação Mobile para Modal de Pagamento ===== */
+.modal-tabs-container {
+    display: none; /* Escondido por padrão no desktop */
+    order: -1;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background-color: var(--cor-fundo-card);
+    z-index: 1;
+}
+
+.modal-tab {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    background-color: transparent;
+    font-size: var(--font-base);
+    font-weight: var(--weight-semibold);
+    color: var(--cor-texto-secundario);
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+}
+
+.modal-tab.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
+/* ===== Navegação de Paginação (Relatórios) ===== */
+.paginacao-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: var(--spacing-md);
+}
+
+.paginacao-ponto {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #ccc;
+    cursor: pointer;
+    transition: background-color var(--transition-base), transform var(--transition-base);
+}
+
+.paginacao-ponto.active {
+    background-color: var(--cor-primaria);
+    transform: scale(1.2);
+}
+
+/* ===== Ícones de Navegação ===== */
+.config-icon {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+/* ===== Ajustes Mobile ===== */
+@media (max-width: 768px) {
+    /* Esconde navegação lateral no mobile */
+    .admin-split-nav {
+        display: none;
+    }
+
+    /* Mostra abas de navegação no modal de pagamento */
+    .payment-modal-v3 .modal-tabs-container {
+        display: flex;
+    }
+
+    /* Ajusta navegação de abas para mobile */
+    .config-tabs-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 0;
+    }
+
+    .config-tab-button {
+        flex: 1;
+        text-align: center;
+        white-space: nowrap;
+        padding: 0.8rem;
+        font-size: var(--font-sm);
+    }
+
+    /* Ajusta navegação de sub-abas */
+    .sub-tabs-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .sub-tab-button {
+        white-space: nowrap;
+    }
+
+    /* Ajusta tamanho das categorias no mobile */
+    .categoria-item {
+        width: 60px;
+        height: 60px;
+        padding: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .categoria-item span {
+        font-size: 0.75rem;
+        margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+    }
+}

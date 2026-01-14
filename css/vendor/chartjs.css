@@ -1,0 +1,122 @@
+/* ==========================================
+   VENDOR: CHART.JS
+   ========================================== */
+
+/* Container do gráfico */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+}
+
+/* Ajustes para responsividade do Chart.js */
+#relatorio-meios-resultados canvas {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+/* Tooltip personalizado para gráficos */
+.chartjs-tooltip {
+    background-color: var(--cor-fundo-card) !important;
+    border: 1px solid var(--cor-borda) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.75rem !important;
+    box-shadow: var(--shadow-lg) !important;
+    color: var(--cor-texto) !important;
+    font-family: 'Roboto', sans-serif !important;
+    font-size: var(--font-sm) !important;
+}
+
+/* Legendas dos gráficos */
+.chartjs-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.chartjs-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--font-sm);
+    color: var(--cor-texto-claro);
+}
+
+.chartjs-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+/* Animações suaves para gráficos */
+@keyframes chartFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chart-container {
+    animation: chartFadeIn 0.6s ease;
+}
+
+/* Ajustes para gráficos em dispositivos móveis */
+@media (max-width: 768px) {
+    .chart-container {
+        min-height: 250px;
+        padding: 0.5rem;
+    }
+    
+    .chartjs-legend {
+        font-size: var(--font-xs);
+    }
+    
+    .chartjs-legend-item {
+        gap: 0.25rem;
+    }
+    
+    .chartjs-legend-color {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+/* Estilos para diferentes tipos de gráficos */
+
+/* Gráfico de Pizza (Doughnut/Pie) */
+.chart-pie-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+/* Gráfico de Barras */
+.chart-bar-container {
+    height: 350px;
+}
+
+/* Gráfico de Linhas */
+.chart-line-container {
+    height: 300px;
+}
+
+/* Responsividade específica para gráficos */
+@media (max-width: 480px) {
+    .chart-bar-container,
+    .chart-line-container {
+        height: 250px;
+    }
+    
+    #relatorio-meios-resultados {
+        max-width: 250px;
+    }
+}

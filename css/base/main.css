@@ -1,0 +1,71 @@
+/* ==========================================
+   ARQUIVO PRINCIPAL - IMPORTA TODOS OS BASE
+   ========================================== */
+
+/* Reset e Normalização */
+@import url('reset.css');
+
+/* Variáveis e Design Tokens */
+@import url('variables.css');
+
+/* Tipografia do Sistema */
+@import url('typography.css');
+
+/* Utilitários e Classes Auxiliares */
+@import url('utilities.css');
+
+/* ===== ESTILOS BASE DO APLICATIVO ===== */
+
+/* Estrutura base do app */
+#app {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Estrutura global do body */
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--cor-fundo);
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--cor-fundo);
+    border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--cor-borda);
+    border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--cor-texto-claro);
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    a {
+        color: black !important;
+        text-decoration: underline !important;
+    }
+}

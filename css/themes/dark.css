@@ -1,0 +1,227 @@
+/* ==========================================
+   TEMA: DARK (ESCURO)
+   ========================================== */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* ===== Cores Primárias ===== */
+        --cor-primaria: #3d8bfd;
+        --cor-primaria-hover: #6ea8fe;
+        --cor-primaria-light: #0d1b2a;
+        
+        /* ===== Cores de Status ===== */
+        --status-aberta: #20c997;
+        --status-preparo: #ffc107;
+        --status-finalizada: #e35d6a;
+        --status-success: #20c997;
+        --status-warning: #ffc107;
+        --status-danger: #e35d6a;
+        --status-info: #17a2b8;
+        
+        /* ===== Cores de Texto ===== */
+        --cor-texto: #e9ecef;
+        --cor-texto-claro: #adb5bd;
+        --cor-texto-secundario: #6c757d;
+        --cor-texto-desabilitado: #495057;
+        
+        /* ===== Cores de Fundo ===== */
+        --cor-fundo: #121212;
+        --cor-fundo-card: #1e1e1e;
+        --cor-fundo-hover: #2d2d2d;
+        --cor-fundo-disabled: #343a40;
+        
+        /* ===== Cores de Borda ===== */
+        --cor-borda: #343a40;
+        --cor-borda-hover: #495057;
+        --cor-borda-focus: #3d8bfd;
+        
+        /* ===== Cores de Sombra ===== */
+        --cor-sombra-leve: rgba(0, 0, 0, 0.3);
+        --cor-sombra-media: rgba(0, 0, 0, 0.4);
+        --cor-sombra-forte: rgba(0, 0, 0, 0.5);
+        
+        /* ===== Shadows ===== */
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+        --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.3);
+        --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Ajustes específicos para elementos no tema escuro */
+    body {
+        background-color: var(--cor-fundo);
+        color: var(--cor-texto);
+    }
+    
+    /* Cards */
+    .mesa-card,
+    .produto-card,
+    .categoria-card-admin,
+    .hub-card,
+    .config-card,
+    .resumo-card,
+    .venda-card,
+    .payer-card,
+    .item-na-comanda,
+    .tabela-container,
+    .relatorio-filtros {
+        background-color: var(--cor-fundo-card);
+        border-color: var(--cor-borda);
+    }
+    
+    /* Tabelas */
+    .tabela-admin thead th {
+        background-color: #2d2d2d;
+        color: var(--cor-texto-claro);
+    }
+    
+    .tabela-admin tbody tr:hover {
+        background-color: var(--cor-fundo-hover);
+    }
+    
+    /* Inputs e Formulários */
+    .form-group input,
+    .form-group select,
+    .form-group textarea,
+    #input-busca-produto,
+    #busca-comanda-dashboard,
+    #busca-complemento-input,
+    input[type="date"],
+    .config-input-number {
+        background-color: #2d2d2d;
+        border-color: var(--cor-borda);
+        color: var(--cor-texto);
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus,
+    #input-busca-produto:focus,
+    #busca-comanda-dashboard:focus,
+    #busca-complemento-input:focus {
+        border-color: var(--cor-primaria);
+        background-color: #2d2d2d;
+    }
+    
+    /* Botões */
+    .btn-secondary,
+    .btn-modal.secondary,
+    .btn-secondary-small,
+    .nav-button:not(.danger) {
+        background-color: #2d2d2d;
+        border-color: var(--cor-borda);
+        color: var(--cor-texto);
+    }
+    
+    .btn-secondary:hover,
+    .btn-modal.secondary:hover,
+    .btn-secondary-small:hover,
+    .nav-button:not(.danger):hover {
+        background-color: #3d3d3d;
+        border-color: var(--cor-borda-hover);
+    }
+    
+    /* Modais */
+    .modal-box {
+        background-color: var(--cor-fundo-card);
+    }
+    
+    /* Upload Area */
+    .upload-area {
+        background-color: #2d2d2d;
+        border-color: var(--cor-borda);
+    }
+    
+    .upload-area:hover {
+        background-color: #3d3d3d;
+        border-color: var(--cor-primaria);
+    }
+    
+    /* Checkboxes e Radios */
+    .checkbox-grid {
+        background-color: #2d2d2d;
+        border-color: var(--cor-borda);
+    }
+    
+    .checkbox-item {
+        background-color: var(--cor-fundo-card);
+    }
+    
+    /* Pills */
+    .pills-container {
+        background-color: #2d2d2d;
+        border-color: var(--cor-borda);
+    }
+    
+    /* Container de Salvar */
+    .container-salvar {
+        background-color: var(--cor-fundo-card);
+        border-color: var(--cor-borda);
+    }
+    
+    /* Sidebar */
+    .admin-split-nav {
+        background-color: #1a1a1a;
+        border-color: var(--cor-borda);
+    }
+    
+    .admin-split-nav .nav-link {
+        color: var(--cor-texto-claro);
+    }
+    
+    .admin-split-nav .nav-link:hover {
+        background-color: #2d2d2d;
+        color: var(--cor-primaria);
+    }
+    
+    .admin-split-nav .nav-link.active {
+        background-color: var(--cor-primaria);
+        color: #fff;
+    }
+    
+    /* Config Tabs */
+    .config-tabs-nav {
+        background-color: var(--cor-fundo-card);
+        border-color: var(--cor-borda);
+    }
+    
+    /* Abas de Categoria */
+    .tab-categoria:hover {
+        background-color: #2d2d2d;
+    }
+    
+    .tab-categoria.active {
+        background-color: rgba(61, 139, 253, 0.1);
+    }
+    
+    /* Estados de estoque */
+    .tabela-admin tbody tr.estoque-alerta {
+        background-color: #332701;
+    }
+    
+    .tabela-admin tbody tr.estoque-alerta:hover {
+        background-color: #443401;
+    }
+    
+    .tabela-admin tbody tr.estoque-critico {
+        background-color: #3c0b0e;
+    }
+    
+    .tabela-admin tbody tr.estoque-critico:hover {
+        background-color: #4d0f13;
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar-track {
+        background: #2d2d2d;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #495057;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #6c757d;
+    }
+}

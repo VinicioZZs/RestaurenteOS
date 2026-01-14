@@ -1,0 +1,96 @@
+/* ==========================================
+   MÓDULO: DASHBOARD
+   ========================================== */
+
+/* ===== Container Principal do Dashboard ===== */
+.dashboard {
+    background-color: var(--cor-fundo);
+    min-height: calc(100vh - var(--height-header));
+}
+
+/* ===== Header do Dashboard ===== */
+.dashboard-header {
+    margin-bottom: var(--spacing-xl);
+}
+
+/* ===== Busca do Dashboard ===== */
+.dashboard-busca {
+    position: relative;
+    flex-grow: 1;
+    max-width: 400px;
+}
+
+#busca-comanda-dashboard {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: 20px;
+    font-size: var(--font-base);
+    background-color: #f8f9fa;
+    transition: all var(--transition-base);
+    padding-right: 3rem;
+}
+
+#busca-comanda-dashboard:focus {
+    background-color: #fff;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+    outline: none;
+}
+
+#btn-busca-comanda-acao {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 80%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    color: var(--cor-primaria);
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#btn-busca-comanda-acao:hover {
+    background-color: #e7f1ff;
+}
+
+/* ===== Grid de Mesas ===== */
+.mesas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--spacing-lg);
+    padding: 0 var(--spacing-xl) var(--spacing-xl);
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+    
+    .dashboard-busca {
+        width: 100%;
+        max-width: 100%;
+        order: 3;
+    }
+    
+    .mesas-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        padding: 0 var(--spacing-md) var(--spacing-md);
+        gap: var(--spacing-md);
+    }
+}
+
+@media (max-width: 480px) {
+    .mesas-grid {
+        grid-template-columns: 1fr;
+    }
+}

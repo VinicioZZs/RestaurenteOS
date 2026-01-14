@@ -1,0 +1,230 @@
+/* ==========================================
+   LAYOUT: HEADER (CABEÇALHO)
+   ========================================== */
+
+/* ===== Header Principal ===== */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: var(--cor-fundo-card);
+    border-bottom: 1px solid var(--cor-borda);
+    box-shadow: 0 2px 4px var(--cor-sombra-leve);
+    height: var(--height-header);
+    flex-shrink: 0;
+}
+
+.logo h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--cor-primaria);
+    font-weight: var(--weight-bold);
+}
+
+/* ===== Header do Dashboard ===== */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.dashboard-header h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: var(--weight-bold);
+    color: var(--cor-texto);
+}
+
+.dashboard-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+/* ===== Header da Comanda ===== */
+.comanda-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.comanda-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: var(--weight-bold);
+}
+
+.comanda-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+/* Container do título da comanda com lápis de edição */
+#comanda-titulo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#comanda-titulo span {
+    flex-grow: 1;
+}
+
+#btn-editar-nome-comanda {
+    flex-shrink: 0;
+    font-size: 1.2rem;
+    color: var(--cor-texto-claro);
+}
+
+#btn-editar-nome-comanda:hover {
+    color: var(--cor-primaria);
+}
+
+/* ===== Header de Produtos (Mobile) ===== */
+.produtos-selecao-header {
+    display: none;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.produtos-selecao-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: var(--weight-semibold);
+}
+
+.produtos-selecao-header .btn-icon {
+    font-size: 1.5rem;
+    color: var(--cor-texto);
+}
+
+/* ===== Ações do Header ===== */
+.comanda-header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* Mágica para alinhar botões */
+.comanda-header-actions .btn-icon.danger {
+    margin-right: auto;
+}
+
+/* ===== Header do Modal de Pagamento ===== */
+.payment-header {
+    display: grid;
+    grid-template-areas: 
+        "titulo actions"
+        "summary actions";
+    align-items: center;
+    gap: 0 var(--spacing-md);
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.payment-header h3 {
+    grid-area: titulo;
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: var(--weight-bold);
+}
+
+.payment-header-summary {
+    grid-area: summary;
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: baseline;
+}
+
+.payment-header-summary span {
+    color: var(--cor-texto-claro);
+    font-size: var(--font-sm);
+}
+
+.payment-header-summary strong {
+    font-size: 1.2rem;
+    font-weight: var(--weight-bold);
+}
+
+.payment-header-summary .restante {
+    color: var(--status-danger);
+    font-weight: var(--weight-bold);
+}
+
+.payers-actions {
+    grid-area: actions;
+    justify-self: end;
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* ===== Header do Modal de Produto ===== */
+.modal-produto-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+/* ===== Header do Modal de Seletor ===== */
+.modal-seletor-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+    .main-header {
+        padding: 0.75rem 1rem;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+    
+    .dashboard-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .comanda-header {
+        padding: var(--spacing-md);
+    }
+    
+    .produtos-selecao-header {
+        display: flex;
+    }
+    
+    /* Header do modal de pagamento no mobile */
+    .payment-header {
+        grid-template-areas: 
+            "titulo titulo"
+            "summary actions";
+        padding: 1rem;
+    }
+    
+    .payers-actions {
+        justify-self: start;
+        margin-top: 0.5rem;
+    }
+}
