@@ -1,132 +1,42 @@
-    // app/api/comandas/route.ts - VERSÃO MONGODB ATUALIZADA
+// app/api/comandas/route.ts - VERSÃO CORRIGIDA (ObjectId)
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const DB_NAME = 'restaurante';
 
-// POST - Salvar comanda
-export async function POST(request: NextRequest) {
-  const client = new MongoClient(MONGODB_URI);
-  
-  try {
-    await client.connect();
-    const db = client.db(DB_NAME);
-    const comandasCollection = db.collection('comandas');
-    const mesasCollection = db.collection('mesas');
-    
-    const body = await request.json();
-    const { mesaId, numeroMesa, itens, total } = body;
-    
-    // IMPORTANTE: Buscar o ID real da mesa pelo número
-    const mesa = await mesasCollection.findOne({ numero: numeroMesa });
-    if (!mesa) {
-      return NextResponse.json(
-        { success: false, error: 'Mesa não encontrada' },
-        { status: 404 }
-      );
-    }
-    
-    const mesaRealId = mesa._id.toString();
-    
-    // Verificar se já existe comanda para esta mesa
-    const comandaExistente = await comandasCollection.findOne({
-      mesaId: mesaRealId,
-      status: 'aberta'
-    });
-    
-    if (comandaExistente) {
-      // Atualizar comanda existente
-      const result = await comandasCollection.updateOne(
-        { _id: comandaExistente._id },
-        { 
-          $set: { 
-            itens: itens,
-            total: total,
-            atualizadoEm: new Date()
-          }
-        }
-      );
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Comanda atualizada',
-        data: { 
-          ...comandaExistente, 
-          _id: comandaExistente._id.toString(),
-          itens 
-        }
-      });
-    } else {
-      // Criar nova comanda
-      const novaComanda = {
-        mesaId: mesaRealId,
-        numeroMesa: numeroMesa,
-        itens: itens,
-        total: total,
-        status: 'aberta',
-        criadoEm: new Date(),
-        atualizadoEm: new Date()
-      };
-      
-      const result = await comandasCollection.insertOne(novaComanda);
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Comanda criada',
-        data: { 
-          ...novaComanda, 
-          _id: result.insertedId.toString() 
-        }
-      });
-    }
-    
-  } catch (error) {
-    console.error('Erro ao salvar comanda:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Erro ao salvar comanda',
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      },
-      { status: 500 }
-    );
-  } finally {
-    await client.close();
-  }
-}
-
-// GET - Buscar comanda
 export async function GET(request: NextRequest) {
   const client = new MongoClient(MONGODB_URI);
   
   try {
     await client.connect();
     const db = client.db(DB_NAME);
-    const comandasCollection = db.collection('comandas');
-    const mesasCollection = db.collection('mesas');
     
     const { searchParams } = new URL(request.url);
-    const mesaNumero = searchParams.get('mesaNumero'); // Alterado para buscar por número
+    const mesaId = searchParams.get('mesaId');
     
-    if (!mesaNumero) {
+    if (!mesaId) {
       return NextResponse.json(
-        { success: false, error: 'Número da mesa é obrigatório' },
+        { success: false, error: 'mesaId é obrigatório' },
         { status: 400 }
       );
     }
     
-    // Buscar mesa pelo número
-    const mesa = await mesasCollection.findOne({ numero: mesaNumero });
+    // Buscar mesa primeiro para obter o _id correto
+    const mesa = await db.collection('mesas').findOne({
+      numero: mesaId
+    });
+    
     if (!mesa) {
       return NextResponse.json({
-        success: false,
-        error: 'Mesa não encontrada'
+        success: true,
+        data: null,
+        message: 'Mesa não encontrada'
       });
     }
     
-    // Buscar comanda aberta para a mesa
-    const comanda = await comandasCollection.findOne({
+    // Buscar comanda por mesaId (usando o _id da mesa)
+    const comanda = await db.collection('comandas').findOne({
       mesaId: mesa._id.toString(),
       status: 'aberta'
     });
@@ -135,26 +45,160 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: null,
-        message: 'Nenhuma comanda aberta encontrada'
+        message: 'Nenhuma comanda aberta para esta mesa'
       });
     }
     
-    // Converter ObjectId para string
-    const comandaFormatada = {
-      ...comanda,
-      _id: comanda._id.toString(),
-      itens: comanda.itens || []
-    };
-    
     return NextResponse.json({
       success: true,
-      data: comandaFormatada
+      data: {
+        _id: comanda._id.toString(),
+        mesaId: comanda.mesaId,
+        numeroMesa: comanda.numeroMesa,
+        itens: comanda.itens || [],
+        total: comanda.total || 0,
+        status: comanda.status || 'aberta',
+        criadoEm: comanda.criadoEm,
+        atualizadoEm: comanda.atualizadoEm
+      }
     });
     
   } catch (error) {
     console.error('Erro ao buscar comanda:', error);
     return NextResponse.json(
       { success: false, error: 'Erro ao buscar comanda' },
+      { status: 500 }
+    );
+  } finally {
+    await client.close();
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const client = new MongoClient(MONGODB_URI);
+  
+  try {
+    const body = await request.json();
+    
+    console.log('📥 Salvando/Atualizando comanda:', body);
+    
+    if (!body.mesaId) {
+      return NextResponse.json(
+        { success: false, error: 'mesaId é obrigatório' },
+        { status: 400 }
+      );
+    }
+    
+    await client.connect();
+    const db = client.db(DB_NAME);
+    
+    // 🔴 PROBLEMA AQUI: body.mesaId é o NÚMERO da mesa (ex: "10"), não um ObjectId
+    // Buscar mesa pelo número
+    const mesa = await db.collection('mesas').findOne({
+      numero: body.mesaId.toString()
+    });
+    
+    if (!mesa) {
+      console.log('❌ Mesa não encontrada com número:', body.mesaId);
+      return NextResponse.json(
+        { success: false, error: `Mesa ${body.mesaId} não encontrada` },
+        { status: 404 }
+      );
+    }
+    
+    console.log('✅ Mesa encontrada:', { 
+      id: mesa._id.toString(), 
+      numero: mesa.numero, 
+      nome: mesa.nome 
+    });
+    
+    const agora = new Date();
+    const mesaId = mesa._id.toString(); // 🔴 AGORA SIM: ObjectId da mesa
+    const totalCalculado = body.total || body.itens?.reduce((sum: number, item: any) => 
+      sum + (item.precoUnitario * item.quantidade), 0) || 0;
+    
+    // Verificar se já existe comanda aberta para esta mesa
+    const comandaExistente = await db.collection('comandas').findOne({
+      mesaId: mesaId,
+      status: 'aberta'
+    });
+    
+    let novaComandaId: string | null = null;
+    
+    if (comandaExistente) {
+      // Atualizar comanda existente
+      await db.collection('comandas').updateOne(
+        { _id: comandaExistente._id },
+        {
+          $set: {
+            itens: body.itens || [],
+            total: totalCalculado,
+            atualizadoEm: agora
+          }
+        }
+      );
+      
+      novaComandaId = comandaExistente._id.toString();
+      
+      console.log('✅ Comanda atualizada:', { 
+        mesaId: mesa.numero, 
+        total: totalCalculado, 
+        itens: body.itens?.length || 0 
+      });
+      
+    } else {
+      // Criar nova comanda
+      const novaComanda = {
+        mesaId: mesaId, // 🔴 Usando ObjectId da mesa
+        numeroMesa: body.numeroMesa || mesa.numero,
+        itens: body.itens || [],
+        total: totalCalculado,
+        status: 'aberta',
+        criadoEm: agora,
+        atualizadoEm: agora
+      };
+      
+      const resultado = await db.collection('comandas').insertOne(novaComanda);
+      novaComandaId = resultado.insertedId.toString();
+      
+      console.log('✅ Nova comanda criada:', {
+        id: novaComandaId,
+        mesaNumero: mesa.numero,
+        total: totalCalculado
+      });
+    }
+    
+    // ✅ IMPORTANTE: Atualizar também a mesa com o último horário
+    await db.collection('mesas').updateOne(
+      { _id: mesa._id },
+      {
+        $set: {
+          atualizadoEm: agora
+        }
+      }
+    );
+    
+    return NextResponse.json({
+      success: true,
+      message: comandaExistente ? 'Comanda atualizada' : 'Comanda criada',
+      data: {
+        _id: novaComandaId,
+        mesaId: mesa.numero, // 🔴 Retornando o número da mesa para o frontend
+        mesaObjectId: mesaId, // 🔴 E também o ObjectId se precisar
+        total: totalCalculado,
+        atualizadoEm: agora.toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao salvar comanda:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Erro ao salvar comanda',
+        details: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   } finally {

@@ -1,28 +1,9 @@
-// app/api/mesas/buscar/route.ts - COM TIPOS CORRIGIDOS
+// app/api/mesas/route.ts - VERSÃO COMPLETA CORRIGIDA
 import { NextRequest, NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const DB_NAME = 'restaurante';
-
-// Definir tipos
-interface ItemComanda {
-  precoUnitario: number;
-  quantidade: number;
-}
-
-interface Comanda {
-  _id: any;
-  mesaId: string;
-  itens: ItemComanda[];
-  status: string;
-}
-
-interface Mesa {
-  _id: any;
-  numero: string;
-  nome: string;
-}
 
 export async function GET(request: NextRequest) {
   const client = new MongoClient(MONGODB_URI);
@@ -32,60 +13,51 @@ export async function GET(request: NextRequest) {
     const db = client.db(DB_NAME);
     
     const { searchParams } = new URL(request.url);
-    const termo = searchParams.get('termo');
+    const busca = searchParams.get('busca') || '';
     
-    if (!termo) {
-      return NextResponse.json(
-        { success: false, error: 'Termo de busca é obrigatório' },
-        { status: 400 }
-      );
-    }
-    
-    // Buscar mesas
-    const mesas = await db.collection('mesas')
-      .find({
+    // Buscar todas as mesas
+    let query = {};
+    if (busca) {
+      query = {
         $or: [
-          { numero: { $regex: termo, $options: 'i' } },
-          { nome: { $regex: termo, $options: 'i' } }
+          { numero: { $regex: busca, $options: 'i' } },
+          { nome: { $regex: busca, $options: 'i' } }
         ]
-      })
-      .sort({ numero: 1 })
-      .limit(10)
-      .toArray() as Mesa[];
-    
-    if (mesas.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: [],
-        message: 'Nenhuma mesa encontrada'
-      });
+      };
     }
     
-    // Buscar comandas das mesas encontradas
+    const mesas = await db.collection('mesas')
+      .find(query)
+      .sort({ numero: 1 })
+      .toArray();
+    
+    // Buscar comandas abertas
     const mesaIds = mesas.map(m => m._id.toString());
     const comandas = await db.collection('comandas')
       .find({ 
         mesaId: { $in: mesaIds },
         status: 'aberta' 
       })
-      .toArray() as Comanda[];
+      .toArray();
     
-    // Mapa de comandas por mesaId
-    const comandasPorMesa = new Map<string, Comanda>();
+    // Criar mapa de comandas por mesaId
+    const comandasPorMesa = new Map();
     comandas.forEach(comanda => {
       comandasPorMesa.set(comanda.mesaId, comanda);
     });
     
-    // Montar resposta - COM TIPAGEM CORRETA
-    const resultado = mesas.map(mesa => {
+    // Montar resposta com totais
+    const mesasComTotais = mesas.map(mesa => {
       const comanda = comandasPorMesa.get(mesa._id.toString());
       
       let totalComanda = 0;
+      let quantidadeItens = 0;
+      
       if (comanda && comanda.itens) {
-        // CORREÇÃO AQUI: Adicionar tipos explicitamente
-        totalComanda = comanda.itens.reduce((sum: number, item: ItemComanda) => 
+        totalComanda = comanda.itens.reduce((sum: number, item: any) => 
           sum + (item.precoUnitario * item.quantidade), 0
         );
+        quantidadeItens = comanda.itens.length;
       }
       
       return {
@@ -93,19 +65,114 @@ export async function GET(request: NextRequest) {
         numero: mesa.numero,
         nome: mesa.nome,
         totalComanda,
-        quantidadeItens: comanda?.itens?.length || 0
+        quantidadeItens,
+        atualizadoEm: comanda?.atualizadoEm || mesa.criadoEm || new Date()
       };
     });
     
     return NextResponse.json({
       success: true,
-      data: resultado
+      data: mesasComTotais
     });
     
   } catch (error) {
-    console.error('Erro ao buscar mesa:', error);
+    console.error('Erro ao buscar mesas:', error);
     return NextResponse.json(
-      { success: false, error: 'Erro ao buscar mesa' },
+      { 
+        success: false, 
+        error: 'Erro ao buscar mesas'
+      },
+      { status: 500 }
+    );
+  } finally {
+    await client.close();
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const client = new MongoClient(MONGODB_URI);
+  
+  try {
+    const body = await request.json();
+    console.log('Dados recebidos para criar mesa:', body);
+    
+    if (!body.numero || !body.numero.toString().trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Número da mesa é obrigatório' },
+        { status: 400 }
+      );
+    }
+    
+    await client.connect();
+    const db = client.db(DB_NAME);
+    
+    // Verificar se mesa já existe
+    const mesaExistente = await db.collection('mesas').findOne({
+      numero: body.numero.toString()
+    });
+    
+    if (mesaExistente) {
+      // Mesa já existe - retornar dados dela
+      const comanda = await db.collection('comandas').findOne({
+        mesaId: mesaExistente._id.toString(),
+        status: 'aberta'
+      });
+      
+      let totalComanda = 0;
+      let quantidadeItens = 0;
+      
+      if (comanda && comanda.itens) {
+        totalComanda = comanda.itens.reduce((sum: number, item: any) => 
+          sum + (item.precoUnitario * item.quantidade), 0
+        );
+        quantidadeItens = comanda.itens.length;
+      }
+      
+      return NextResponse.json({
+        success: false,
+        error: 'Mesa já existe',
+        data: {
+          _id: mesaExistente._id.toString(),
+          numero: mesaExistente.numero,
+          nome: mesaExistente.nome,
+          totalComanda,
+          quantidadeItens,
+          atualizadoEm: comanda?.atualizadoEm || mesaExistente.criadoEm || new Date()
+        }
+      }, { status: 409 }); // 409 Conflict
+    }
+    
+    // Criar nova mesa
+    const novaMesa = {
+      numero: body.numero.toString(),
+      nome: body.nome || `Mesa ${body.numero.toString().padStart(2, '0')}`,
+      capacidade: body.capacidade || 4,
+      status: 'livre',
+      criadoEm: new Date(),
+      atualizadoEm: new Date()
+    };
+    
+    const resultado = await db.collection('mesas').insertOne(novaMesa);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Mesa criada com sucesso',
+      data: {
+        _id: resultado.insertedId.toString(),
+        ...novaMesa,
+        totalComanda: 0,
+        quantidadeItens: 0
+      }
+    }, { status: 201 });
+    
+  } catch (error) {
+    console.error('Erro ao criar mesa:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Erro ao criar mesa',
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      },
       { status: 500 }
     );
   } finally {

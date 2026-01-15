@@ -1,11 +1,10 @@
-// app/dashboard/page.tsx - VERSÃO FINAL MONGODB
+// app/dashboard/page.tsx - VERSÃO CORRIGIDA COM FLUXO COMPLETO
 'use client';
-
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Plus, Clock, LogOut, Settings } from 'lucide-react'; 
+import { Search, Plus, Clock, LogOut, Settings, AlertCircle } from 'lucide-react'; 
 
 interface Mesa {
   _id: string;
@@ -29,6 +28,8 @@ export default function DashboardPage() {
   const [resultadoBusca, setResultadoBusca] = useState<Mesa[]>([]);
   const [mostrarModalNaoEncontrada, setMostrarModalNaoEncontrada] = useState(false);
   const [mesaParaCriar, setMesaParaCriar] = useState('');
+  const [mostrarModalMesaExistente, setMostrarModalMesaExistente] = useState(false);
+  const [mesaExistenteInfo, setMesaExistenteInfo] = useState<Mesa | null>(null);
 
   // Carregar mesas do MongoDB
   const carregarMesas = async (termoBusca?: string) => {
@@ -60,6 +61,57 @@ export default function DashboardPage() {
     carregarInicial();
   }, []);
 
+    // ✅ NOVO: Escutar atualizações de comandas
+  useEffect(() => {
+    // Função para escutar eventos de atualização
+    const handleComandaAtualizada = (event: CustomEvent) => {
+      console.log('Comanda atualizada recebida:', event.detail);
+      // Forçar recarregar mesas
+      carregarMesas(busca);
+    };
+    
+    // Escutar evento customizado
+    window.addEventListener('comanda-atualizada' as any, handleComandaAtualizada);
+    
+    // Verificar localStorage periodicamente
+    const checkStorageInterval = setInterval(() => {
+      let precisaAtualizar = false;
+      
+      // Verificar se alguma comanda foi atualizada recentemente
+      mesas.forEach(mesa => {
+        const chave = `comanda_atualizada_${mesa.numero}`;
+        const dados = localStorage.getItem(chave);
+        
+        if (dados) {
+          try {
+            const { timestamp } = JSON.parse(dados);
+            const dataAtualizacao = new Date(timestamp);
+            const agora = new Date();
+            const diferenca = agora.getTime() - dataAtualizacao.getTime();
+            
+            // Se foi atualizado nos últimos 10 segundos
+            if (diferenca < 10000) {
+              precisaAtualizar = true;
+              // Remover do localStorage após usar
+              localStorage.removeItem(chave);
+            }
+          } catch (e) {
+            console.error('Erro ao parsear dados da comanda:', e);
+          }
+        }
+      });
+      
+      if (precisaAtualizar) {
+        carregarMesas(busca);
+      }
+    }, 2000); // Verificar a cada 2 segundos
+    
+    return () => {
+      window.removeEventListener('comanda-atualizada' as any, handleComandaAtualizada);
+      clearInterval(checkStorageInterval);
+    };
+  }, [busca, mesas]);
+
   // Atualizar a cada 5 segundos
   useEffect(() => {
     const interval = setInterval(() => {
@@ -69,7 +121,7 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [busca]);
 
-  // Buscar mesa
+  // Buscar mesa - FLUXO COMPLETO
   const buscarMesa = async () => {
     if (!busca.trim()) {
       await carregarMesas();
@@ -82,24 +134,28 @@ export default function DashboardPage() {
       const data = await response.json();
       
       if (data.success) {
-        if (data.data.length > 0) {
+        if (data.data && data.data.length > 0) {
           setResultadoBusca(data.data);
           
-          // Se encontrou exatamente uma mesa, redirecionar para ela
+          // Se encontrou exatamente uma mesa, PERGUNTAR se quer entrar
           if (data.data.length === 1) {
-            router.push(`/mesas/${data.data[0].numero}`);
+            const mesaEncontrada = data.data[0];
+            setMesaExistenteInfo(mesaEncontrada);
+            setMostrarModalMesaExistente(true);
           } else {
-            // Mostrar resultados
+            // Mostrar resultados múltiplos
             setMesas(data.data);
           }
         } else {
-          // Nenhuma mesa encontrada
+          // Nenhuma mesa encontrada - PERGUNTAR se quer criar
           setMesaParaCriar(busca);
           setMostrarModalNaoEncontrada(true);
         }
       }
     } catch (error) {
       console.error('Erro ao buscar mesa:', error);
+      // Se a rota não existir, tenta buscar na lista geral
+      await carregarMesas(busca);
     }
   };
 
@@ -110,7 +166,17 @@ export default function DashboardPage() {
     }
   };
 
-  // Criar mesa
+  // Entrar na mesa encontrada
+  const entrarNaMesaExistente = () => {
+    if (mesaExistenteInfo) {
+      router.push(`/mesas/${mesaExistenteInfo.numero}`);
+    }
+    setMostrarModalMesaExistente(false);
+    setMesaExistenteInfo(null);
+  };
+
+  // Criar mesa nova (botão "Nova Mesa")
+   // Criar mesa nova (botão "Nova Mesa") - CORRIGIDA
   const criarMesa = async () => {
     if (!numeroNovaMesa.trim()) {
       setMensagemErro('Digite o número da mesa');
@@ -121,6 +187,7 @@ export default function DashboardPage() {
       setCriandoMesa(true);
       setMensagemErro('');
       
+      // Criar nova mesa diretamente
       const response = await fetch('/api/mesas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,38 +197,49 @@ export default function DashboardPage() {
         }),
       });
       
-      const data = await response.json();
+      // Verificar se a resposta é JSON válido
+      const responseText = await response.text();
+      let data;
       
-      if (data.success) {
-        setMesas([...mesas, data.data]);
-        setMostrarModalCriar(false);
-        setNumeroNovaMesa('');
-        setNomeNovaMesa('');
-        router.push(`/mesas/${data.data.numero}`);
-      } else {
-        if (response.status === 409 && data.data) {
-          const confirmar = window.confirm(
-            `A mesa ${data.data.numero} já existe. Deseja abrir a comanda desta mesa?`
-          );
-          
-          if (confirmar) {
-            router.push(`/mesas/${data.data.numero}`);
-          } else {
-            setMostrarModalCriar(false);
-          }
-        } else {
-          setMensagemErro(data.error || 'Erro ao criar mesa');
-        }
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Resposta não é JSON válido:', responseText);
+        throw new Error('Resposta do servidor inválida');
       }
+      
+      console.log('Resposta da API:', data);
+      
+      if (response.status === 409 && data.data) {
+        // Mesa já existe - perguntar se quer entrar
+        setMesaExistenteInfo(data.data);
+        setMostrarModalMesaExistente(true);
+        setMostrarModalCriar(false);
+        return;
+      }
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Erro desconhecido ao criar mesa');
+      }
+      
+      // Sucesso - adicionar à lista e redirecionar
+      setMesas(prev => [...prev, data.data]);
+      setMostrarModalCriar(false);
+      setNumeroNovaMesa('');
+      setNomeNovaMesa('');
+      
+      // Redirecionar direto para a nova mesa
+      router.push(`/mesas/${data.data.numero}`);
+      
     } catch (error) {
-      console.error('Erro ao criar mesa:', error);
-      setMensagemErro('Erro ao criar mesa');
+      console.error('Erro completo ao criar mesa:', error);
+      setMensagemErro(error instanceof Error ? error.message : 'Erro ao criar mesa. Verifique o console.');
     } finally {
       setCriandoMesa(false);
     }
   };
 
-  // Criar mesa da busca
+  // Criar mesa da busca (quando não encontrou) - CORRIGIDA
   const criarMesaDaBusca = async () => {
     if (!mesaParaCriar) return;
     
@@ -177,28 +255,37 @@ export default function DashboardPage() {
         }),
       });
       
-      const data = await response.json();
+      // Verificar se a resposta é JSON válido
+      const responseText = await response.text();
+      let data;
       
-      if (data.success) {
-        setMostrarModalNaoEncontrada(false);
-        setMesaParaCriar('');
-        router.push(`/mesas/${data.data.numero}`);
-      } else {
-        if (response.status === 409 && data.data) {
-          const confirmar = window.confirm(
-            `A mesa ${data.data.numero} já existe. Deseja abrir a comanda desta mesa?`
-          );
-          
-          if (confirmar) {
-            router.push(`/mesas/${data.data.numero}`);
-          } else {
-            setMostrarModalNaoEncontrada(false);
-          }
-        }
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Resposta não é JSON válido:', responseText);
+        throw new Error('Resposta do servidor inválida');
       }
+      
+      if (response.status === 409 && data.data) {
+        // Mesa já existe - perguntar se quer entrar
+        setMesaExistenteInfo(data.data);
+        setMostrarModalMesaExistente(true);
+        setMostrarModalNaoEncontrada(false);
+        return;
+      }
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Erro desconhecido ao criar mesa');
+      }
+      
+      // Sucesso
+      setMostrarModalNaoEncontrada(false);
+      setMesaParaCriar('');
+      router.push(`/mesas/${data.data.numero}`);
+      
     } catch (error) {
-      console.error('Erro:', error);
-      alert('Erro ao criar mesa');
+      console.error('Erro ao criar mesa da busca:', error);
+      alert('Erro ao criar mesa: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setCriandoMesa(false);
     }
@@ -241,36 +328,33 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-   
-     {/* Header */}
-<div className="flex justify-between items-center mb-6 md:mb-8">
-  <div>
-    <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-      Comandas do Restaurante
-    </h1>
-    <p className="text-gray-600 mt-1">Banco de dados: MongoDB</p>
-  </div>
-  
-  <div className="flex items-center gap-2">
-    {/* Botão de Configurações */}
-    <Link
-      href="/configuracao"
-      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-    >
-      <Settings className="h-5 w-5" />
-      <span className="hidden md:inline">Configurações</span>
-    </Link>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 md:mb-8">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+            Comandas do Restaurante
+          </h1>
+          <p className="text-gray-600 mt-1">Banco de dados: MongoDB</p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Link
+            href="/configuracao"
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Settings className="h-5 w-5" />
+            <span className="hidden md:inline">Configurações</span>
+          </Link>
 
-    {/* Botão de Sair */}
-    <button
-      onClick={sair}
-      className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-    >
-      <LogOut size={20} />
-      <span className="hidden md:inline">Sair</span>
-    </button>
-  </div>
-</div>
+          <button
+            onClick={sair}
+            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <LogOut size={20} />
+            <span className="hidden md:inline">Sair</span>
+          </button>
+        </div>
+      </div>
 
       {/* Barra de busca */}
       <div className="mb-8">
@@ -366,19 +450,170 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Modais (mantenha iguais) */}
+      {/* Modal: Mesa não encontrada (busca) */}
       {mostrarModalNaoEncontrada && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl">
-            {/* ... conteúdo do modal ... */}
+            <div className="flex items-start mb-6">
+              <div className="bg-yellow-100 p-3 rounded-full mr-4">
+                <AlertCircle className="h-8 w-8 text-yellow-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Mesa não encontrada</h3>
+                <p className="text-gray-600 mt-1">Não existe uma mesa com o número/nome: <strong>{mesaParaCriar}</strong></p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <p className="text-gray-700">Deseja criar uma nova mesa com esse número?</p>
+              <div className="mt-2">
+                <p className="text-sm text-gray-600">Nome: <span className="font-medium">Mesa {mesaParaCriar.padStart(2, '0')}</span></p>
+                <p className="text-sm text-gray-600">Número: <span className="font-medium">{mesaParaCriar}</span></p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setMostrarModalNaoEncontrada(false);
+                  setMesaParaCriar('');
+                }}
+                className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={criarMesaDaBusca}
+                disabled={criandoMesa}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+              >
+                {criandoMesa ? 'Criando...' : 'Sim, criar mesa'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Modal: Mesa já existe */}
+      {mostrarModalMesaExistente && mesaExistenteInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-start mb-6">
+              <div className="bg-blue-100 p-3 rounded-full mr-4">
+                <AlertCircle className="h-8 w-8 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Mesa já existe!</h3>
+                <p className="text-gray-600 mt-1">A mesa <strong>{mesaExistenteInfo.numero}</strong> já está cadastrada.</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-700">Status:</span>
+                <span className="font-medium">
+                  {mesaExistenteInfo.totalComanda > 0 ? 'Comanda aberta' : 'Mesa livre'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Valor:</span>
+                <span className="font-bold text-green-600">
+                  {formatarMoeda(mesaExistenteInfo.totalComanda)}
+                </span>
+              </div>
+              {mesaExistenteInfo.quantidadeItens > 0 && (
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-gray-700">Itens:</span>
+                  <span className="font-medium">
+                    {mesaExistenteInfo.quantidadeItens} itens
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setMostrarModalMesaExistente(false);
+                  setMesaExistenteInfo(null);
+                }}
+                className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={entrarNaMesaExistente}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                Entrar na mesa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Criar nova mesa */}
       {mostrarModalCriar && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl">
-            {/* ... conteúdo do modal ... */}
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Criar Nova Mesa</h3>
+            <p className="text-gray-600 mb-6">Preencha os dados da nova mesa</p>
+            
+            {mensagemErro && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
+                {mensagemErro}
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Número da Mesa *
+                </label>
+                <input
+                  type="text"
+                  value={numeroNovaMesa}
+                  onChange={(e) => setNumeroNovaMesa(e.target.value.replace(/\D/g, ''))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ex: 1, 2, 3..."
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome da Mesa (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={nomeNovaMesa}
+                  onChange={(e) => setNomeNovaMesa(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ex: VIP, Janela, Varanda..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => {
+                  setMostrarModalCriar(false);
+                  setNumeroNovaMesa('');
+                  setNomeNovaMesa('');
+                  setMensagemErro('');
+                }}
+                className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={criarMesa}
+                disabled={criandoMesa || !numeroNovaMesa.trim()}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {criandoMesa ? 'Criando...' : 'Criar Mesa'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -115,13 +115,9 @@ export default function AdicionarProdutoModal({ produtos, onAdicionar, onClose }
                     </span>
                   </div>
                   
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
-                      Clique para adicionar
-                    </span>
-                    <button className="text-blue-600 hover:text-blue-800 font-medium">
-                      + Adicionar
-                    </button>
+                  {/* REMOVIDO O BOTÃO "+ Adicionar" que estava aqui */}
+                  <div className="text-xs text-gray-500 text-center pt-2 border-t border-gray-100">
+                    Clique para adicionar
                   </div>
                 </div>
               ))}

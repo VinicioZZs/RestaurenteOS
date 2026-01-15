@@ -11,7 +11,7 @@ export default function ComandaLayout({ children }: ComandaLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header fixo */}
-      <header className="bg-white shadow-sm border-b px-6 py-4">
+      <header className="bg-white shadow-sm border-b px-6 py-4 fixed top-0 left-0 right-0 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-bold text-gray-800">
@@ -28,11 +28,11 @@ export default function ComandaLayout({ children }: ComandaLayoutProps) {
         </div>
       </header>
 
-      {/* Conteúdo principal */}
-      <main className="p-4 md:p-6 h-[calc(100vh-80px)] overflow-hidden">
-  <div className="max-w-7xl mx-auto h-full">
-    {children}
-  </div>
+      {/* Conteúdo principal COM ALTURA FIXA */}
+      <main className="pt-16 p-4 md:p-6 h-screen overflow-hidden"> {/* pt-16 para o header fixo */}
+        <div className="h-full">
+          {children}
+        </div>
       </main>
     </div>
   );

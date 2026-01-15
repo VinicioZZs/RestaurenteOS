@@ -1,4 +1,4 @@
-// components/comanda/CatalogoDireita.tsx - VERSÃO COM IMAGENS REAIS
+// components/comanda/CatalogoDireita.tsx - VERSÃO PDV PROFISSIONAL CORRIGIDA
 'use client';
 
 interface Produto {
@@ -25,64 +25,6 @@ interface CatalogoDireitaProps {
   onAdicionarProduto: (produtoId: string) => void; 
 }
 
-// Componente para imagem com fallback
-const ProdutoImagem = ({ src, alt }: { src?: string; alt: string }) => {
-  if (!src || src === '/placeholder-product.jpg') {
-    // Fallback para emoji baseado no nome
-    const emoji = alt.includes('bebida') || alt.includes('refri') || alt.includes('água') || alt.includes('suco') ? '🥤' :
-                  alt.includes('hambúrguer') || alt.includes('lanche') || alt.includes('pizza') ? '🍔' :
-                  alt.includes('batata') || alt.includes('frit') ? '🍟' :
-                  alt.includes('sobremesa') || alt.includes('sorvete') || alt.includes('bolo') ? '🍰' : '📦';
-    
-    return (
-      <div className="w-16 h-16 bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
-        <span className="text-2xl">{emoji}</span>
-      </div>
-    );
-  }
-  
-  // Se for base64 (data:image...)
-  if (src.startsWith('data:image')) {
-    return (
-      <div className="w-16 h-16 rounded-lg mb-2 overflow-hidden">
-        <img 
-          src={src} 
-          alt={alt}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            // Se der erro ao carregar, mostrar fallback
-            (e.target as HTMLImageElement).style.display = 'none';
-            (e.target as HTMLImageElement).parentElement!.innerHTML = `
-              <div class="w-full h-full bg-gray-100 flex items-center justify-center">
-                <span class="text-2xl">📦</span>
-              </div>
-            `;
-          }}
-        />
-      </div>
-    );
-  }
-  
-  // Se for URL normal
-  return (
-    <div className="w-16 h-16 rounded-lg mb-2 overflow-hidden">
-      <img 
-        src={src.startsWith('/') ? src : `/${src}`}
-        alt={alt}
-        className="w-full h-full object-cover"
-        onError={(e) => {
-          (e.target as HTMLImageElement).style.display = 'none';
-          (e.target as HTMLImageElement).parentElement!.innerHTML = `
-            <div class="w-full h-full bg-gray-100 flex items-center justify-center">
-              <span class="text-2xl">📦</span>
-            </div>
-          `;
-        }}
-      />
-    </div>
-  );
-};
-
 export default function CatalogoDireita({
   produtos,
   categorias,
@@ -92,93 +34,126 @@ export default function CatalogoDireita({
   onBuscar,
   onAdicionarProduto
 }: CatalogoDireitaProps) {
+  
   return (
-    <div className="space-y-4">
-      {/* Barra de busca simples */}
-      <div className="bg-white rounded-xl shadow-sm border p-3">
+    <div className="h-full flex flex-col bg-white rounded-lg border border-gray-200">
+      {/* Barra de busca FIXA no topo */}
+      <div className="p-4 border-b border-gray-200 bg-white">
         <div className="relative">
           <input
             type="text"
             placeholder="🔍 Buscar produto..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             value={busca}
             onChange={(e) => onBuscar(e.target.value)}
           />
           {busca && (
             <button
               onClick={() => onBuscar('')}
-              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 text-sm"
+              className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 text-sm"
             >
               ✕
             </button>
           )}
         </div>
       </div>
-
-      {/* Categorias - apenas quadradinhos com imagem */}
-      <div className="bg-white rounded-xl shadow-sm border p-3">
-        <div className="grid grid-cols-5 gap-2">
+      
+      {/* Categorias FIXAS no topo da área de produtos */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-white">
+        <div className="flex space-x-4 overflow-x-auto pb-2">
           {categorias.map((categoria) => (
             <button
               key={categoria.id}
               onClick={() => onSelecionarCategoria(categoria.id)}
-              className={`flex flex-col items-center p-2 rounded-lg border transition-all ${
-                categoriaAtiva === categoria.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-              title={categoria.nome}
+              className={`flex-shrink-0 flex flex-col items-center ${categoriaAtiva === categoria.id ? 'scale-105' : ''}`}
             >
-              <div className="text-2xl mb-1">{categoria.icone}</div>
-              <span className="text-xs text-gray-700 truncate w-full text-center">
+              {/* Ícone circular PEQUENO */}
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-1 ${
+                categoriaAtiva === categoria.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}>
+                <span className="text-lg">{categoria.icone}</span>
+              </div>
+              
+              {/* Nome da categoria */}
+              <span className={`text-xs font-medium ${
+                categoriaAtiva === categoria.id
+                  ? 'text-blue-600'
+                  : 'text-gray-600'
+              }`}>
                 {categoria.nome}
               </span>
             </button>
           ))}
         </div>
       </div>
-
-      {/* Grid de Produtos - 3x3 COM IMAGENS REAIS */}
-      <div className="bg-white rounded-xl shadow-sm border p-3">
-        <div className="grid grid-cols-3 gap-3">
+      
+      {/* ÁREA DE PRODUTOS COM SCROLL (adicionei esta div) */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {/* Grid de Produtos - LIMPO E RESPONSIVO */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {produtos.length === 0 ? (
-            <div className="col-span-3 text-center py-8">
-              <div className="text-gray-300 text-4xl mb-3">📦</div>
+            <div className="col-span-full text-center py-12">
               <p className="text-gray-500">Nenhum produto encontrado</p>
+              <p className="text-sm text-gray-400 mt-1">
+                {busca ? `Busca: "${busca}"` : `Categoria: ${categorias.find(c => c.id === categoriaAtiva)?.nome || 'Selecionada'}`}
+              </p>
             </div>
           ) : (
             produtos.map((produto) => (
               <button
                 key={produto.id}
                 onClick={() => onAdicionarProduto(produto.id)}
-                className="group border border-gray-200 rounded-lg p-2 hover:border-blue-300 hover:shadow transition-all flex flex-col items-center"
+                className="group bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 overflow-hidden transition-all duration-200 hover:scale-[1.02] flex flex-col"
               >
-                {/* IMAGEM REAL DO PRODUTO */}
-                <ProdutoImagem src={produto.imagem} alt={produto.nome} />
+                {/* Imagem ocupando mais espaço */}
+                <div className="relative h-32 overflow-hidden bg-gray-100">
+                  <img
+                    src={produto.imagem || '/placeholder-product.jpg'}
+                    alt={produto.nome}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
+                    }}
+                  />
+                  {/* Badge de preço flutuante */}
+                  <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded-lg font-bold text-sm shadow-lg">
+                    R$ {produto.preco.toFixed(2)}
+                  </div>
+                </div>
                 
-                {/* Nome do produto */}
-                <span className="text-sm font-medium text-gray-800 text-center mb-1 truncate w-full">
-                  {produto.nome}
-                </span>
-                
-                {/* Preço */}
-                <span className="text-lg font-bold text-blue-700">
-                  R$ {produto.preco.toFixed(2)}
-                </span>
-                
-                {/* Badge de categoria */}
-                <span className="text-xs text-gray-500 mt-1 px-2 py-0.5 bg-gray-100 rounded">
-                  {produto.categoria}
-                </span>
+                {/* Informações compactas */}
+                <div className="p-2 flex flex-col flex-1">
+                  <span className="text-sm font-medium text-gray-800 line-clamp-2">
+                    {produto.nome}
+                  </span>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      {produto.categoria}
+                    </span>
+                    <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                      +
+                    </span>
+                  </div>
+                </div>
               </button>
             ))
           )}
         </div>
       </div>
-
-      {/* Contador de produtos */}
-      <div className="pb-8">
-        {produtos.length} produto{produtos.length !== 1 ? 's' : ''} disponível{produtos.length !== 1 ? 'is' : ''}
+      
+      {/* Status Bar (opcional) */}
+      <div className="border-t border-gray-200 p-3 bg-gray-50">
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-gray-600">
+            {produtos.length} {produtos.length === 1 ? 'produto' : 'produtos'}
+          </span>
+          <span className="text-gray-500">
+            {categoriaAtiva === 'todos' ? 'Todas categorias' : 
+             categorias.find(c => c.id === categoriaAtiva)?.nome}
+          </span>
+        </div>
       </div>
     </div>
   );
