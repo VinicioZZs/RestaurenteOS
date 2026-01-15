@@ -1,8 +1,8 @@
-// components/comanda/ComandaEsquerda.tsx - COM MODAL DE REMOÇÃO
+// components/comanda/ComandaEsquerda.tsx - COM BOTÕES SEPARADOS
 'use client';
 
 import { useState } from 'react';
-import ConfirmarRemocaoModal from '@/components/comanda/ConfirmarRemocaoModal';
+import ConfirmarRemocaoModal from './ConfirmarRemocaoModal';
 
 interface ItemComanda {
   id: number;
@@ -31,6 +31,7 @@ interface ComandaEsquerdaProps {
   onSalvarItens: () => void;
   onDescartarAlteracoes: () => void;
   onLimparComanda: () => void;
+  onApagarMesa: () => void; // ✅ NOVO
   onImprimirPrevia: () => void;
   onFecharConta: () => void;
   onVoltarDashboard: () => void;
@@ -52,6 +53,7 @@ export default function ComandaEsquerda({
   onSalvarItens,
   onDescartarAlteracoes,
   onLimparComanda,
+  onApagarMesa, // ✅ NOVO
   onImprimirPrevia,
   onFecharConta,
   onVoltarDashboard,
@@ -78,6 +80,9 @@ export default function ComandaEsquerda({
     quantidadeAtual: 0,
     precoUnitario: 0
   });
+
+  // ✅ NOVO: Estado para modal de confirmação de apagar mesa
+  const [modalApagarMesa, setModalApagarMesa] = useState(false);
 
   const todosItens = [...itensSalvos, ...itensNaoSalvos];
 
@@ -135,10 +140,16 @@ export default function ComandaEsquerda({
     });
   };
 
+  // ✅ NOVO: Função para confirmar apagar mesa
+  const confirmarApagarMesa = () => {
+    onApagarMesa();
+    setModalApagarMesa(false);
+  };
+
   return (
     <>
       <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200">
-        {/* Cabeçalho LIMPO - SEM BOTÃO SALVAR */}
+        {/* Cabeçalho */}
         <div className="p-3 border-b">
           <div className="flex justify-between items-center">
             <div>
@@ -290,7 +301,7 @@ export default function ComandaEsquerda({
           </div>
         </div>
 
-        {/* Botões de Ação */}
+        {/* Botões de Ação - AGORA COM 2 BOTÕES SEPARADOS */}
         <div className="p-3 border-t bg-white space-y-2 flex-shrink-0">
           {/* Botão FECHAR CONTA (chama o modal) */}
           <button
@@ -301,14 +312,27 @@ export default function ComandaEsquerda({
             💳 FECHAR CONTA
           </button>
           
-          {/* Botão LIMPAR */}
-          <button
-            onClick={onLimparComanda}
-            className="w-full py-2 border border-red-600 text-red-600 font-medium rounded-lg hover:bg-red-50 text-sm"
-            disabled={todosItens.length === 0}
-          >
-            🗑️ LIMPAR COMANDA
-          </button>
+          {/* ✅ NOVO: Grid com 2 botões - LIMPAR e APAGAR */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Botão LIMPAR COMANDA (remove apenas os itens) */}
+            <button
+              onClick={onLimparComanda}
+              className="py-2 border border-amber-600 text-amber-600 font-medium rounded-lg hover:bg-amber-50 text-sm flex items-center justify-center gap-1"
+              disabled={todosItens.length === 0}
+            >
+              <span>🗑️</span>
+              <span>Limpar</span>
+            </button>
+            
+            {/* Botão APAGAR MESA (fecha comanda completamente) */}
+            <button
+              onClick={() => setModalApagarMesa(true)}
+              className="py-2 border border-red-600 text-red-600 font-medium rounded-lg hover:bg-red-50 text-sm flex items-center justify-center gap-1"
+            >
+              <span>❌</span>
+              <span>Apagar</span>
+            </button>
+          </div>
           
           {/* Botões secundários */}
           <div className="flex gap-2 pt-1">
@@ -328,7 +352,7 @@ export default function ComandaEsquerda({
         </div>
       </div>
 
-      {/* Modal de Confirmação de Remoção */}
+      {/* Modal de Confirmação de Remoção de Item */}
       <ConfirmarRemocaoModal
         produtoNome={modalRemocao.produtoNome}
         quantidadeAtual={modalRemocao.quantidadeAtual}
@@ -337,6 +361,90 @@ export default function ComandaEsquerda({
         onClose={() => setModalRemocao(prev => ({ ...prev, isOpen: false }))}
         onConfirmar={handleConfirmarRemocao}
       />
+
+      {/* ✅ NOVO: Modal de Confirmação para Apagar Mesa */}
+      {modalApagarMesa && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="p-6 border-b">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-100 p-3 rounded-full">
+                  <span className="text-red-600 text-xl">⚠️</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">Apagar Mesa</h2>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Esta ação não pode ser desfeita
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-6">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-700">Mesa:</span>
+                    <span className="font-bold">{mesa?.nome}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-700">Itens na comanda:</span>
+                    <span className="font-medium">{todosItens.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Valor total:</span>
+                    <span className="font-bold text-red-600">
+                      R$ {totalComanda.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">
+                    <span className="font-bold">Atenção:</span> Esta ação irá:
+                  </p>
+                  <ul className="text-sm text-red-600 mt-2 space-y-1">
+                    <li className="flex items-start gap-1">
+                      <span>•</span>
+                      <span>Fechar a comanda completamente</span>
+                    </li>
+                    <li className="flex items-start gap-1">
+                      <span>•</span>
+                      <span>Remover a mesa do dashboard</span>
+                    </li>
+                    <li className="flex items-start gap-1">
+                      <span>•</span>
+                      <span>Perder todos os dados não salvos</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={confirmarApagarMesa}
+                  className="w-full py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700"
+                >
+                  SIM, APAGAR MESA
+                </button>
+                
+                <button
+                  onClick={() => setModalApagarMesa(false)}
+                  className="w-full py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t bg-gray-50 rounded-b-2xl">
+              <p className="text-xs text-gray-600 text-center">
+                A mesa poderá ser recriada posteriormente
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -356,15 +356,12 @@ export default function ComandaPage() {
         setComandaId(resultado.data._id);
       }
       
-      // ✅ NOVO: Forçar atualização do dashboard
-      // Enviar evento para atualizar o dashboard
+      // ✅ Forçar atualização do dashboard
       if (typeof window !== 'undefined') {
-        // Disparar evento customizado
         window.dispatchEvent(new CustomEvent('comanda-atualizada', {
           detail: { mesaId, total: totalAgrupado }
         }));
         
-        // Também salvar no localStorage para o dashboard pegar
         localStorage.setItem(`comanda_atualizada_${mesaId}`, 
           JSON.stringify({
             total: totalAgrupado,
@@ -402,6 +399,55 @@ export default function ComandaPage() {
         setModificado(false);
         alert('Comanda limpa com sucesso!');
       }
+    }
+  };
+
+  // ✅ NOVA FUNÇÃO: Apagar mesa (fecha comanda completamente)
+  const apagarMesa = async () => {
+    // O modal já pede confirmação, então aqui pode ir direto
+    try {
+      // 1. Fechar comanda no banco (marcar como fechada)
+      if (comandaId) {
+        const response = await fetch(`/api/comandas/${comandaId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'fechada',
+            fechadoEm: new Date().toISOString()
+          })
+        });
+        
+        if (!response.ok) {
+          console.warn('Não foi possível fechar a comanda no banco, continuando...');
+        }
+      }
+      
+      // 2. Limpar dados locais
+      setItensSalvos([]);
+      setItensNaoSalvos([]);
+      setTotalPago(0);
+      setModificado(false);
+      
+      // 3. Disparar evento para dashboard atualizar
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mesa-apagada', {
+          detail: { mesaId }
+        }));
+        
+        localStorage.setItem(`mesa_apagada_${mesaId}`, 
+          JSON.stringify({
+            timestamp: new Date().toISOString()
+          })
+        );
+      }
+      
+      // 4. Redirecionar para dashboard
+      alert('Mesa apagada com sucesso! Redirecionando para o dashboard...');
+      router.push('/dashboard');
+      
+    } catch (error) {
+      console.error('Erro ao apagar mesa:', error);
+      alert('Erro ao apagar mesa. Tente novamente.');
     }
   };
 
@@ -545,6 +591,7 @@ export default function ComandaPage() {
             onSalvarItens={salvarItens}
             onDescartarAlteracoes={descartarAlteracoes}
             onLimparComanda={limparComanda}
+            onApagarMesa={apagarMesa} // ✅ ADICIONADO
             onImprimirPrevia={imprimirPrevia}
             onFecharConta={handleFecharConta}
             onVoltarDashboard={voltarDashboard}
