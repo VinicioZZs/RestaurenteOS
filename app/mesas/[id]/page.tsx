@@ -36,13 +36,33 @@ interface ComandaDB {
 }
 
 // Funções auxiliares para API
-async function fetchComanda(mesaId: string): Promise<ComandaDB | null> {
+async function fetchComanda(mesaIdOuNumero: string): Promise<ComandaDB | null> {
   try {
-    const response = await fetch(`/api/comandas?mesaId=${mesaId}`);
+    // Tenta buscar pelo ID/número
+    const response = await fetch(`/api/comandas?mesaId=${mesaIdOuNumero}`);
     if (!response.ok) return null;
     
     const data = await response.json();
-    return data.success ? data.data : null;
+    
+    // Se não encontrou, tenta buscar pelo número da mesa
+    if (!data.success || !data.data) {
+      // Primeiro buscar a mesa para pegar o _id
+      const mesaResponse = await fetch(`/api/mesas/buscar-mesa?numero=${mesaIdOuNumero}`);
+      if (mesaResponse.ok) {
+        const mesaData = await mesaResponse.json();
+        if (mesaData.success && mesaData.data) {
+          // Agora busca a comanda com o _id real
+          const comandaResponse = await fetch(`/api/comandas?mesaId=${mesaData.data._id}`);
+          if (comandaResponse.ok) {
+            const comandaData = await comandaResponse.json();
+            return comandaData.success ? comandaData.data : null;
+          }
+        }
+      }
+      return null;
+    }
+    
+    return data.data;
   } catch (error) {
     console.error('Erro ao buscar comanda:', error);
     return null;
@@ -67,12 +87,24 @@ async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: Item
     
     console.log('📦 Itens para salvar:', itensParaSalvar);
     
+    // ✅ CORREÇÃO CRÍTICA: A API espera o NÚMERO da mesa em body.mesaId
+    // mesaId da URL é o número (ex: "1"), mas precisamos garantir que seja o número
+    // numeroMesa pode ser undefined se a mesa for mockada
+    
+    // Usar o número da mesa corretamente
+    const numeroMesaParaEnviar = numeroMesa || mesaId;
+    
+    console.log('🔍 Enviando com:', {
+      mesaId: numeroMesaParaEnviar, // ← NÚMERO da mesa
+      numeroMesa: numeroMesaParaEnviar // ← Também o número
+    });
+    
     const response = await fetch('/api/comandas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        mesaId,
-        numeroMesa,
+        mesaId: numeroMesaParaEnviar, // ← NÚMERO da mesa
+        numeroMesa: numeroMesaParaEnviar, // ← Também o número
         itens: itensParaSalvar,
         total,
       }),
@@ -164,72 +196,87 @@ export default function ComandaPage() {
 
   // Carregar dados iniciais
   useEffect(() => {
-    async function carregarComanda() {
-      setCarregando(true);
-      
-      try {
-        // 1. Carregar produtos
-        const produtosDB = await fetchProdutosReais();
-        setProdutosReais(produtosDB);
-        
-        // 2. Extrair categorias dos produtos
-        const categoriasUnicas = Array.from(new Set(produtosDB.map(p => p.categoria).filter(Boolean)));
-        const icones = ['🥤', '🍔', '🍟', '🍰', '☕', '🍕', '🌭', '🥗', '🍣', '🥪'];
-        
-        const categoriasFormatadas = categoriasUnicas.map((cat, index) => ({
-          id: cat.toLowerCase().replace(/\s+/g, '-'),
-          nome: cat,
-          icone: icones[index] || '📦'
-        }));
-        
-        setCategoriasReais([
-          { id: 'todos', nome: 'Todos', icone: '📦' },
-          ...categoriasFormatadas
-        ]);
-        
-        // 3. Mesa mockada
-        const mesaMock = {
-          id: mesaId,
-          numero: mesaId.padStart(2, '0'),
-          nome: `Mesa ${mesaId.padStart(2, '0')}`,
-          status: 'ocupada',
-          capacidade: 4,
-        };
-        setMesa(mesaMock);
-        
-        // 4. Buscar comanda existente
-        const comandaDB = await fetchComanda(mesaId);
-        if (comandaDB) {
-          setComandaId(comandaDB._id);
-          
-          // Converter itens da comanda para o formato local
-          const itensComProdutos = comandaDB.itens.map((item: any) => {
-            const produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
-            return {
-              id: Date.now() + Math.random(),
-              produtoId: item.produtoId,
-              quantidade: item.quantidade,
-              precoUnitario: item.precoUnitario,
-              observacao: item.observacao || '',
-              produto: produtoEncontrado || {
-                nome: 'Produto não encontrado',
-                categoria: 'desconhecida'
-              }
-            };
-          });
-          
-          setItensSalvos(itensComProdutos);
-        }
-        
-      } catch (error) {
-        console.error('Erro ao carregar:', error);
-      } finally {
-        setCarregando(false);
-      }
-    }
+  async function carregarComanda() {
+    setCarregando(true);
     
-    carregarComanda();
-  }, [mesaId]);
+    try {
+      // 1. Carregar produtos
+      const produtosDB = await fetchProdutosReais();
+      setProdutosReais(produtosDB);
+      
+      // 2. Extrair categorias dos produtos
+      const categoriasUnicas = Array.from(new Set(produtosDB.map(p => p.categoria).filter(Boolean)));
+      const icones = ['🥤', '🍔', '🍟', '🍰', '☕', '🍕', '🌭', '🥗', '🍣', '🥪'];
+      
+      const categoriasFormatadas = categoriasUnicas.map((cat, index) => ({
+        id: cat.toLowerCase().replace(/\s+/g, '-'),
+        nome: cat,
+        icone: icones[index] || '📦'
+      }));
+      
+      setCategoriasReais([
+        { id: 'todos', nome: 'Todos', icone: '📦' },
+        ...categoriasFormatadas
+      ]);
+      
+      // 3. ✅ AGORA: Buscar a mesa REAL do banco de dados
+      const response = await fetch(`/api/mesas/buscar-mesa?numero=${mesaId}`);
+      let mesaReal = null;
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          mesaReal = data.data;
+        }
+      }
+      
+      // Se não encontrou, criar uma mock ou buscar pelo número
+      const mesa = mesaReal || {
+        id: mesaId,
+        _id: mesaId, // Usa o número como ID se não encontrar
+        numero: mesaId.padStart(2, '0'),
+        nome: `Mesa ${mesaId.padStart(2, '0')}`,
+        status: 'ocupada',
+        capacidade: 4,
+      };
+      
+      setMesa(mesa);
+      
+      // 4. Buscar comanda existente - usar o ID real da mesa
+      const mesaIdParaBuscar = mesa._id || mesa.id || mesaId;
+      const comandaDB = await fetchComanda(mesaIdParaBuscar);
+      
+      if (comandaDB) {
+        setComandaId(comandaDB._id);
+        
+        // Converter itens da comanda para o formato local
+        const itensComProdutos = comandaDB.itens.map((item: any) => {
+          const produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
+          return {
+            id: Date.now() + Math.random(),
+            produtoId: item.produtoId,
+            quantidade: item.quantidade,
+            precoUnitario: item.precoUnitario,
+            observacao: item.observacao || '',
+            produto: produtoEncontrado || {
+              nome: 'Produto não encontrado',
+              categoria: 'desconhecida'
+            }
+          };
+        });
+        
+        setItensSalvos(itensComProdutos);
+      }
+      
+    } catch (error) {
+      console.error('Erro ao carregar:', error);
+    } finally {
+      setCarregando(false);
+    }
+  }
+  
+  carregarComanda();
+}, [mesaId]);
 
   // Calcular totais
   const todosItens = [...itensSalvos, ...itensNaoSalvos];
@@ -307,75 +354,80 @@ export default function ComandaPage() {
 
   // Função para salvar - Agora agrupa itens iguais
   const salvarItens = async () => {
-    if (itensNaoSalvos.length === 0 && !modificado) {
-      alert('Não há alterações para salvar!');
-      return;
-    }
+  if (itensNaoSalvos.length === 0 && !modificado) {
+    alert('Não há alterações para salvar!');
+    return;
+  }
+  
+  // Antes de salvar, agrupa itens iguais
+  const todosItensParaProcessar = [...itensSalvos, ...itensNaoSalvos];
+  
+  // Agrupar por produtoId e observação
+  const itensAgrupados = new Map();
+  
+  todosItensParaProcessar.forEach(item => {
+    const chave = `${item.produtoId}-${item.observacao}`;
     
-    // Antes de salvar, agrupa itens iguais
-    const todosItensParaProcessar = [...itensSalvos, ...itensNaoSalvos];
-    
-    // Agrupar por produtoId e observação
-    const itensAgrupados = new Map();
-    
-    todosItensParaProcessar.forEach(item => {
-      const chave = `${item.produtoId}-${item.observacao}`;
-      
-      if (itensAgrupados.has(chave)) {
-        // Soma quantidade
-        const existente = itensAgrupados.get(chave);
-        existente.quantidade += item.quantidade;
-      } else {
-        // Novo item agrupado
-        itensAgrupados.set(chave, {
-          ...item,
-          id: Date.now() + Math.random()
-        });
-      }
-    });
-    
-    const itensParaSalvar = Array.from(itensAgrupados.values());
-    const totalAgrupado = itensParaSalvar.reduce((sum, item) => 
-      sum + (item.precoUnitario * item.quantidade), 0
-    );
-    
-    // Salvar no banco
-    const resultado = await salvarComandaNoDB(
-      mesaId,
-      mesa?.numero || mesaId,
-      itensParaSalvar,
-      totalAgrupado
-    );
-    
-    if (resultado.success) {
-      // Atualiza com os itens AGRUPADOS
-      setItensSalvos(itensParaSalvar);
-      setItensNaoSalvos([]);
-      setModificado(false);
-      if (resultado.data?._id) {
-        setComandaId(resultado.data._id);
-      }
-      
-      // ✅ Forçar atualização do dashboard
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('comanda-atualizada', {
-          detail: { mesaId, total: totalAgrupado }
-        }));
-        
-        localStorage.setItem(`comanda_atualizada_${mesaId}`, 
-          JSON.stringify({
-            total: totalAgrupado,
-            quantidadeItens: itensParaSalvar.length,
-            timestamp: new Date().toISOString()
-          })
-        );
-      }
-      
-      alert(`Comanda salva com sucesso!\n${itensNaoSalvos.length} item(s) foram agrupados.`);
+    if (itensAgrupados.has(chave)) {
+      // Soma quantidade
+      const existente = itensAgrupados.get(chave);
+      existente.quantidade += item.quantidade;
     } else {
-      alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
+      // Novo item agrupado
+      itensAgrupados.set(chave, {
+        ...item,
+        id: Date.now() + Math.random()
+      });
     }
-  };
+  });
+  
+  const itensParaSalvar = Array.from(itensAgrupados.values());
+  const totalAgrupado = itensParaSalvar.reduce((sum, item) => 
+    sum + (item.precoUnitario * item.quantidade), 0
+  );
+  
+  // ✅ CORREÇÃO: Enviar o número correto da mesa
+  // mesa?.numero deve ser o número formatado (ex: "01")
+  // mesaId da URL é o número (ex: "1")
+  const numeroMesaParaSalvar = mesa?.numero || mesaId;
+  
+  // Salvar no banco
+  const resultado = await salvarComandaNoDB(
+    mesaId, // Número da mesa da URL
+    numeroMesaParaSalvar, // Número formatado da mesa
+    itensParaSalvar,
+    totalAgrupado
+  );
+  
+  if (resultado.success) {
+    // Atualiza com os itens AGRUPADOS
+    setItensSalvos(itensParaSalvar);
+    setItensNaoSalvos([]);
+    setModificado(false);
+    if (resultado.data?._id) {
+      setComandaId(resultado.data._id);
+    }
+    
+    // ✅ Forçar atualização do dashboard
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('comanda-atualizada', {
+        detail: { mesaId, total: totalAgrupado }
+      }));
+      
+      localStorage.setItem(`comanda_atualizada_${mesaId}`, 
+        JSON.stringify({
+          total: totalAgrupado,
+          quantidadeItens: itensParaSalvar.length,
+          timestamp: new Date().toISOString()
+        })
+      );
+    }
+    
+    alert(`Comanda salva com sucesso!\n${itensNaoSalvos.length} item(s) foram agrupados.`);
+  } else {
+    alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
+  }
+};
 
   const descartarAlteracoes = () => {
     if (!modificado && itensNaoSalvos.length === 0) return;
@@ -387,69 +439,63 @@ export default function ComandaPage() {
   };
 
   const limparComanda = async () => {
-    if (todosItens.length === 0) return;
+  if (todosItens.length === 0) return;
+  
+  if (confirm('Tem certeza que deseja limpar toda a comanda?')) {
+    const resultado = await salvarComandaNoDB(
+      mesaId, // Número da mesa da URL
+      mesa?.numero || mesaId, // Número formatado ou o da URL
+      [], 
+      0
+    );
     
-    if (confirm('Tem certeza que deseja limpar toda a comanda?')) {
-      const resultado = await salvarComandaNoDB(mesaId, mesa?.numero || mesaId, [], 0);
-      
-      if (resultado.success) {
-        setItensSalvos([]);
-        setItensNaoSalvos([]);
-        setTotalPago(0);
-        setModificado(false);
-        alert('Comanda limpa com sucesso!');
-      }
-    }
-  };
-
-  // ✅ NOVA FUNÇÃO: Apagar mesa (fecha comanda completamente)
-  const apagarMesa = async () => {
-    // O modal já pede confirmação, então aqui pode ir direto
-    try {
-      // 1. Fechar comanda no banco (marcar como fechada)
-      if (comandaId) {
-        const response = await fetch(`/api/comandas/${comandaId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: 'fechada',
-            fechadoEm: new Date().toISOString()
-          })
-        });
-        
-        if (!response.ok) {
-          console.warn('Não foi possível fechar a comanda no banco, continuando...');
-        }
-      }
-      
-      // 2. Limpar dados locais
+    if (resultado.success) {
       setItensSalvos([]);
       setItensNaoSalvos([]);
       setTotalPago(0);
       setModificado(false);
-      
-      // 3. Disparar evento para dashboard atualizar
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('mesa-apagada', {
-          detail: { mesaId }
-        }));
-        
-        localStorage.setItem(`mesa_apagada_${mesaId}`, 
-          JSON.stringify({
-            timestamp: new Date().toISOString()
-          })
-        );
-      }
-      
-      // 4. Redirecionar para dashboard
-      alert('Mesa apagada com sucesso! Redirecionando para o dashboard...');
-      router.push('/dashboard');
-      
-    } catch (error) {
-      console.error('Erro ao apagar mesa:', error);
-      alert('Erro ao apagar mesa. Tente novamente.');
+      alert('Comanda limpa com sucesso!');
     }
-  };
+  }
+};
+
+  // ✅ NOVA FUNÇÃO: Apagar mesa (fecha comanda completamente)
+ const apagarMesa = async () => {
+  if (!confirm('Tem certeza que deseja APAGAR esta mesa completamente? Esta ação não pode ser desfeita.')) {
+    return;
+  }
+  
+  try {
+    // 1. Deletar do banco
+    const response = await fetch(`/api/mesas/${mesaId}`, {
+      method: 'DELETE',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Erro ao apagar mesa');
+    }
+    
+    // 2. FORÇAR o Next.js a recarregar a página do dashboard
+    // Opção A: Usar window.location (mais agressivo, funciona sempre)
+    window.location.href = '/dashboard';
+    
+    // Opção B: Se quiser usar router (menos agressivo)
+    // router.push('/dashboard');
+    // setTimeout(() => {
+    //   window.location.reload();
+    // }, 100);
+    
+  } catch (error) {
+    console.error('Erro ao apagar mesa:', error);
+    alert('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+  }
+};
+
 
   const imprimirPrevia = () => {
     alert('Prévia da comanda impressa!');

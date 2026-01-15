@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    console.log('📥 Salvando/Atualizando comanda:', body);
+    console.log('📥 Recebendo POST /api/comandas:', JSON.stringify(body, null, 2));
     
     if (!body.mesaId) {
       return NextResponse.json(
@@ -92,7 +92,14 @@ export async function POST(request: NextRequest) {
     await client.connect();
     const db = client.db(DB_NAME);
     
-    // 🔴 PROBLEMA AQUI: body.mesaId é o NÚMERO da mesa (ex: "10"), não um ObjectId
+    // 🔴 LOG: Mostrar todas as mesas no banco
+    const todasMesas = await db.collection('mesas').find({}).toArray();
+    console.log('📊 Todas as mesas no banco:', todasMesas.map(m => ({ 
+      id: m._id.toString(), 
+      numero: m.numero, 
+      nome: m.nome 
+    })));
+    
     // Buscar mesa pelo número
     const mesa = await db.collection('mesas').findOne({
       numero: body.mesaId.toString()
@@ -100,6 +107,7 @@ export async function POST(request: NextRequest) {
     
     if (!mesa) {
       console.log('❌ Mesa não encontrada com número:', body.mesaId);
+      console.log('🔍 Mesas disponíveis:', todasMesas.map(m => m.numero));
       return NextResponse.json(
         { success: false, error: `Mesa ${body.mesaId} não encontrada` },
         { status: 404 }
@@ -113,22 +121,29 @@ export async function POST(request: NextRequest) {
     });
     
     const agora = new Date();
-    const mesaId = mesa._id.toString(); // 🔴 AGORA SIM: ObjectId da mesa
+    const mesaId = mesa._id.toString();
     const totalCalculado = body.total || body.itens?.reduce((sum: number, item: any) => 
       sum + (item.precoUnitario * item.quantidade), 0) || 0;
     
-    // Verificar se já existe comanda aberta para esta mesa
-    const comandaExistente = await db.collection('comandas').findOne({
+    // 🔴 LOG: Mostrar comandas existentes
+    const comandasExistentes = await db.collection('comandas').find({
       mesaId: mesaId,
       status: 'aberta'
-    });
+    }).toArray();
+    
+    console.log('📊 Comandas existentes para esta mesa:', comandasExistentes.map(c => ({
+      id: c._id.toString(),
+      mesaId: c.mesaId,
+      itens: c.itens?.length || 0,
+      total: c.total
+    })));
     
     let novaComandaId: string | null = null;
     
-    if (comandaExistente) {
+    if (comandasExistentes.length > 0) {
       // Atualizar comanda existente
-      await db.collection('comandas').updateOne(
-        { _id: comandaExistente._id },
+      const resultado = await db.collection('comandas').updateOne(
+        { _id: comandasExistentes[0]._id },
         {
           $set: {
             itens: body.itens || [],
@@ -138,10 +153,12 @@ export async function POST(request: NextRequest) {
         }
       );
       
-      novaComandaId = comandaExistente._id.toString();
+      novaComandaId = comandasExistentes[0]._id.toString();
       
       console.log('✅ Comanda atualizada:', { 
-        mesaId: mesa.numero, 
+        modifiedCount: resultado.modifiedCount,
+        matchedCount: resultado.matchedCount,
+        mesaNumero: mesa.numero, 
         total: totalCalculado, 
         itens: body.itens?.length || 0 
       });
@@ -149,7 +166,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Criar nova comanda
       const novaComanda = {
-        mesaId: mesaId, // 🔴 Usando ObjectId da mesa
+        mesaId: mesaId,
         numeroMesa: body.numeroMesa || mesa.numero,
         itens: body.itens || [],
         total: totalCalculado,
@@ -158,18 +175,21 @@ export async function POST(request: NextRequest) {
         atualizadoEm: agora
       };
       
+      console.log('➕ Criando nova comanda:', novaComanda);
+      
       const resultado = await db.collection('comandas').insertOne(novaComanda);
       novaComandaId = resultado.insertedId.toString();
       
       console.log('✅ Nova comanda criada:', {
         id: novaComandaId,
+        insertedId: resultado.insertedId,
         mesaNumero: mesa.numero,
         total: totalCalculado
       });
     }
     
-    // ✅ IMPORTANTE: Atualizar também a mesa com o último horário
-    await db.collection('mesas').updateOne(
+    // Atualizar mesa
+    const updateMesaResult = await db.collection('mesas').updateOne(
       { _id: mesa._id },
       {
         $set: {
@@ -178,15 +198,31 @@ export async function POST(request: NextRequest) {
       }
     );
     
+    console.log('📝 Mesa atualizada:', {
+      modifiedCount: updateMesaResult.modifiedCount,
+      matchedCount: updateMesaResult.matchedCount
+    });
+    
+    // 🔴 LOG: Verificar se realmente salvou
+    const comandaSalva = await db.collection('comandas').findOne({
+      _id: new ObjectId(novaComandaId)
+    });
+    
+    console.log('🔍 Comanda salva no banco:', comandaSalva);
+    
     return NextResponse.json({
       success: true,
-      message: comandaExistente ? 'Comanda atualizada' : 'Comanda criada',
+      message: comandasExistentes.length > 0 ? 'Comanda atualizada' : 'Comanda criada',
       data: {
         _id: novaComandaId,
-        mesaId: mesa.numero, // 🔴 Retornando o número da mesa para o frontend
-        mesaObjectId: mesaId, // 🔴 E também o ObjectId se precisar
+        mesaId: mesa.numero,
+        mesaObjectId: mesaId,
         total: totalCalculado,
-        atualizadoEm: agora.toISOString()
+        atualizadoEm: agora.toISOString(),
+        debug: {
+          comandaSalva: !!comandaSalva,
+          itensCount: comandaSalva?.itens?.length || 0
+        }
       }
     });
     

@@ -33,33 +33,95 @@ export default function DashboardPage() {
 
   // Carregar mesas do MongoDB
   const carregarMesas = async (termoBusca?: string) => {
-    try {
-      const url = termoBusca 
-        ? `/api/mesas?busca=${encodeURIComponent(termoBusca)}`
-        : '/api/mesas';
-      
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.success) {
-        setMesas(data.data);
+  try {
+    const url = termoBusca 
+      ? `/api/mesas?busca=${encodeURIComponent(termoBusca)}&t=${Date.now()}`
+      : `/api/mesas?t=${Date.now()}`; // ← Adiciona timestamp para evitar cache
+    
+    console.log('🔄 Carregando mesas...');
+    
+    const response = await fetch(url, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
       }
-    } catch (error) {
-      console.error('Erro ao carregar mesas:', error);
+    });
+    
+    const data = await response.json();
+    
+    console.log('📥 Mesas recebidas:', data.data?.length || 0);
+    
+    if (data.success) {
+      setMesas(data.data);
+    } else {
+      console.error('Erro na API:', data.error);
       setMesas([]);
     }
-  };
+  } catch (error) {
+    console.error('Erro ao carregar mesas:', error);
+    setMesas([]);
+  }
+};
+
+
+useEffect(() => {
+    // Desabilitar cache do Next.js para esta página
+    if (typeof window !== 'undefined') {
+      // Adicionar headers para evitar cache
+      fetch('/api/mesas', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
+  }, []);
 
   // Carregar inicial
   useEffect(() => {
-    const carregarInicial = async () => {
-      setCarregando(true);
-      await carregarMesas();
-      setCarregando(false);
-    };
-    
-    carregarInicial();
-  }, []);
+  const carregarInicial = async () => {
+    setCarregando(true);
+    await carregarMesas();
+    setCarregando(false);
+  };
+  
+  carregarInicial();
+  
+  // Recarregar sempre que a página for exibida
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      // Página ficou visível novamente (voltou do apagar mesa)
+      carregarMesas(busca);
+    }
+  };
+  
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  
+  return () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  };
+}, []);
+
+useEffect(() => {
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      // Página ficou visível (usuário voltou do apagar mesa)
+      console.log('👀 Página visível - recarregando mesas...');
+      carregarMesas(busca);
+    }
+  };
+  
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  
+  // Também escutar eventos de focus (quando volta de outra aba/janela)
+  window.addEventListener('focus', handleVisibilityChange);
+  
+  return () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('focus', handleVisibilityChange);
+  };
+}, [busca]);
+
 
     // ✅ NOVO: Escutar atualizações de comandas
   useEffect(() => {
@@ -112,14 +174,76 @@ export default function DashboardPage() {
     };
   }, [busca, mesas]);
 
+    useEffect(() => {
+  const handleFocus = () => {
+    // Quando a página recebe foco (volta do apagar mesa), recarrega
+    carregarMesas(busca);
+  };
+  
+  window.addEventListener('focus', handleFocus);
+  
+  return () => {
+    window.removeEventListener('focus', handleFocus);
+  };
+}, [busca]);
+
   // Atualizar a cada 5 segundos
   useEffect(() => {
-    const interval = setInterval(() => {
+  // Escutar eventos de mesa removida
+  const handleMesaRemovida = (event: CustomEvent) => {
+    console.log('Evento: mesa removida', event.detail);
+    
+    // Remover a mesa da lista local IMEDIATAMENTE
+    setMesas(prev => prev.filter(mesa => 
+      mesa._id !== event.detail.mesaId && 
+      mesa.numero !== event.detail.mesaId &&
+      mesa.numero !== event.detail.numeroMesa
+    ));
+    
+    // Forçar recarregar do banco também
+    setTimeout(() => {
       carregarMesas(busca);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [busca]);
+    }, 500);
+  };
+  
+  // Verificar localStorage por mesas removidas
+  const verificarMesasRemovidas = () => {
+    const chaves = Object.keys(localStorage);
+    chaves.forEach(chave => {
+      if (chave.startsWith('mesa_removida_')) {
+        try {
+          const dados = JSON.parse(localStorage.getItem(chave) || '{}');
+          const mesaIdRemovida = chave.replace('mesa_removida_', '');
+          
+          // Remover da lista local
+          setMesas(prev => prev.filter(mesa => 
+            mesa._id !== mesaIdRemovida && 
+            mesa.numero !== mesaIdRemovida
+          ));
+          
+          // Limpar o item do localStorage
+          localStorage.removeItem(chave);
+        } catch (e) {
+          console.error('Erro ao processar mesa removida:', e);
+        }
+      }
+    });
+  };
+  
+  // Configurar o listener de evento
+  window.addEventListener('mesa-removida' as any, handleMesaRemovida);
+  
+  // Verificar ao carregar
+  verificarMesasRemovidas();
+  
+  // Verificar periodicamente
+  const interval = setInterval(verificarMesasRemovidas, 2000);
+  
+  return () => {
+    window.removeEventListener('mesa-removida' as any, handleMesaRemovida);
+    clearInterval(interval);
+  };
+}, [busca]);
 
   // Buscar mesa - FLUXO COMPLETO
   const buscarMesa = async () => {

@@ -1,31 +1,9 @@
-// app/api/mesas/route.ts - COMPLETO COM GET E POST
+// app/api/mesas/route.ts - VERSÃO COMPLETA CORRIGIDA (MongoDB Driver)
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const DB_NAME = 'restaurante';
-
-// Definir tipos
-interface ItemComanda {
-  precoUnitario: number;
-  quantidade: number;
-}
-
-interface Comanda {
-  _id: any;
-  mesaId: string;
-  itens: ItemComanda[];
-  status: string;
-  atualizadoEm: Date;
-}
-
-interface Mesa {
-  _id: any;
-  numero: string;
-  nome: string;
-  capacidade: number;
-  criadoEm: Date;
-}
 
 export async function GET(request: NextRequest) {
   const client = new MongoClient(MONGODB_URI);
@@ -51,16 +29,16 @@ export async function GET(request: NextRequest) {
     const mesas = await db.collection('mesas')
       .find(query)
       .sort({ numero: 1 })
-      .toArray() as Mesa[];
+      .toArray();
     
-    // Buscar comandas abertas
+    // Buscar comandas abertas - USANDO OS IDs DAS MESAS
     const mesaIds = mesas.map(m => m._id.toString());
     const comandas = await db.collection('comandas')
       .find({ 
         mesaId: { $in: mesaIds },
         status: 'aberta' 
       })
-      .toArray() as Comanda[];
+      .toArray();
     
     // Criar mapa de comandas por mesaId
     const comandasPorMesa = new Map();
@@ -70,13 +48,13 @@ export async function GET(request: NextRequest) {
     
     // Montar resposta com totais
     const mesasComTotais = mesas.map(mesa => {
-      const comanda = comandasPorMesa.get(mesa._id.toString()) as Comanda | undefined;
+      const comanda = comandasPorMesa.get(mesa._id.toString());
       
       let totalComanda = 0;
       let quantidadeItens = 0;
       
       if (comanda && comanda.itens) {
-        totalComanda = comanda.itens.reduce((sum: number, item: ItemComanda) => 
+        totalComanda = comanda.itens.reduce((sum: number, item: any) => 
           sum + (item.precoUnitario * item.quantidade), 0
         );
         quantidadeItens = comanda.itens.length;
@@ -116,8 +94,7 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    
-    console.log('📥 Recebendo POST /api/mesas:', body);
+    console.log('Dados recebidos para criar mesa:', body);
     
     if (!body.numero || !body.numero.toString().trim()) {
       return NextResponse.json(
@@ -135,9 +112,7 @@ export async function POST(request: NextRequest) {
     });
     
     if (mesaExistente) {
-      console.log('⚠️ Mesa já existe:', mesaExistente);
-      
-      // Buscar comanda aberta desta mesa
+      // Mesa já existe - retornar dados dela
       const comanda = await db.collection('comandas').findOne({
         mesaId: mesaExistente._id.toString(),
         status: 'aberta'
@@ -159,17 +134,17 @@ export async function POST(request: NextRequest) {
         data: {
           _id: mesaExistente._id.toString(),
           numero: mesaExistente.numero,
-          nome: mesaExistente.nome || `Mesa ${mesaExistente.numero.padStart(2, '0')}`,
+          nome: mesaExistente.nome,
           totalComanda,
           quantidadeItens,
           atualizadoEm: comanda?.atualizadoEm || mesaExistente.criadoEm || new Date()
         }
-      }, { status: 409 });
+      }, { status: 409 }); // 409 Conflict
     }
     
     // Criar nova mesa
     const novaMesa = {
-      numero: body.numero.toString(),
+        numero: body.numero.toString().padStart(2, '0'), // SEMPRE com 2 dígitos
       nome: body.nome || `Mesa ${body.numero.toString().padStart(2, '0')}`,
       capacidade: body.capacidade || 4,
       status: 'livre',
@@ -177,27 +152,21 @@ export async function POST(request: NextRequest) {
       atualizadoEm: new Date()
     };
     
-    console.log('➕ Criando nova mesa:', novaMesa);
-    
     const resultado = await db.collection('mesas').insertOne(novaMesa);
-    
-    const mesaCriada = {
-      _id: resultado.insertedId.toString(),
-      ...novaMesa,
-      totalComanda: 0,
-      quantidadeItens: 0
-    };
-    
-    console.log('✅ Mesa criada com sucesso:', mesaCriada);
     
     return NextResponse.json({
       success: true,
       message: 'Mesa criada com sucesso',
-      data: mesaCriada
+      data: {
+        _id: resultado.insertedId.toString(),
+        ...novaMesa,
+        totalComanda: 0,
+        quantidadeItens: 0
+      }
     }, { status: 201 });
     
   } catch (error) {
-    console.error('❌ Erro ao criar mesa:', error);
+    console.error('Erro ao criar mesa:', error);
     return NextResponse.json(
       { 
         success: false, 
