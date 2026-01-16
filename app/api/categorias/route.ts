@@ -25,12 +25,18 @@ export async function GET(request: NextRequest) {
       .sort({ nome: 1 })
       .toArray();
     
+    // ✅ ATUALIZE ESTA PARTE para incluir todos os campos
     const categoriasFormatadas = categorias.map(categoria => ({
       _id: categoria._id.toString(),
       nome: categoria.nome,
+      descricao: categoria.descricao || '', // ✅ ADICIONAR
       icone: categoria.icone || '📦',
+      imagem: categoria.imagem || '', // ✅ ADICIONAR
+      usaImagem: categoria.usaImagem || false, // ✅ ADICIONAR
+      ordem: categoria.ordem || 999, // ✅ ADICIONAR
       ativo: categoria.ativo !== false,
-      criadoEm: categoria.criadoEm
+      criadoEm: categoria.criadoEm,
+      atualizadoEm: categoria.atualizadoEm || categoria.criadoEm // ✅ ADICIONAR
     }));
     
     return NextResponse.json({

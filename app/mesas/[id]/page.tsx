@@ -174,6 +174,45 @@ async function fetchProdutosReais(): Promise<Produto[]> {
   }
 }
 
+async function fetchCategoriasReais(): Promise<Array<{
+  id: string;
+  nome: string;
+  icone: string;
+  imagem?: string;
+  usaImagem?: boolean;
+  descricao?: string;
+  ordem?: number;
+}>> {
+  try {
+    const response = await fetch('/api/categorias?ativas=true');
+    if (!response.ok) throw new Error('Erro ao buscar categorias');
+    
+    const data = await response.json();
+    
+    if (data.success && data.data) {
+      return data.data.map((categoria: any) => ({
+        id: categoria._id.toString(),
+        nome: categoria.nome,
+        descricao: categoria.descricao || '',
+        icone: categoria.icone || '📦',
+        imagem: categoria.imagem,
+        usaImagem: categoria.usaImagem || false,
+        ordem: categoria.ordem || 999
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error('Erro ao buscar categorias:', error);
+    // Fallback com ícones maiores
+    return [
+      { id: 'todos', nome: 'Todos', icone: '📦', usaImagem: false },
+      { id: 'bebidas', nome: 'Bebidas', icone: '🥤', usaImagem: false },
+      { id: 'lanches', nome: 'Lanches', icone: '🍔', usaImagem: false },
+      { id: 'acompanhamentos', nome: 'Acompanhamentos', icone: '🍟', usaImagem: false },
+    ];
+  }
+}
+
 export default function ComandaPage() {
   const params = useParams();
   const router = useRouter();
@@ -202,28 +241,23 @@ export default function ComandaPage() {
 
   // Carregar dados iniciais
   useEffect(() => {
-    async function carregarComanda() {
-      setCarregando(true);
+  async function carregarComanda() {
+    setCarregando(true);
+    
+    try {
+      // 1. Carregar produtos
+      const produtosDB = await fetchProdutosReais();
+      setProdutosReais(produtosDB);
       
-      try {
-        // 1. Carregar produtos
-        const produtosDB = await fetchProdutosReais();
-        setProdutosReais(produtosDB);
-        
-        // 2. Extrair categorias dos produtos
-        const categoriasUnicas = Array.from(new Set(produtosDB.map(p => p.categoria).filter(Boolean)));
-        const icones = ['🥤', '🍔', '🍟', '🍰', '☕', '🍕', '🌭', '🥗', '🍣', '🥪'];
-        
-        const categoriasFormatadas = categoriasUnicas.map((cat, index) => ({
-          id: cat.toLowerCase().replace(/\s+/g, '-'),
-          nome: cat,
-          icone: icones[index] || '📦'
-        }));
-        
-        setCategoriasReais([
-          { id: 'todos', nome: 'Todos', icone: '📦' },
-          ...categoriasFormatadas
-        ]);
+      // ✅ 2. AGORA: Buscar categorias do banco de dados (NOVO CÓDIGO)
+      const categoriasDB = await fetchCategoriasReais();
+      
+      // Adicionar "Todos" no início se não existir
+      if (!categoriasDB.some(cat => cat.id === 'todos')) {
+        categoriasDB.unshift({ id: 'todos', nome: 'Todos', icone: '📦' });
+      }
+      
+      setCategoriasReais(categoriasDB);
         
         // 3. ✅ AGORA: Buscar a mesa REAL do banco de dados
         const response = await fetch(`/api/mesas/buscar-mesa?numero=${mesaId}`);
@@ -290,6 +324,48 @@ export default function ComandaPage() {
     sum + (item.precoUnitario * item.quantidade), 0
   );
   const restantePagar = totalComanda - totalPago;
+
+  // ✅ NOVO ESTADO para edição
+const [itemEditando, setItemEditando] = useState<{
+  id: number;
+  produtoId: string;
+  produto: Produto;
+  observacao: string;
+} | null>(null);
+
+// ✅ NOVA FUNÇÃO: Extrair adicionais da observação
+const extrairAdicionaisDaObservacao = (observacao: string) => {
+  if (!observacao.includes('Adicionais:')) return [];
+  
+  const partes = observacao.split('Adicionais:')[1].trim();
+  const adicionaisArray = partes.split(',').map(item => item.trim());
+  
+  // Aqui você precisaria mapear os nomes para IDs
+  // Por enquanto, retornamos um array vazio - você precisará ajustar
+  return [];
+};
+
+// ✅ NOVA FUNÇÃO: Abrir modal para editar adicionais de um item existente
+const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, observacao: string) => {
+  const produtoObj = produtosReais.find(p => p.id === produtoId);
+  if (!produtoObj) return;
+  
+  setItemEditando({
+    id: itemId,
+    produtoId,
+    produto: produtoObj,
+    observacao
+  });
+  
+  // Extrair adicionais existentes da observação
+  const adicionaisExistentes = extrairAdicionaisDaObservacao(observacao);
+  
+  // Aqui você precisaria buscar os adicionais reais do banco
+  // Por enquanto, vamos abrir o modal sem adicionais pré-selecionados
+  setProdutoSelecionado(produtoObj);
+  setProdutoIdSelecionado(produtoId);
+  setMostrarModalAdicionais(true);
+};
 
   // ========== FUNÇÕES DA COMANDA ==========
 
@@ -616,31 +692,62 @@ export default function ComandaPage() {
 
   // ✅ NOVA FUNÇÃO: Lidar com confirmação do modal de adicionais
   const handleConfirmarAdicionais = async (
-    produtoId: string, 
-    adicionaisSelecionados: Array<{
-      adicionalId: string;
-      quantidade: number;
-      precoUnitario: number;
-      nome: string;
-    }>
-  ) => {
-    const produto = produtosReais.find(p => p.id === produtoId);
-    if (!produto) return;
+  produtoId: string, 
+  adicionaisSelecionados: Array<{
+    adicionalId: string;
+    quantidade: number;
+    precoUnitario: number;
+    nome: string;
+  }>,
+  // ✅ NOVO: itemId para saber se é edição
+  itemId?: number
+) => {
+  const produto = produtosReais.find(p => p.id === produtoId);
+  if (!produto) return;
+  
+  // Calcular preço total com adicionais
+  const precoAdicionais = adicionaisSelecionados.reduce((total, adicional) => 
+    total + (adicional.precoUnitario * adicional.quantidade), 0);
+  
+  const precoTotal = produto.preco + precoAdicionais;
+  
+  // Criar observação com os adicionais
+  const observacao = adicionaisSelecionados.length > 0
+    ? `Adicionais: ${adicionaisSelecionados.map(a => 
+        `${a.nome}${a.quantidade > 1 ? ` (${a.quantidade}x)` : ''}`
+      ).join(', ')}`
+    : '';
+  
+  // Se for edição, atualizar o item existente
+  if (itemId && itemEditando) {
+    const novoItem: ItemComanda = {
+      id: itemId, // Mantém o mesmo ID
+      produtoId,
+      quantidade: 1, // Manter a quantidade atual (precisa ajustar)
+      precoUnitario: precoTotal,
+      produto,
+      observacao,
+      isNew: true // Marcar como modificado
+    };
     
-    // Calcular preço total com adicionais
-    const precoAdicionais = adicionaisSelecionados.reduce((total, adicional) => 
-      total + (adicional.precoUnitario * adicional.quantidade), 0);
+    // Encontrar onde está o item (salvo ou não salvo)
+    const itemIndexSalvo = itensSalvos.findIndex(item => item.id === itemId);
+    const itemIndexNaoSalvo = itensNaoSalvos.findIndex(item => item.id === itemId);
     
-    const precoTotal = produto.preco + precoAdicionais;
+    if (itemIndexSalvo !== -1) {
+      // Atualizar em itensSalvos
+      const novosItens = [...itensSalvos];
+      novosItens[itemIndexSalvo] = novoItem;
+      setItensSalvos(novosItens);
+    } else if (itemIndexNaoSalvo !== -1) {
+      // Atualizar em itensNaoSalvos
+      const novosItens = [...itensNaoSalvos];
+      novosItens[itemIndexNaoSalvo] = novoItem;
+      setItensNaoSalvos(novosItens);
+    }
     
-    // Criar observação com os adicionais
-    const observacao = adicionaisSelecionados.length > 0
-      ? `Adicionais: ${adicionaisSelecionados.map(a => 
-          `${a.nome}${a.quantidade > 1 ? ` (${a.quantidade}x)` : ''}`
-        ).join(', ')}`
-      : '';
-    
-    // Criar o item da comanda
+  } else {
+    // Se for novo item, criar normalmente
     const novoItem: ItemComanda = {
       id: Date.now() + Math.random(),
       produtoId,
@@ -652,19 +759,29 @@ export default function ComandaPage() {
     };
     
     setItensNaoSalvos(prev => [...prev, novoItem]);
-    setModificado(true);
-    setMostrarModalAdicionais(false);
-    setProdutoSelecionado(null);
-    setProdutoIdSelecionado('');
-  };
+  }
+  
+  setModificado(true);
+  setMostrarModalAdicionais(false);
+  setProdutoSelecionado(null);
+  setProdutoIdSelecionado('');
+  setItemEditando(null);
+};
 
   // Filtrar produtos
   const produtosFiltrados = produtosReais.filter(produto => {
-    const categoriaProdutoId = produto.categoria.toLowerCase().replace(/\s+/g, '-');
-    const passaCategoria = categoriaAtiva === 'todos' || categoriaProdutoId === categoriaAtiva;
-    const passaBusca = produto.nome.toLowerCase().includes(busca.toLowerCase());
-    return passaCategoria && passaBusca;
-  });
+  // Encontrar a categoria correspondente no banco
+  const categoriaProduto = categoriasReais.find(cat => 
+    cat.nome.toLowerCase() === produto.categoria.toLowerCase()
+  );
+  
+  const categoriaProdutoId = categoriaProduto?.id || produto.categoria.toLowerCase().replace(/\s+/g, '-');
+  
+  const passaCategoria = categoriaAtiva === 'todos' || categoriaProdutoId === categoriaAtiva;
+  const passaBusca = produto.nome.toLowerCase().includes(busca.toLowerCase());
+  
+  return passaCategoria && passaBusca;
+});
 
   if (carregando) {
     return (
@@ -712,8 +829,9 @@ export default function ComandaPage() {
             onAtualizarObservacao={atualizarObservacao}
             onSalvarItens={salvarItens}
             onDescartarAlteracoes={descartarAlteracoes}
+            onEditarAdicionais={abrirEdicaoAdicionais}
             onLimparComanda={limparComanda}
-            onApagarMesa={apagarMesa} // ✅ ADICIONADO
+            onApagarMesa={apagarMesa} 
             onImprimirPrevia={imprimirPrevia}
             onFecharConta={handleFecharConta}
             onVoltarDashboard={voltarDashboard}

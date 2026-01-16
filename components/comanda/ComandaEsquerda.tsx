@@ -37,6 +37,8 @@ interface ComandaEsquerdaProps {
   onVoltarDashboard: () => void;
   comandaId: string;
   onMostrarModalPagamento?: () => void;
+  onEditarAdicionais?: (itemId: number, produtoId: string, produto: any, observacao: string) => void;
+
 }
 
 export default function ComandaEsquerda({
@@ -57,6 +59,7 @@ export default function ComandaEsquerda({
   onImprimirPrevia,
   onFecharConta,
   onVoltarDashboard,
+  onEditarAdicionais,
   comandaId,
   onMostrarModalPagamento
 }: ComandaEsquerdaProps) {
@@ -166,6 +169,8 @@ export default function ComandaEsquerda({
           </div>
         </div>
 
+        
+
         {/* LISTA DE ITENS COM SCROLL */}
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="p-3">
@@ -232,19 +237,43 @@ export default function ComandaEsquerda({
                             </div>
                           </div>
                           
+                          
                           {/* Observação */}
                           {item.observacao ? (
-                            <div className="mt-1 text-xs text-gray-600 flex items-start">
-                              <span className="mr-1">📝</span>
-                              <span className="truncate" title={item.observacao}>{item.observacao}</span>
-                              <button
-                                onClick={() => iniciarEdicaoObservacao(item.id, item.observacao, isNaoSalvo ? 'naoSalvo' : 'salvo')}
-                                className="ml-1 text-xs text-blue-500 hover:text-blue-700 flex-shrink-0"
-                              >
-                                Editar
-                              </button>
-                            </div>
-                          ) : editandoObservacao === item.id ? (
+  <div className="mt-1 text-xs text-gray-600 flex items-start justify-between">
+    <div className="flex items-start flex-1">
+      <span className="mr-1">📝</span>
+      <span className="truncate" title={item.observacao}>{item.observacao}</span>
+    </div>
+    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+      <button
+        onClick={() => {
+          // ✅ NOVO: Primeiro adicionar o prop na interface
+          // e depois implementar a função
+          if (onEditarAdicionais) {
+            onEditarAdicionais(
+              item.id, 
+              item.produtoId, 
+              item.produto, 
+              item.observacao
+            );
+          }
+        }}
+        className="text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200"
+        title="Editar adicionais"
+      >
+        ✏️ Editar
+      </button>
+      <button
+        onClick={() => iniciarEdicaoObservacao(item.id, item.observacao, isNaoSalvo ? 'naoSalvo' : 'salvo')}
+        className="text-xs text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded border border-blue-200"
+        title="Editar observação"
+      >
+        📝
+      </button>
+    </div>
+  </div>
+) : editandoObservacao === item.id ? (
                             <div className="mt-1">
                               <input
                                 type="text"
@@ -300,6 +329,8 @@ export default function ComandaEsquerda({
             </div>
           </div>
         </div>
+
+        
 
         {/* Botões de Ação - AGORA COM 2 BOTÕES SEPARADOS */}
         <div className="p-3 border-t bg-white space-y-2 flex-shrink-0">

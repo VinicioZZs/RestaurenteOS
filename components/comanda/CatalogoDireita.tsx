@@ -1,5 +1,7 @@
-// components/comanda/CatalogoDireita.tsx - VERSÃO PDV PROFISSIONAL CORRIGIDA
+// components/comanda/CatalogoDireita.tsx - VERSÃO COM IMAGENS/ÍCONES DINÂMICOS
 'use client';
+
+import { useState } from 'react';
 
 interface Produto {
   id: string;
@@ -13,7 +15,9 @@ interface Categoria {
   id: string;
   nome: string;
   icone: string;
-} 
+  imagem?: string;
+  usaImagem?: boolean;
+}
 
 interface CatalogoDireitaProps {
   produtos: Produto[];
@@ -22,7 +26,7 @@ interface CatalogoDireitaProps {
   busca: string;
   onSelecionarCategoria: (categoriaId: string) => void;
   onBuscar: (texto: string) => void;
-  onAdicionarProduto: (produtoId: string) => void; 
+  onAdicionarProduto: (produtoId: string) => void;
 }
 
 export default function CatalogoDireita({
@@ -34,7 +38,44 @@ export default function CatalogoDireita({
   onBuscar,
   onAdicionarProduto
 }: CatalogoDireitaProps) {
-  
+  const [imagemErro, setImagemErro] = useState<Record<string, boolean>>({});
+
+  // Componente para imagem/ícone da categoria
+  const CategoriaIcone = ({ categoria }: { categoria: Categoria }) => {
+    // Se usa imagem E tem imagem configurada E não deu erro
+    if (categoria.usaImagem && categoria.imagem && !imagemErro[categoria.id]) {
+      return (
+        <div className={`relative w-16 h-16 rounded-full flex-shrink-0 group overflow-hidden border-2 ${
+          categoriaAtiva === categoria.id
+            ? 'border-blue-500 ring-2 ring-blue-200'
+            : 'border-gray-200 hover:border-gray-300'
+        }`}>
+          <img 
+            src={categoria.imagem} 
+            alt={categoria.nome}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            onError={() => setImagemErro(prev => ({ ...prev, [categoria.id]: true }))}
+          />
+          {/* Overlay gradiente */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+        </div>
+      );
+    }
+    
+    // Se não usa imagem ou imagem deu erro, mostra ícone
+    return (
+      <div className={`w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 group ${
+        categoriaAtiva === categoria.id
+          ? 'bg-blue-600 text-white shadow-lg scale-110'
+          : 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-md'
+      } transition-all duration-200`}>
+        <span className="text-2xl group-hover:scale-110 transition-transform">
+          {categoria.icone || '📦'}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col bg-white rounded-lg border border-gray-200">
       {/* Barra de busca FIXA no topo */}
@@ -58,29 +99,25 @@ export default function CatalogoDireita({
         </div>
       </div>
       
-      {/* Categorias FIXAS no topo da área de produtos */}
+      {/* Categorias FIXAS - AGORA COM IMAGENS/ÍCONES GRANDES */}
       <div className="px-4 py-3 border-b border-gray-200 bg-white">
         <div className="flex space-x-4 overflow-x-auto pb-2">
           {categorias.map((categoria) => (
             <button
               key={categoria.id}
               onClick={() => onSelecionarCategoria(categoria.id)}
-              className={`flex-shrink-0 flex flex-col items-center ${categoriaAtiva === categoria.id ? 'scale-105' : ''}`}
+              className={`flex-shrink-0 flex flex-col items-center space-y-2 ${
+                categoriaAtiva === categoria.id ? 'scale-105' : ''
+              } transition-transform duration-200`}
             >
-              {/* Ícone circular PEQUENO */}
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-1 ${
-                categoriaAtiva === categoria.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}>
-                <span className="text-lg">{categoria.icone}</span>
-              </div>
+              {/* Ícone/Imagem circular GRANDE */}
+              <CategoriaIcone categoria={categoria} />
               
               {/* Nome da categoria */}
-              <span className={`text-xs font-medium ${
+              <span className={`text-xs font-medium whitespace-nowrap ${
                 categoriaAtiva === categoria.id
-                  ? 'text-blue-600'
-                  : 'text-gray-600'
+                  ? 'text-blue-600 font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}>
                 {categoria.nome}
               </span>
@@ -89,7 +126,7 @@ export default function CatalogoDireita({
         </div>
       </div>
       
-      {/* ÁREA DE PRODUTOS COM SCROLL (adicionei esta div) */}
+      {/* ÁREA DE PRODUTOS COM SCROLL */}
       <div className="flex-1 overflow-y-auto p-4">
         {/* Grid de Produtos - LIMPO E RESPONSIVO */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -143,7 +180,7 @@ export default function CatalogoDireita({
         </div>
       </div>
       
-      {/* Status Bar (opcional) */}
+      {/* Status Bar */}
       <div className="border-t border-gray-200 p-3 bg-gray-50">
         <div className="flex justify-between items-center text-sm">
           <span className="text-gray-600">

@@ -1,8 +1,8 @@
-// components/comanda/ModalAdicionais.tsx
+// components/comanda/ModalAdicionais.tsx - ATUALIZADO PARA SUPORTAR EDIÇÃO
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Check } from 'lucide-react';
+import { X, Plus, Minus, Check, Edit2 } from 'lucide-react';
 
 interface Adicional {
   _id: string;
@@ -29,13 +29,25 @@ interface ModalAdicionaisProps {
     nome: string;
   }>) => void;
   produtoId: string;
+  // ✅ NOVOS PROPS PARA EDIÇÃO
+  modoEdicao?: boolean;
+  adicionaisExistentes?: Array<{
+    adicionalId: string;
+    quantidade: number;
+    precoUnitario: number;
+    nome: string;
+  }>;
+  itemId?: number; // ID do item na comanda para editar
 }
 
 export default function ModalAdicionais({
   produto,
   onClose,
   onConfirmar,
-  produtoId
+  produtoId,
+  modoEdicao = false,
+  adicionaisExistentes = [],
+  itemId
 }: ModalAdicionaisProps) {
   const [adicionaisDisponiveis, setAdicionaisDisponiveis] = useState<Adicional[]>([]);
   const [adicionaisSelecionados, setAdicionaisSelecionados] = useState<Record<string, number>>({});
@@ -47,59 +59,52 @@ export default function ModalAdicionais({
     carregarAdicionaisDoProduto();
   }, [produtoId]);
 
+  // ✅ NOVO: Carregar adicionais existentes se for modo edição
+  useEffect(() => {
+    if (modoEdicao && adicionaisExistentes.length > 0) {
+      const selecionados: Record<string, number> = {};
+      adicionaisExistentes.forEach(adicional => {
+        selecionados[adicional.adicionalId] = adicional.quantidade;
+      });
+      setAdicionaisSelecionados(selecionados);
+    }
+  }, [modoEdicao, adicionaisExistentes]);
+
   const carregarAdicionaisDoProduto = async () => {
     try {
       setCarregando(true);
       
-      // Primeiro, buscar os adicionais configurados para este produto
+      // Buscar os adicionais configurados para este produto
       const responseProduto = await fetch(`/api/produtos/${produtoId}`);
-      if (!responseProduto.ok) throw new Error('Produto não encontrado');
       
-      const produtoData = await responseProduto.json();
-      
-      if (!produtoData.success) {
-        // Se o produto não tiver adicionais específicos, carrega todos
-        await carregarTodosAdicionais();
-        return;
-      }
-      
-      const produtoCompleto = produtoData.data;
-      
-      // Se o produto tiver adicionais específicos, buscar apenas esses
-      if (produtoCompleto.adicionais && produtoCompleto.adicionais.length > 0) {
-        const response = await fetch(`/api/adicionais?ativos=true&ids=${produtoCompleto.adicionais.join(',')}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setAdicionaisDisponiveis(data.data);
-          } else {
-            await carregarTodosAdicionais();
+      if (responseProduto.ok) {
+        const produtoData = await responseProduto.json();
+        const produtoCompleto = produtoData.data;
+        
+        // Se o produto tiver adicionais específicos, buscar apenas esses
+        if (produtoCompleto?.adicionais && produtoCompleto.adicionais.length > 0) {
+          const response = await fetch(`/api/adicionais?ativos=true&ids=${produtoCompleto.adicionais.join(',')}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setAdicionaisDisponiveis(data.data);
+            }
           }
         } else {
-          await carregarTodosAdicionais();
+          // Carregar todos adicionais ativos
+          const response = await fetch('/api/adicionais?ativos=true');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setAdicionaisDisponiveis(data.data);
+            }
+          }
         }
-      } else {
-        await carregarTodosAdicionais();
       }
     } catch (error) {
       console.error('Erro ao carregar adicionais:', error);
-      await carregarTodosAdicionais();
     } finally {
       setCarregando(false);
-    }
-  };
-
-  const carregarTodosAdicionais = async () => {
-    try {
-      const response = await fetch('/api/adicionais?ativos=true');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setAdicionaisDisponiveis(data.data);
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar todos adicionais:', error);
     }
   };
 
@@ -185,8 +190,19 @@ export default function ModalAdicionais({
         <div className="p-6 border-b">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{produto.nome}</h2>
-              <p className="text-gray-600">Personalize seu produto com adicionais</p>
+              <div className="flex items-center gap-2 mb-1">
+                {modoEdicao ? (
+                  <>
+                    <Edit2 className="h-5 w-5 text-purple-600" />
+                    <h2 className="text-2xl font-bold text-gray-900">Editar Adicionais</h2>
+                  </>
+                ) : (
+                  <h2 className="text-2xl font-bold text-gray-900">{produto.nome}</h2>
+                )}
+              </div>
+              <p className="text-gray-600">
+                {modoEdicao ? 'Atualize os adicionais deste item' : 'Personalize seu produto com adicionais'}
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -224,7 +240,7 @@ export default function ModalAdicionais({
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  <SearchIcon />
+                  🔍
                 </div>
               </div>
             </div>
@@ -357,6 +373,11 @@ export default function ModalAdicionais({
               <div className="text-2xl font-bold text-purple-600">
                 {formatarMoeda(calcularTotalAdicionais())}
               </div>
+              {modoEdicao && (
+                <div className="text-sm text-gray-500 mt-1">
+                  Editando item #{itemId}
+                </div>
+              )}
             </div>
             
             <div className="text-right">
@@ -382,21 +403,12 @@ export default function ModalAdicionais({
                 className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Check className="h-5 w-5" />
-                Confirmar ({totalAdicionais} adicional{totalAdicionais !== 1 ? 'es' : ''})
+                {modoEdicao ? 'Atualizar' : 'Confirmar'} ({totalAdicionais} adicional{totalAdicionais !== 1 ? 'es' : ''})
               </button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-// Componente auxiliar para ícone de busca
-function SearchIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
   );
 }
