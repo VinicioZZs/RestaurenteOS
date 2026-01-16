@@ -1,11 +1,11 @@
-// app/api/produtos/[id]/route.ts - API COMPLETA
+// app/api/produtos/[id]/route.ts - API COMPLETA ATUALIZADA
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const DB_NAME = 'restaurante';
 
-// GET - Buscar produto por ID
+// GET - Buscar produto por ID (ATUALIZADA PARA POPULAR ADICIONAIS)
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -38,6 +38,34 @@ export async function GET(
       );
     }
     
+    // ✅ NOVO: Buscar adicionais completos se existirem
+    let adicionaisCompletos: any[] = [];
+    if (produto.adicionais && produto.adicionais.length > 0) {
+      try {
+        adicionaisCompletos = await db.collection('adicionais')
+          .find({ 
+            _id: { 
+              $in: produto.adicionais.map((id: string) => new ObjectId(id)) 
+            },
+            ativo: true 
+          })
+          .toArray();
+          
+        // Formatar adicionais
+        adicionaisCompletos = adicionaisCompletos.map(a => ({
+          _id: a._id.toString(),
+          nome: a.nome,
+          descricao: a.descricao || '',
+          preco: a.preco,
+          categoria: a.categoria,
+          gratuito: a.gratuito || false,
+          ativo: a.ativo
+        }));
+      } catch (error) {
+        console.error('⚠️ Erro ao buscar adicionais:', error);
+      }
+    }
+    
     // Formatar resposta
     const produtoFormatado = {
       _id: produto._id.toString(),
@@ -52,7 +80,8 @@ export async function GET(
       estoqueAtual: produto.estoqueAtual || 0,
       estoqueMinimo: produto.estoqueMinimo || 0,
       controlarEstoque: produto.controlarEstoque || false,
-      adicionais: produto.adicionais || [],
+      adicionais: produto.adicionais || [], // IDs originais
+      adicionaisCompletos: adicionaisCompletos, // ✅ NOVO: adicionais completos
       unidadeMedida: produto.unidadeMedida || 'unidade',
       peso: produto.peso || 0,
       volume: produto.volume || 0,
@@ -78,7 +107,7 @@ export async function GET(
   }
 }
 
-// PUT - Atualizar produto
+// PUT - Atualizar produto (MANTIDO IGUAL)
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -188,7 +217,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Excluir produto
+// DELETE - Excluir produto (MANTIDO IGUAL)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

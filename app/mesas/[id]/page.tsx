@@ -1,4 +1,4 @@
-// app/mesas/[id]/page.tsx - VERSÃO COMPLETA COM TODAS FUNÇÕES
+// app/mesas/[id]/page.tsx - VERSÃO COMPLETA COM MODAL DE ADICIONAIS
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,6 +7,7 @@ import ComandaEsquerda from '@/components/comanda/ComandaEsquerda';
 import CatalogoDireita from '@/components/comanda/CatalogoDireita';
 import ComandaLayout from '@/components/comanda/ComandaLayout';
 import PagamentoModal from '@/components/pagamento/PagamentoModal';
+import ModalAdicionais from '@/components/comanda/ModalAdicionais';
 
 interface Produto {
   id: string;
@@ -140,7 +141,7 @@ async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: Item
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Erro desconhecido',
-      details: error
+      details: error 
     };
   }
 }
@@ -178,7 +179,7 @@ export default function ComandaPage() {
   const router = useRouter();
   const mesaId = params.id as string;
   
-  // Estados
+  // Estados principais
   const [mesa, setMesa] = useState<any>(null);
   const [itensSalvos, setItensSalvos] = useState<ItemComanda[]>([]);
   const [itensNaoSalvos, setItensNaoSalvos] = useState<ItemComanda[]>([]);
@@ -193,90 +194,95 @@ export default function ComandaPage() {
     { id: 'todos', nome: 'Todos', icone: '📦' }
   ]);
   const [mostrarModalPagamento, setMostrarModalPagamento] = useState(false);
+  
+  // ✅ Estados para o modal de adicionais (DENTRO do componente)
+  const [mostrarModalAdicionais, setMostrarModalAdicionais] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
+  const [produtoIdSelecionado, setProdutoIdSelecionado] = useState<string>('');
 
   // Carregar dados iniciais
   useEffect(() => {
-  async function carregarComanda() {
-    setCarregando(true);
-    
-    try {
-      // 1. Carregar produtos
-      const produtosDB = await fetchProdutosReais();
-      setProdutosReais(produtosDB);
+    async function carregarComanda() {
+      setCarregando(true);
       
-      // 2. Extrair categorias dos produtos
-      const categoriasUnicas = Array.from(new Set(produtosDB.map(p => p.categoria).filter(Boolean)));
-      const icones = ['🥤', '🍔', '🍟', '🍰', '☕', '🍕', '🌭', '🥗', '🍣', '🥪'];
-      
-      const categoriasFormatadas = categoriasUnicas.map((cat, index) => ({
-        id: cat.toLowerCase().replace(/\s+/g, '-'),
-        nome: cat,
-        icone: icones[index] || '📦'
-      }));
-      
-      setCategoriasReais([
-        { id: 'todos', nome: 'Todos', icone: '📦' },
-        ...categoriasFormatadas
-      ]);
-      
-      // 3. ✅ AGORA: Buscar a mesa REAL do banco de dados
-      const response = await fetch(`/api/mesas/buscar-mesa?numero=${mesaId}`);
-      let mesaReal = null;
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          mesaReal = data.data;
+      try {
+        // 1. Carregar produtos
+        const produtosDB = await fetchProdutosReais();
+        setProdutosReais(produtosDB);
+        
+        // 2. Extrair categorias dos produtos
+        const categoriasUnicas = Array.from(new Set(produtosDB.map(p => p.categoria).filter(Boolean)));
+        const icones = ['🥤', '🍔', '🍟', '🍰', '☕', '🍕', '🌭', '🥗', '🍣', '🥪'];
+        
+        const categoriasFormatadas = categoriasUnicas.map((cat, index) => ({
+          id: cat.toLowerCase().replace(/\s+/g, '-'),
+          nome: cat,
+          icone: icones[index] || '📦'
+        }));
+        
+        setCategoriasReais([
+          { id: 'todos', nome: 'Todos', icone: '📦' },
+          ...categoriasFormatadas
+        ]);
+        
+        // 3. ✅ AGORA: Buscar a mesa REAL do banco de dados
+        const response = await fetch(`/api/mesas/buscar-mesa?numero=${mesaId}`);
+        let mesaReal = null;
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            mesaReal = data.data;
+          }
         }
-      }
-      
-      // Se não encontrou, criar uma mock ou buscar pelo número
-      const mesa = mesaReal || {
-        id: mesaId,
-        _id: mesaId, // Usa o número como ID se não encontrar
-        numero: mesaId.padStart(2, '0'),
-        nome: `Mesa ${mesaId.padStart(2, '0')}`,
-        status: 'ocupada',
-        capacidade: 4,
-      };
-      
-      setMesa(mesa);
-      
-      // 4. Buscar comanda existente - usar o ID real da mesa
-      const mesaIdParaBuscar = mesa._id || mesa.id || mesaId;
-      const comandaDB = await fetchComanda(mesaIdParaBuscar);
-      
-      if (comandaDB) {
-        setComandaId(comandaDB._id);
         
-        // Converter itens da comanda para o formato local
-        const itensComProdutos = comandaDB.itens.map((item: any) => {
-          const produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
-          return {
-            id: Date.now() + Math.random(),
-            produtoId: item.produtoId,
-            quantidade: item.quantidade,
-            precoUnitario: item.precoUnitario,
-            observacao: item.observacao || '',
-            produto: produtoEncontrado || {
-              nome: 'Produto não encontrado',
-              categoria: 'desconhecida'
-            }
-          };
-        });
+        // Se não encontrou, criar uma mock ou buscar pelo número
+        const mesa = mesaReal || {
+          id: mesaId,
+          _id: mesaId, // Usa o número como ID se não encontrar
+          numero: mesaId.padStart(2, '0'),
+          nome: `Mesa ${mesaId.padStart(2, '0')}`,
+          status: 'ocupada',
+          capacidade: 4,
+        };
         
-        setItensSalvos(itensComProdutos);
+        setMesa(mesa);
+        
+        // 4. Buscar comanda existente - usar o ID real da mesa
+        const mesaIdParaBuscar = mesa._id || mesa.id || mesaId;
+        const comandaDB = await fetchComanda(mesaIdParaBuscar);
+        
+        if (comandaDB) {
+          setComandaId(comandaDB._id);
+          
+          // Converter itens da comanda para o formato local
+          const itensComProdutos = comandaDB.itens.map((item: any) => {
+            const produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
+            return {
+              id: Date.now() + Math.random(),
+              produtoId: item.produtoId,
+              quantidade: item.quantidade,
+              precoUnitario: item.precoUnitario,
+              observacao: item.observacao || '',
+              produto: produtoEncontrado || {
+                nome: 'Produto não encontrado',
+                categoria: 'desconhecida'
+              }
+            };
+          });
+          
+          setItensSalvos(itensComProdutos);
+        }
+        
+      } catch (error) {
+        console.error('Erro ao carregar:', error);
+      } finally {
+        setCarregando(false);
       }
-      
-    } catch (error) {
-      console.error('Erro ao carregar:', error);
-    } finally {
-      setCarregando(false);
     }
-  }
-  
-  carregarComanda();
-}, [mesaId]);
+    
+    carregarComanda();
+  }, [mesaId]);
 
   // Calcular totais
   const todosItens = [...itensSalvos, ...itensNaoSalvos];
@@ -287,25 +293,58 @@ export default function ComandaPage() {
 
   // ========== FUNÇÕES DA COMANDA ==========
 
-  // Adiciona SEMPRE como novo item separado (até salvar)
+  // ✅ FUNÇÃO ATUALIZADA: Adiciona item (com verificação de adicionais)
   const adicionarItem = (produtoId: string) => {
     const produto = produtosReais.find(p => p.id === produtoId);
     if (!produto) return;
     
-    // Criar NOVO item (sempre separado)
+    // Verificar se o produto tem adicionais disponíveis
+    verificarAdicionaisDoProduto(produtoId, produto);
+  };
+
+  // ✅ NOVA FUNÇÃO: Verificar adicionais do produto
+  const verificarAdicionaisDoProduto = async (produtoId: string, produto: Produto) => {
+    try {
+      // Buscar informações completas do produto
+      const response = await fetch(`/api/produtos/${produtoId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const produtoCompleto = data.data;
+        
+        // Verificar se o produto tem adicionais configurados
+        if (produtoCompleto?.adicionais && produtoCompleto.adicionais.length > 0) {
+          // Abrir modal de adicionais
+          setProdutoSelecionado(produto);
+          setProdutoIdSelecionado(produtoId);
+          setMostrarModalAdicionais(true);
+        } else {
+          // Adicionar diretamente sem adicionais
+          adicionarItemDiretamente(produtoId, produto);
+        }
+      } else {
+        // Se erro na API, adicionar diretamente
+        adicionarItemDiretamente(produtoId, produto);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar adicionais:', error);
+      adicionarItemDiretamente(produtoId, produto);
+    }
+  };
+
+  // ✅ FUNÇÃO AUXILIAR: Adicionar item sem modal
+  const adicionarItemDiretamente = (produtoId: string, produto: Produto) => {
     const novoItem: ItemComanda = {
-      id: Date.now() + Math.random(), // ID único sempre
+      id: Date.now() + Math.random(),
       produtoId,
       quantidade: 1,
       precoUnitario: produto.preco,
       produto,
       observacao: '',
-      isNew: true // Sempre marca como novo
+      isNew: true
     };
     
-    // SEMPRE adiciona como novo item separado
     setItensNaoSalvos(prev => [...prev, novoItem]);
-    
     setModificado(true);
   };
 
@@ -354,80 +393,80 @@ export default function ComandaPage() {
 
   // Função para salvar - Agora agrupa itens iguais
   const salvarItens = async () => {
-  if (itensNaoSalvos.length === 0 && !modificado) {
-    alert('Não há alterações para salvar!');
-    return;
-  }
-  
-  // Antes de salvar, agrupa itens iguais
-  const todosItensParaProcessar = [...itensSalvos, ...itensNaoSalvos];
-  
-  // Agrupar por produtoId e observação
-  const itensAgrupados = new Map();
-  
-  todosItensParaProcessar.forEach(item => {
-    const chave = `${item.produtoId}-${item.observacao}`;
-    
-    if (itensAgrupados.has(chave)) {
-      // Soma quantidade
-      const existente = itensAgrupados.get(chave);
-      existente.quantidade += item.quantidade;
-    } else {
-      // Novo item agrupado
-      itensAgrupados.set(chave, {
-        ...item,
-        id: Date.now() + Math.random()
-      });
-    }
-  });
-  
-  const itensParaSalvar = Array.from(itensAgrupados.values());
-  const totalAgrupado = itensParaSalvar.reduce((sum, item) => 
-    sum + (item.precoUnitario * item.quantidade), 0
-  );
-  
-  // ✅ CORREÇÃO: Enviar o número correto da mesa
-  // mesa?.numero deve ser o número formatado (ex: "01")
-  // mesaId da URL é o número (ex: "1")
-  const numeroMesaParaSalvar = mesa?.numero || mesaId;
-  
-  // Salvar no banco
-  const resultado = await salvarComandaNoDB(
-    mesaId, // Número da mesa da URL
-    numeroMesaParaSalvar, // Número formatado da mesa
-    itensParaSalvar,
-    totalAgrupado
-  );
-  
-  if (resultado.success) {
-    // Atualiza com os itens AGRUPADOS
-    setItensSalvos(itensParaSalvar);
-    setItensNaoSalvos([]);
-    setModificado(false);
-    if (resultado.data?._id) {
-      setComandaId(resultado.data._id);
+    if (itensNaoSalvos.length === 0 && !modificado) {
+      alert('Não há alterações para salvar!');
+      return;
     }
     
-    // ✅ Forçar atualização do dashboard
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('comanda-atualizada', {
-        detail: { mesaId, total: totalAgrupado }
-      }));
+    // Antes de salvar, agrupa itens iguais
+    const todosItensParaProcessar = [...itensSalvos, ...itensNaoSalvos];
+    
+    // Agrupar por produtoId e observação
+    const itensAgrupados = new Map();
+    
+    todosItensParaProcessar.forEach(item => {
+      const chave = `${item.produtoId}-${item.observacao}`;
       
-      localStorage.setItem(`comanda_atualizada_${mesaId}`, 
-        JSON.stringify({
-          total: totalAgrupado,
-          quantidadeItens: itensParaSalvar.length,
-          timestamp: new Date().toISOString()
-        })
-      );
-    }
+      if (itensAgrupados.has(chave)) {
+        // Soma quantidade
+        const existente = itensAgrupados.get(chave);
+        existente.quantidade += item.quantidade;
+      } else {
+        // Novo item agrupado
+        itensAgrupados.set(chave, {
+          ...item,
+          id: Date.now() + Math.random()
+        });
+      }
+    });
     
-    alert(`Comanda salva com sucesso!\n${itensNaoSalvos.length} item(s) foram agrupados.`);
-  } else {
-    alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
-  }
-};
+    const itensParaSalvar = Array.from(itensAgrupados.values());
+    const totalAgrupado = itensParaSalvar.reduce((sum, item) => 
+      sum + (item.precoUnitario * item.quantidade), 0
+    );
+    
+    // ✅ CORREÇÃO: Enviar o número correto da mesa
+    // mesa?.numero deve ser o número formatado (ex: "01")
+    // mesaId da URL é o número (ex: "1")
+    const numeroMesaParaSalvar = mesa?.numero || mesaId;
+    
+    // Salvar no banco
+    const resultado = await salvarComandaNoDB(
+      mesaId, // Número da mesa da URL
+      numeroMesaParaSalvar, // Número formatado da mesa
+      itensParaSalvar,
+      totalAgrupado
+    );
+    
+    if (resultado.success) {
+      // Atualiza com os itens AGRUPADOS
+      setItensSalvos(itensParaSalvar);
+      setItensNaoSalvos([]);
+      setModificado(false);
+      if (resultado.data?._id) {
+        setComandaId(resultado.data._id);
+      }
+      
+      // ✅ Forçar atualização do dashboard
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('comanda-atualizada', {
+          detail: { mesaId, total: totalAgrupado }
+        }));
+        
+        localStorage.setItem(`comanda_atualizada_${mesaId}`, 
+          JSON.stringify({
+            total: totalAgrupado,
+            quantidadeItens: itensParaSalvar.length,
+            timestamp: new Date().toISOString()
+          })
+        );
+      }
+      
+      alert(`Comanda salva com sucesso!\n${itensNaoSalvos.length} item(s) foram agrupados.`);
+    } else {
+      alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
+    }
+  };
 
   const descartarAlteracoes = () => {
     if (!modificado && itensNaoSalvos.length === 0) return;
@@ -439,63 +478,56 @@ export default function ComandaPage() {
   };
 
   const limparComanda = async () => {
-  if (todosItens.length === 0) return;
-  
-  if (confirm('Tem certeza que deseja limpar toda a comanda?')) {
-    const resultado = await salvarComandaNoDB(
-      mesaId, // Número da mesa da URL
-      mesa?.numero || mesaId, // Número formatado ou o da URL
-      [], 
-      0
-    );
+    if (todosItens.length === 0) return;
     
-    if (resultado.success) {
-      setItensSalvos([]);
-      setItensNaoSalvos([]);
-      setTotalPago(0);
-      setModificado(false);
-      alert('Comanda limpa com sucesso!');
+    if (confirm('Tem certeza que deseja limpar toda a comanda?')) {
+      const resultado = await salvarComandaNoDB(
+        mesaId, // Número da mesa da URL
+        mesa?.numero || mesaId, // Número formatado ou o da URL
+        [], 
+        0
+      );
+      
+      if (resultado.success) {
+        setItensSalvos([]);
+        setItensNaoSalvos([]);
+        setTotalPago(0);
+        setModificado(false);
+        alert('Comanda limpa com sucesso!');
+      }
     }
-  }
-};
+  };
 
   // ✅ NOVA FUNÇÃO: Apagar mesa (fecha comanda completamente)
- const apagarMesa = async () => {
-  if (!confirm('Tem certeza que deseja APAGAR esta mesa completamente? Esta ação não pode ser desfeita.')) {
-    return;
-  }
-  
-  try {
-    // 1. Deletar do banco
-    const response = await fetch(`/api/mesas/${mesaId}`, {
-      method: 'DELETE',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro ao apagar mesa');
+  const apagarMesa = async () => {
+    if (!confirm('Tem certeza que deseja APAGAR esta mesa completamente? Esta ação não pode ser desfeita.')) {
+      return;
     }
     
-    // 2. FORÇAR o Next.js a recarregar a página do dashboard
-    // Opção A: Usar window.location (mais agressivo, funciona sempre)
-    window.location.href = '/dashboard';
-    
-    // Opção B: Se quiser usar router (menos agressivo)
-    // router.push('/dashboard');
-    // setTimeout(() => {
-    //   window.location.reload();
-    // }, 100);
-    
-  } catch (error) {
-    console.error('Erro ao apagar mesa:', error);
-    alert('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
-  }
-};
-
+    try {
+      // 1. Deletar do banco
+      const response = await fetch(`/api/mesas/${mesaId}`, {
+        method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao apagar mesa');
+      }
+      
+      // 2. FORÇAR o Next.js a recarregar a página do dashboard
+      // Opção A: Usar window.location (mais agressivo, funciona sempre)
+      window.location.href = '/dashboard';
+      
+    } catch (error) {
+      console.error('Erro ao apagar mesa:', error);
+      alert('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+    }
+  };
 
   const imprimirPrevia = () => {
     alert('Prévia da comanda impressa!');
@@ -580,6 +612,50 @@ export default function ComandaPage() {
       console.error('Erro ao atualizar comanda:', error);
       throw error;
     }
+  };
+
+  // ✅ NOVA FUNÇÃO: Lidar com confirmação do modal de adicionais
+  const handleConfirmarAdicionais = async (
+    produtoId: string, 
+    adicionaisSelecionados: Array<{
+      adicionalId: string;
+      quantidade: number;
+      precoUnitario: number;
+      nome: string;
+    }>
+  ) => {
+    const produto = produtosReais.find(p => p.id === produtoId);
+    if (!produto) return;
+    
+    // Calcular preço total com adicionais
+    const precoAdicionais = adicionaisSelecionados.reduce((total, adicional) => 
+      total + (adicional.precoUnitario * adicional.quantidade), 0);
+    
+    const precoTotal = produto.preco + precoAdicionais;
+    
+    // Criar observação com os adicionais
+    const observacao = adicionaisSelecionados.length > 0
+      ? `Adicionais: ${adicionaisSelecionados.map(a => 
+          `${a.nome}${a.quantidade > 1 ? ` (${a.quantidade}x)` : ''}`
+        ).join(', ')}`
+      : '';
+    
+    // Criar o item da comanda
+    const novoItem: ItemComanda = {
+      id: Date.now() + Math.random(),
+      produtoId,
+      quantidade: 1,
+      precoUnitario: precoTotal,
+      produto,
+      observacao,
+      isNew: true
+    };
+    
+    setItensNaoSalvos(prev => [...prev, novoItem]);
+    setModificado(true);
+    setMostrarModalAdicionais(false);
+    setProdutoSelecionado(null);
+    setProdutoIdSelecionado('');
   };
 
   // Filtrar produtos
@@ -717,6 +793,20 @@ export default function ComandaPage() {
           comandaId={comandaId}
           mesaId={mesaId}
           onAtualizarComanda={handleAtualizarComanda}
+        />
+      )}
+
+      {/* ✅ MODAL DE ADICIONAIS */}
+      {mostrarModalAdicionais && produtoSelecionado && (
+        <ModalAdicionais
+          produto={produtoSelecionado}
+          onClose={() => {
+            setMostrarModalAdicionais(false);
+            setProdutoSelecionado(null);
+            setProdutoIdSelecionado('');
+          }}
+          onConfirmar={handleConfirmarAdicionais}
+          produtoId={produtoIdSelecionado}
         />
       )}
     </ComandaLayout>
