@@ -1,3 +1,4 @@
+// app/layout.tsx - VERSÃO SEM FOOTER
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
@@ -20,10 +21,7 @@ export default function RootLayout({
         <main className="min-h-screen bg-gray-50">
           {children}
         </main>
-        <footer className="bg-gray-800 text-white text-center p-4 text-sm">
-          Ativar o Windows<br />
-          Acesse Configurações para ativar o Windows.
-        </footer>
+        {/* REMOVEU O FOOTER - Ele aparece em todas as páginas! */}
       </body>
     </html>
   )

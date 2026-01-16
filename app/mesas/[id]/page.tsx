@@ -796,26 +796,30 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
 
   return (
     <ComandaLayout>
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">PDV - {mesa?.nome}</h1>
-            <p className="text-gray-600">Sistema de atendimento</p>
-          </div>
-          <button
-            onClick={voltarDashboard}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-          >
-            ← Voltar para Dashboard
-          </button>
+    {/* Header COM ESPAÇO MAS SEM AFETAR O RESTANTE */}
+    <div className="px-4 sm:px-6 pt-4">
+      <div className="flex justify-between items-start sm:items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+            PDV - {mesa?.nome}
+          </h1>
+          <p className="text-gray-600">
+            Sistema de atendimento
+          </p>
         </div>
+        <button
+          onClick={voltarDashboard}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+        >
+          ← Voltar para Dashboard
+        </button>
       </div>
+    </div>
 
       {/* Layout de duas colunas */}
-      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] min-h-0">
+<div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] min-h-0 px-4 sm:px-6">
         {/* Coluna esquerda - Comanda PDV */}
-        <div className="lg:w-1/4 flex flex-col min-h-0">
+      <div className="lg:w-1/4 flex flex-col min-h-0">
           <ComandaEsquerda
             mesa={mesa}
             itensSalvos={itensSalvos}
@@ -841,7 +845,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
         </div>
 
         {/* Coluna direita - Catálogo PDV */}
-        <div className="lg:w-3/4 flex flex-col min-h-0">
+      <div className="lg:w-3/4 flex flex-col min-h-0">
           <div className="flex-1 min-h-0">
             <CatalogoDireita
               produtos={produtosFiltrados}

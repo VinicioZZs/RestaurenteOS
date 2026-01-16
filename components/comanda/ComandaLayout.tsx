@@ -1,4 +1,4 @@
-// components/comanda/ComandaLayout.tsx
+// components/comanda/ComandaLayout.tsx - VERSÃO COM SCROLL PERFEITO
 'use client';
 
 import { ReactNode } from 'react';
@@ -9,31 +9,37 @@ interface ComandaLayoutProps {
 
 export default function ComandaLayout({ children }: ComandaLayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header fixo */}
-      <header className="bg-white shadow-sm border-b px-6 py-4 fixed top-0 left-0 right-0 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-gray-800">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+      {/* Header fixo - altura fixa */}
+      <header className="bg-white shadow-sm border-b px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0">
+        <div className="flex items-center justify-between max-w-[1920px] mx-auto">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <h1 className="text-lg sm:text-xl font-bold text-gray-800">
               Restaurante<span className="text-blue-600">OS</span>
             </h1>
-            <span className="text-sm text-gray-500">• Sistema de Comandas</span>
+            <span className="text-xs sm:text-sm text-gray-500 hidden md:inline">
+              • Sistema de Comandas
+            </span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Garçom: João</span>
-            <button className="text-sm text-gray-500 hover:text-gray-700">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <span className="text-xs sm:text-sm text-gray-600 hidden sm:inline">
+              Garçom: João
+            </span>
+            <button className="text-xs sm:text-sm text-red-500 hover:text-red-700 font-medium px-2 sm:px-3 py-1 hover:bg-red-50 rounded-lg transition-colors">
               Sair
             </button>
           </div>
         </div>
       </header>
 
-      {/* Conteúdo principal COM ALTURA FIXA */}
-      <main className="pt-16 p-4 md:p-6 h-screen overflow-hidden"> {/* pt-16 para o header fixo */}
-        <div className="h-full">
-          {children}
+      {/* Área de conteúdo com scroll independente */}
+      <div className="flex-1 min-h-0 overflow-hidden p-2 sm:p-4 md:p-6">
+        <div className="h-full w-full max-w-[1920px] mx-auto">
+          <div className="h-full bg-white rounded-lg sm:rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            {children}
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
