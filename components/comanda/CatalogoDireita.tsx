@@ -127,58 +127,53 @@ export default function CatalogoDireita({
       </div>
       
       {/* ÁREA DE PRODUTOS COM SCROLL */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {/* Grid de Produtos - LIMPO E RESPONSIVO */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {produtos.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-gray-500">Nenhum produto encontrado</p>
-              <p className="text-sm text-gray-400 mt-1">
-                {busca ? `Busca: "${busca}"` : `Categoria: ${categorias.find(c => c.id === categoriaAtiva)?.nome || 'Selecionada'}`}
-              </p>
-            </div>
-          ) : (
-            produtos.map((produto) => (
-              <button
-                key={produto.id}
-                onClick={() => onAdicionarProduto(produto.id)}
-                className="group bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 overflow-hidden transition-all duration-200 hover:scale-[1.02] flex flex-col"
-              >
-                {/* Imagem ocupando mais espaço */}
-                <div className="relative h-32 overflow-hidden bg-gray-100">
-                  <img
-                    src={produto.imagem || '/placeholder-product.jpg'}
-                    alt={produto.nome}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
-                    }}
-                  />
-                  {/* Badge de preço flutuante */}
-                  <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded-lg font-bold text-sm shadow-lg">
-                    R$ {produto.preco.toFixed(2)}
-                  </div>
-                </div>
-                
-                {/* Informações compactas */}
-                <div className="p-2 flex flex-col flex-1">
-                  <span className="text-sm font-medium text-gray-800 line-clamp-2">
-                    {produto.nome}
-                  </span>
-                  <div className="mt-1 flex items-center justify-between">
-                    <span className="text-xs text-gray-500">
-                      {produto.categoria}
-                    </span>
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      +
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
+<div className="flex-1 overflow-y-auto p-4">
+  {/* Grid de Produtos - ✅ AJUSTADO PARA MAIS COLUNAS E IMAGENS MAIORES */}
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"> {/* ← MAIS colunas */}
+    {produtos.length === 0 ? (
+      <div className="col-span-full text-center py-12">
+        <p className="text-gray-500">Nenhum produto encontrado</p>
+        <p className="text-sm text-gray-400 mt-1">
+          {busca ? `Busca: "${busca}"` : `Categoria: ${categorias.find(c => c.id === categoriaAtiva)?.nome || 'Selecionada'}`}
+        </p>
       </div>
+    ) : (
+      produtos.map((produto) => (
+        <button
+          key={produto.id}
+          onClick={() => onAdicionarProduto(produto.id)}
+          className="group bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100 overflow-hidden transition-all duration-200 hover:scale-[1.02] active:scale-95 flex flex-col h-full"
+        >
+          {/* ✅ Imagem MUITO maior */}
+          <div className="relative h-44 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100"> {/* ← Altura aumentada */}
+            <img
+              src={produto.imagem || '/placeholder-product.jpg'}
+              alt={produto.nome}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
+              }}
+            />
+            {/* Overlay gradiente sutil */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            
+            {/* ✅ Badge de preço mais discreto */}
+            <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg font-bold text-sm">
+              R$ {produto.preco.toFixed(2)}
+            </div>
+          </div>
+          
+          {/* ✅ Informações compactas mas com mais espaço */}
+          <div className="p-3 flex flex-col flex-1">
+            <span className="font-semibold text-gray-800 text-sm line-clamp-2 text-left">
+              {produto.nome}
+            </span>
+          </div>
+        </button>
+      ))
+    )}
+  </div>
+</div>
       
       {/* Status Bar */}
       <div className="border-t border-gray-200 p-3 bg-gray-50">

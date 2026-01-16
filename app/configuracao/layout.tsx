@@ -23,26 +23,32 @@ export default function ConfiguracaoLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const menuItems = [
-    {
-      title: 'Produtos',
-      href: '/configuracao/produtos',
-      icon: Package,
-      description: 'Gerencie o cardápio'
-    },
-    {
-      title: 'Categorias',
-      href: '/configuracao/categorias',
-      icon: Tag,
-      description: 'Organize por categorias'
-    },
-    {
-      title: 'Adicionais',
-      href: '/configuracao/adicionais',
-      icon: PlusCircle,
-      description: 'Itens extras e personalizações'
-    }
-  ];
+ const menuItems = [
+  {
+    title: 'Produtos',
+    href: '/configuracao/produtos',
+    icon: Package,
+    description: 'Gerencie o cardápio'
+  },
+  {
+    title: 'Categorias',
+    href: '/configuracao/categorias',
+    icon: Tag,
+    description: 'Organize por categorias'
+  },
+  {
+    title: 'Adicionais',
+    href: '/configuracao/adicionais',
+    icon: PlusCircle,
+    description: 'Itens extras e personalizações'
+  },
+  {
+    title: 'Configurações Gerais',
+    href: '/configuracao/geral',
+    icon: Settings, // Já está importado
+    description: 'Ajustes do sistema e aparência'
+  }
+];
 
   return (
     <div className="min-h-screen bg-gray-50">

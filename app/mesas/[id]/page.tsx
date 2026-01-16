@@ -1,4 +1,4 @@
-// app/mesas/[id]/page.tsx - VERSÃO COMPLETA COM MODAL DE ADICIONAIS
+// app/mesas/[id]/page.tsx - VERSÃO COMPLETA COM MODAL DE ADICIONAIS (CORRIGIDO)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,7 +36,8 @@ interface ComandaDB {
   status: string;
 }
 
-// Funções auxiliares para API
+// ========== FUNÇÕES AUXILIARES (OK FORA DO COMPONENTE) ==========
+
 async function fetchComanda(mesaIdOuNumero: string): Promise<ComandaDB | null> {
   try {
     // Tenta buscar pelo ID/número
@@ -88,24 +89,20 @@ async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: Item
     
     console.log('📦 Itens para salvar:', itensParaSalvar);
     
-    // ✅ CORREÇÃO CRÍTICA: A API espera o NÚMERO da mesa em body.mesaId
-    // mesaId da URL é o número (ex: "1"), mas precisamos garantir que seja o número
-    // numeroMesa pode ser undefined se a mesa for mockada
-    
     // Usar o número da mesa corretamente
     const numeroMesaParaEnviar = numeroMesa || mesaId;
     
     console.log('🔍 Enviando com:', {
-      mesaId: numeroMesaParaEnviar, // ← NÚMERO da mesa
-      numeroMesa: numeroMesaParaEnviar // ← Também o número
+      mesaId: numeroMesaParaEnviar,
+      numeroMesa: numeroMesaParaEnviar
     });
     
     const response = await fetch('/api/comandas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        mesaId: numeroMesaParaEnviar, // ← NÚMERO da mesa
-        numeroMesa: numeroMesaParaEnviar, // ← Também o número
+        mesaId: numeroMesaParaEnviar,
+        numeroMesa: numeroMesaParaEnviar,
         itens: itensParaSalvar,
         total,
       }),
@@ -213,10 +210,14 @@ async function fetchCategoriasReais(): Promise<Array<{
   }
 }
 
+// ========== COMPONENTE PRINCIPAL ==========
+
 export default function ComandaPage() {
   const params = useParams();
   const router = useRouter();
   const mesaId = params.id as string;
+  
+  // ========== ESTADOS (HOOKS DENTRO DO COMPONENTE) ==========
   
   // Estados principais
   const [mesa, setMesa] = useState<any>(null);
@@ -234,32 +235,64 @@ export default function ComandaPage() {
   ]);
   const [mostrarModalPagamento, setMostrarModalPagamento] = useState(false);
   
-  // ✅ Estados para o modal de adicionais (DENTRO do componente)
+  // Estados para o modal de adicionais
   const [mostrarModalAdicionais, setMostrarModalAdicionais] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const [produtoIdSelecionado, setProdutoIdSelecionado] = useState<string>('');
 
-  // Carregar dados iniciais
+  // Estado para configurações do sistema
+  const [configSistema, setConfigSistema] = useState<any>(null);
+
+  // Estado para edição de adicionais
+  const [itemEditando, setItemEditando] = useState<{
+    id: number;
+    produtoId: string;
+    produto: Produto;
+    observacao: string;
+  } | null>(null);
+
+  // ========== USEFFECTS ==========
+  
+  // Carregar configurações do sistema
   useEffect(() => {
-  async function carregarComanda() {
-    setCarregando(true);
-    
-    try {
-      // 1. Carregar produtos
-      const produtosDB = await fetchProdutosReais();
-      setProdutosReais(produtosDB);
-      
-      // ✅ 2. AGORA: Buscar categorias do banco de dados (NOVO CÓDIGO)
-      const categoriasDB = await fetchCategoriasReais();
-      
-      // Adicionar "Todos" no início se não existir
-      if (!categoriasDB.some(cat => cat.id === 'todos')) {
-        categoriasDB.unshift({ id: 'todos', nome: 'Todos', icone: '📦' });
+    async function carregarConfiguracoes() {
+      try {
+        const response = await fetch('/api/configuracoes');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setConfigSistema(data.data);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
       }
+    }
+    
+    carregarConfiguracoes();
+  }, []);
+
+  // Carregar dados iniciais da comanda
+  useEffect(() => {
+    async function carregarComanda() {
+      setCarregando(true);
       
-      setCategoriasReais(categoriasDB);
+      try {
+        // 1. Carregar produtos
+        const produtosDB = await fetchProdutosReais();
+        setProdutosReais(produtosDB);
         
-        // 3. ✅ AGORA: Buscar a mesa REAL do banco de dados
+        // 2. Buscar categorias do banco de dados
+        const categoriasDB = await fetchCategoriasReais();
+        
+        // Adicionar "Todos" no início se não existir
+        if (!categoriasDB.some(cat => cat.id === 'todos')) {
+          categoriasDB.unshift({ id: 'todos', nome: 'Todos', icone: '📦' });
+        }
+        
+        setCategoriasReais(categoriasDB);
+          
+        // 3. Buscar a mesa REAL do banco de dados
         const response = await fetch(`/api/mesas/buscar-mesa?numero=${mesaId}`);
         let mesaReal = null;
         
@@ -273,7 +306,7 @@ export default function ComandaPage() {
         // Se não encontrou, criar uma mock ou buscar pelo número
         const mesa = mesaReal || {
           id: mesaId,
-          _id: mesaId, // Usa o número como ID se não encontrar
+          _id: mesaId,
           numero: mesaId.padStart(2, '0'),
           nome: `Mesa ${mesaId.padStart(2, '0')}`,
           status: 'ocupada',
@@ -282,14 +315,14 @@ export default function ComandaPage() {
         
         setMesa(mesa);
         
-        // 4. Buscar comanda existente - usar o ID real da mesa
+        // 4. Buscar comanda existente
         const mesaIdParaBuscar = mesa._id || mesa.id || mesaId;
         const comandaDB = await fetchComanda(mesaIdParaBuscar);
         
         if (comandaDB) {
           setComandaId(comandaDB._id);
           
-          // Converter itens da comanda para o formato local
+          // Converter itens da comanda
           const itensComProdutos = comandaDB.itens.map((item: any) => {
             const produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
             return {
@@ -318,6 +351,8 @@ export default function ComandaPage() {
     carregarComanda();
   }, [mesaId]);
 
+  // ========== FUNÇÕES AUXILIARES DO COMPONENTE ==========
+  
   // Calcular totais
   const todosItens = [...itensSalvos, ...itensNaoSalvos];
   const totalComanda = todosItens.reduce((sum, item) => 
@@ -325,60 +360,40 @@ export default function ComandaPage() {
   );
   const restantePagar = totalComanda - totalPago;
 
-  // ✅ NOVO ESTADO para edição
-const [itemEditando, setItemEditando] = useState<{
-  id: number;
-  produtoId: string;
-  produto: Produto;
-  observacao: string;
-} | null>(null);
-
-// ✅ NOVA FUNÇÃO: Extrair adicionais da observação
-const extrairAdicionaisDaObservacao = (observacao: string) => {
-  if (!observacao.includes('Adicionais:')) return [];
-  
-  const partes = observacao.split('Adicionais:')[1].trim();
-  const adicionaisArray = partes.split(',').map(item => item.trim());
-  
-  // Aqui você precisaria mapear os nomes para IDs
-  // Por enquanto, retornamos um array vazio - você precisará ajustar
-  return [];
-};
-
-// ✅ NOVA FUNÇÃO: Abrir modal para editar adicionais de um item existente
-const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, observacao: string) => {
-  const produtoObj = produtosReais.find(p => p.id === produtoId);
-  if (!produtoObj) return;
-  
-  setItemEditando({
-    id: itemId,
-    produtoId,
-    produto: produtoObj,
-    observacao
-  });
-  
-  // Extrair adicionais existentes da observação
-  const adicionaisExistentes = extrairAdicionaisDaObservacao(observacao);
-  
-  // Aqui você precisaria buscar os adicionais reais do banco
-  // Por enquanto, vamos abrir o modal sem adicionais pré-selecionados
-  setProdutoSelecionado(produtoObj);
-  setProdutoIdSelecionado(produtoId);
-  setMostrarModalAdicionais(true);
-};
+  // Extrair adicionais da observação
+  const extrairAdicionaisDaObservacao = (observacao: string) => {
+    if (!observacao.includes('Adicionais:')) return [];
+    
+    const partes = observacao.split('Adicionais:')[1].trim();
+    const adicionaisArray = partes.split(',').map(item => item.trim());
+    
+    // Aqui você precisaria mapear os nomes para IDs
+    return [];
+  };
 
   // ========== FUNÇÕES DA COMANDA ==========
 
-  // ✅ FUNÇÃO ATUALIZADA: Adiciona item (com verificação de adicionais)
-  const adicionarItem = (produtoId: string) => {
-    const produto = produtosReais.find(p => p.id === produtoId);
-    if (!produto) return;
+  // Abrir modal para editar adicionais de um item existente
+  const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, observacao: string) => {
+    const produtoObj = produtosReais.find(p => p.id === produtoId);
+    if (!produtoObj) return;
     
-    // Verificar se o produto tem adicionais disponíveis
-    verificarAdicionaisDoProduto(produtoId, produto);
+    setItemEditando({
+      id: itemId,
+      produtoId,
+      produto: produtoObj,
+      observacao
+    });
+    
+    // Extrair adicionais existentes da observação
+    const adicionaisExistentes = extrairAdicionaisDaObservacao(observacao);
+    
+    setProdutoSelecionado(produtoObj);
+    setProdutoIdSelecionado(produtoId);
+    setMostrarModalAdicionais(true);
   };
 
-  // ✅ NOVA FUNÇÃO: Verificar adicionais do produto
+  // Verificar adicionais do produto
   const verificarAdicionaisDoProduto = async (produtoId: string, produto: Produto) => {
     try {
       // Buscar informações completas do produto
@@ -408,7 +423,16 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
     }
   };
 
-  // ✅ FUNÇÃO AUXILIAR: Adicionar item sem modal
+  // Adiciona item (com verificação de adicionais)
+  const adicionarItem = (produtoId: string) => {
+    const produto = produtosReais.find(p => p.id === produtoId);
+    if (!produto) return;
+    
+    // Verificar se o produto tem adicionais disponíveis
+    verificarAdicionaisDoProduto(produtoId, produto);
+  };
+
+  // Adicionar item sem modal
   const adicionarItemDiretamente = (produtoId: string, produto: Produto) => {
     const novoItem: ItemComanda = {
       id: Date.now() + Math.random(),
@@ -434,7 +458,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
     setModificado(true);
   };
 
-  // Função para atualizar quantidade (usada pelo modal de remoção)
+  // Função para atualizar quantidade
   const atualizarQuantidade = (itemId: number, novaQuantidade: number, tipo: 'salvo' | 'naoSalvo') => {
     if (novaQuantidade < 1) {
       removerItem(itemId, tipo);
@@ -501,15 +525,13 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
       sum + (item.precoUnitario * item.quantidade), 0
     );
     
-    // ✅ CORREÇÃO: Enviar o número correto da mesa
-    // mesa?.numero deve ser o número formatado (ex: "01")
-    // mesaId da URL é o número (ex: "1")
+    // Enviar o número correto da mesa
     const numeroMesaParaSalvar = mesa?.numero || mesaId;
     
     // Salvar no banco
     const resultado = await salvarComandaNoDB(
-      mesaId, // Número da mesa da URL
-      numeroMesaParaSalvar, // Número formatado da mesa
+      mesaId,
+      numeroMesaParaSalvar,
       itensParaSalvar,
       totalAgrupado
     );
@@ -523,7 +545,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
         setComandaId(resultado.data._id);
       }
       
-      // ✅ Forçar atualização do dashboard
+      // Forçar atualização do dashboard
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('comanda-atualizada', {
           detail: { mesaId, total: totalAgrupado }
@@ -558,8 +580,8 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
     
     if (confirm('Tem certeza que deseja limpar toda a comanda?')) {
       const resultado = await salvarComandaNoDB(
-        mesaId, // Número da mesa da URL
-        mesa?.numero || mesaId, // Número formatado ou o da URL
+        mesaId,
+        mesa?.numero || mesaId,
         [], 
         0
       );
@@ -574,7 +596,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
     }
   };
 
-  // ✅ NOVA FUNÇÃO: Apagar mesa (fecha comanda completamente)
+  // Apagar mesa (fecha comanda completamente)
   const apagarMesa = async () => {
     if (!confirm('Tem certeza que deseja APAGAR esta mesa completamente? Esta ação não pode ser desfeita.')) {
       return;
@@ -595,8 +617,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
         throw new Error(error.error || 'Erro ao apagar mesa');
       }
       
-      // 2. FORÇAR o Next.js a recarregar a página do dashboard
-      // Opção A: Usar window.location (mais agressivo, funciona sempre)
+      // 2. Forçar recarregar a página do dashboard
       window.location.href = '/dashboard';
       
     } catch (error) {
@@ -652,7 +673,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
     alert(`Pagamento realizado com sucesso!\nTotal: R$ ${data.total.toFixed(2)}`);
     
     // Aqui você faria a lógica para fechar a comanda no banco
-    setTotalPago(totalComanda); // Marca como totalmente pago
+    setTotalPago(totalComanda);
     setMostrarModalPagamento(false);
     
     // Voltar para dashboard após 1.5 segundos
@@ -690,98 +711,135 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
     }
   };
 
-  // ✅ NOVA FUNÇÃO: Lidar com confirmação do modal de adicionais
+  // Lidar com confirmação do modal de adicionais
   const handleConfirmarAdicionais = async (
-  produtoId: string, 
-  adicionaisSelecionados: Array<{
-    adicionalId: string;
-    quantidade: number;
-    precoUnitario: number;
-    nome: string;
-  }>,
-  // ✅ NOVO: itemId para saber se é edição
-  itemId?: number
-) => {
-  const produto = produtosReais.find(p => p.id === produtoId);
-  if (!produto) return;
-  
-  // Calcular preço total com adicionais
-  const precoAdicionais = adicionaisSelecionados.reduce((total, adicional) => 
-    total + (adicional.precoUnitario * adicional.quantidade), 0);
-  
-  const precoTotal = produto.preco + precoAdicionais;
-  
-  // Criar observação com os adicionais
-  const observacao = adicionaisSelecionados.length > 0
-    ? `Adicionais: ${adicionaisSelecionados.map(a => 
-        `${a.nome}${a.quantidade > 1 ? ` (${a.quantidade}x)` : ''}`
-      ).join(', ')}`
-    : '';
-  
-  // Se for edição, atualizar o item existente
-  if (itemId && itemEditando) {
-    const novoItem: ItemComanda = {
-      id: itemId, // Mantém o mesmo ID
-      produtoId,
-      quantidade: 1, // Manter a quantidade atual (precisa ajustar)
-      precoUnitario: precoTotal,
-      produto,
-      observacao,
-      isNew: true // Marcar como modificado
-    };
+    produtoId: string, 
+    adicionaisSelecionados: Array<{
+      adicionalId: string;
+      quantidade: number;
+      precoUnitario: number;
+      nome: string;
+    }>,
+    itemId?: number
+  ) => {
+    const produto = produtosReais.find(p => p.id === produtoId);
+    if (!produto) return;
     
-    // Encontrar onde está o item (salvo ou não salvo)
-    const itemIndexSalvo = itensSalvos.findIndex(item => item.id === itemId);
-    const itemIndexNaoSalvo = itensNaoSalvos.findIndex(item => item.id === itemId);
+    // Calcular preço total com adicionais
+    const precoAdicionais = adicionaisSelecionados.reduce((total, adicional) => 
+      total + (adicional.precoUnitario * adicional.quantidade), 0);
     
-    if (itemIndexSalvo !== -1) {
-      // Atualizar em itensSalvos
-      const novosItens = [...itensSalvos];
-      novosItens[itemIndexSalvo] = novoItem;
-      setItensSalvos(novosItens);
-    } else if (itemIndexNaoSalvo !== -1) {
-      // Atualizar em itensNaoSalvos
-      const novosItens = [...itensNaoSalvos];
-      novosItens[itemIndexNaoSalvo] = novoItem;
-      setItensNaoSalvos(novosItens);
+    const precoTotal = produto.preco + precoAdicionais;
+    
+    // Criar observação com os adicionais
+    const observacao = adicionaisSelecionados.length > 0
+      ? `Adicionais: ${adicionaisSelecionados.map(a => 
+          `${a.nome}${a.quantidade > 1 ? ` (${a.quantidade}x)` : ''}`
+        ).join(', ')}`
+      : '';
+    
+    // Se for edição, atualizar o item existente
+    if (itemId && itemEditando) {
+      const novoItem: ItemComanda = {
+        id: itemId,
+        produtoId,
+        quantidade: 1,
+        precoUnitario: precoTotal,
+        produto,
+        observacao,
+        isNew: true
+      };
+      
+      // Encontrar onde está o item (salvo ou não salvo)
+      const itemIndexSalvo = itensSalvos.findIndex(item => item.id === itemId);
+      const itemIndexNaoSalvo = itensNaoSalvos.findIndex(item => item.id === itemId);
+      
+      if (itemIndexSalvo !== -1) {
+        // Atualizar em itensSalvos
+        const novosItens = [...itensSalvos];
+        novosItens[itemIndexSalvo] = novoItem;
+        setItensSalvos(novosItens);
+      } else if (itemIndexNaoSalvo !== -1) {
+        // Atualizar em itensNaoSalvos
+        const novosItens = [...itensNaoSalvos];
+        novosItens[itemIndexNaoSalvo] = novoItem;
+        setItensNaoSalvos(novosItens);
+      }
+      
+    } else {
+      // Se for novo item, criar normalmente
+      const novoItem: ItemComanda = {
+        id: Date.now() + Math.random(),
+        produtoId,
+        quantidade: 1,
+        precoUnitario: precoTotal,
+        produto,
+        observacao,
+        isNew: true
+      };
+      
+      setItensNaoSalvos(prev => [...prev, novoItem]);
     }
     
-  } else {
-    // Se for novo item, criar normalmente
-    const novoItem: ItemComanda = {
-      id: Date.now() + Math.random(),
-      produtoId,
-      quantidade: 1,
-      precoUnitario: precoTotal,
-      produto,
-      observacao,
-      isNew: true
-    };
-    
-    setItensNaoSalvos(prev => [...prev, novoItem]);
-  }
-  
-  setModificado(true);
-  setMostrarModalAdicionais(false);
-  setProdutoSelecionado(null);
-  setProdutoIdSelecionado('');
-  setItemEditando(null);
-};
+    setModificado(true);
+    setMostrarModalAdicionais(false);
+    setProdutoSelecionado(null);
+    setProdutoIdSelecionado('');
+    setItemEditando(null);
+  };
+
+  // ========== FUNÇÕES DE APRESENTAÇÃO ==========
 
   // Filtrar produtos
   const produtosFiltrados = produtosReais.filter(produto => {
-  // Encontrar a categoria correspondente no banco
-  const categoriaProduto = categoriasReais.find(cat => 
-    cat.nome.toLowerCase() === produto.categoria.toLowerCase()
-  );
-  
-  const categoriaProdutoId = categoriaProduto?.id || produto.categoria.toLowerCase().replace(/\s+/g, '-');
-  
-  const passaCategoria = categoriaAtiva === 'todos' || categoriaProdutoId === categoriaAtiva;
-  const passaBusca = produto.nome.toLowerCase().includes(busca.toLowerCase());
-  
-  return passaCategoria && passaBusca;
-});
+    // Encontrar a categoria correspondente no banco
+    const categoriaProduto = categoriasReais.find(cat => 
+      cat.nome.toLowerCase() === produto.categoria.toLowerCase()
+    );
+    
+    const categoriaProdutoId = categoriaProduto?.id || produto.categoria.toLowerCase().replace(/\s+/g, '-');
+    
+    const passaCategoria = categoriaAtiva === 'todos' || categoriaProdutoId === categoriaAtiva;
+    const passaBusca = produto.nome.toLowerCase().includes(busca.toLowerCase());
+    
+    return passaCategoria && passaBusca;
+  });
+
+  // Função para gerar o título baseado no preset
+  const gerarTituloComanda = () => {
+    if (!configSistema || !mesa) return `PDV - ${mesa?.nome || ''}`;
+    
+    const numeroFormatado = mesa.numero?.padStart(2, '0') || mesaId.padStart(2, '0');
+    
+    switch(configSistema.presetComanda) {
+      case 'ficha':
+        return `FICHA #${mesaId}`;
+      case 'mesa':
+        return `MESA ${numeroFormatado}`;
+      case 'pedido':
+        return `PEDIDO #${mesaId}`;
+      case 'comanda':
+      default:
+        return `COMANDA ${numeroFormatado}`;
+    }
+  };
+
+  // Função para gerar subtítulo
+  const gerarSubtitulo = () => {
+    if (!configSistema) return 'Sistema de atendimento';
+    
+    const subtitulos: Record<string, string> = {
+      comanda: 'Sistema de Comandas',
+      ficha: 'Sistema de Fichas', 
+      mesa: 'Atendimento por Mesa',
+      pedido: 'Sistema de Pedidos'
+    };
+    
+    const preset = configSistema.presetComanda as string;
+    return subtitulos[preset] || 'Sistema de atendimento';
+  };
+
+  // ========== RENDERIZAÇÃO ==========
 
   if (carregando) {
     return (
@@ -795,31 +853,58 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
   }
 
   return (
-    <ComandaLayout>
-    {/* Header COM ESPAÇO MAS SEM AFETAR O RESTANTE */}
-    <div className="px-4 sm:px-6 pt-4">
-      <div className="flex justify-between items-start sm:items-center">
+      <ComandaLayout>
+    {/* ✅ CORREÇÃO LEVE: Header com menos espaço */}
+    <div className="pt-4 px-6"> {/* ← Só padding top e sides */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4"> {/* ← Menos margin bottom */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            PDV - {mesa?.nome}
-          </h1>
-          <p className="text-gray-600">
-            Sistema de atendimento
-          </p>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${
+              configSistema?.presetComanda === 'ficha' ? 'bg-purple-100' :
+              configSistema?.presetComanda === 'mesa' ? 'bg-green-100' :
+              configSistema?.presetComanda === 'pedido' ? 'bg-orange-100' : 'bg-blue-100'
+            }`}>
+              <span className="text-xl">
+                {configSistema?.presetComanda === 'ficha' ? '📋' :
+                 configSistema?.presetComanda === 'mesa' ? '🪑' :
+                 configSistema?.presetComanda === 'pedido' ? '📝' : '🍽️'}
+              </span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {gerarTituloComanda()}
+                {configSistema?.mostrarMesaNumero && mesa?.numero && (
+                  <span className="ml-2 text-base font-normal text-gray-600">
+                    • Mesa {mesa.numero}
+                  </span>
+                )}
+              </h1>
+              <p className="text-gray-600 text-sm mt-0.5">
+                {gerarSubtitulo()}
+                {configSistema?.mostrarGarcom && (
+                  <span className="ml-3 text-gray-500">
+                    Garçom: João
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
         </div>
+        
         <button
           onClick={voltarDashboard}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+          className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors flex items-center gap-2"
         >
-          ← Voltar para Dashboard
+          <span>←</span>
+          <span>Voltar</span>
         </button>
       </div>
     </div>
 
       {/* Layout de duas colunas */}
-<div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] min-h-0 px-4 sm:px-6">
+      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] min-h-0 px-4 sm:px-6">
         {/* Coluna esquerda - Comanda PDV */}
-      <div className="lg:w-1/4 flex flex-col min-h-0">
+        <div className="lg:w-1/4 flex flex-col min-h-0">
           <ComandaEsquerda
             mesa={mesa}
             itensSalvos={itensSalvos}
@@ -845,7 +930,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
         </div>
 
         {/* Coluna direita - Catálogo PDV */}
-      <div className="lg:w-3/4 flex flex-col min-h-0">
+        <div className="lg:w-3/4 flex flex-col min-h-0">
           <div className="flex-1 min-h-0">
             <CatalogoDireita
               produtos={produtosFiltrados}
@@ -857,6 +942,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
               onAdicionarProduto={adicionarItem}
             />
           </div>
+          
           
           {/* BOTÃO DE SALVAR FIXO NA BASE DO CATÁLOGO */}
           {modificado && (
@@ -918,7 +1004,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
         />
       )}
 
-      {/* ✅ MODAL DE ADICIONAIS */}
+      {/* MODAL DE ADICIONAIS */}
       {mostrarModalAdicionais && produtoSelecionado && (
         <ModalAdicionais
           produto={produtoSelecionado}
@@ -926,7 +1012,7 @@ const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, 
             setMostrarModalAdicionais(false);
             setProdutoSelecionado(null);
             setProdutoIdSelecionado('');
-          }}
+          }}  
           onConfirmar={handleConfirmarAdicionais}
           produtoId={produtoIdSelecionado}
         />

@@ -30,6 +30,9 @@ export default function DashboardPage() {
   const [mesaParaCriar, setMesaParaCriar] = useState('');
   const [mostrarModalMesaExistente, setMostrarModalMesaExistente] = useState(false);
   const [mesaExistenteInfo, setMesaExistenteInfo] = useState<Mesa | null>(null);
+  const [configSistema, setConfigSistema] = useState<any>(null);
+  
+
 
   // Carregar mesas do MongoDB
   const carregarMesas = async (termoBusca?: string) => {
@@ -245,6 +248,40 @@ useEffect(() => {
   };
 }, [busca]);
 
+useEffect(() => {
+  async function carregarConfiguracoes() {
+    try {
+      const response = await fetch('/api/configuracoes');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setConfigSistema(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error);
+    }
+  }
+  
+  carregarConfiguracoes();
+}, []);
+
+// Função para formatar título do card da mesa
+const formatarTituloMesa = (mesa: Mesa) => {
+  if (!configSistema) return mesa.nome;
+  
+  switch(configSistema.presetComanda) {
+    case 'ficha':
+      return `Ficha #${mesa.numero}`;
+    case 'pedido':
+      return `Pedido #${mesa.numero}`;
+    case 'mesa':
+    case 'comanda':
+    default:
+      return mesa.nome;
+  }
+};
+
   // Buscar mesa - FLUXO COMPLETO
   const buscarMesa = async () => {
     if (!busca.trim()) {
@@ -454,12 +491,29 @@ useEffect(() => {
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6 md:mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-            Comandas do Restaurante
-          </h1>
-          <p className="text-gray-600 mt-1">Banco de dados: MongoDB</p>
-        </div>
+  <div>
+    <div className="flex items-center gap-2">
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+        {configSistema?.presetComanda === 'ficha' ? 'Fichas Ativas' :
+         configSistema?.presetComanda === 'pedido' ? 'Pedidos em Aberto' :
+         configSistema?.presetComanda === 'mesa' ? 'Mesas Ocupadas' :
+         'Comandas do Restaurante'}
+      </h1>
+      {configSistema && (
+        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+          {configSistema.presetComanda === 'comanda' ? '📋 Comanda' :
+           configSistema.presetComanda === 'ficha' ? '📄 Ficha' :
+           configSistema.presetComanda === 'mesa' ? '🪑 Mesa' :
+           '📝 Pedido'}
+        </span>
+      )}
+    </div>
+    <p className="text-gray-600 mt-1">
+      Banco de dados: MongoDB • {mesas.length} {configSistema?.presetComanda === 'ficha' ? 'fichas' :
+      configSistema?.presetComanda === 'pedido' ? 'pedidos' :
+      configSistema?.presetComanda === 'mesa' ? 'mesas' : 'comandas'}
+    </p>
+  </div>
         
         <div className="flex items-center gap-2">
           <Link
@@ -538,7 +592,9 @@ useEffect(() => {
                   {mesa.numero}
                 </div>
                 
-                <p className="text-gray-600 mb-1 text-sm">{mesa.nome}</p>
+                <p className="text-gray-600 mb-1 text-sm">
+                  {formatarTituloMesa(mesa)}
+                </p>
                 
                 <div className="mt-4">
                   <div className="text-xs text-gray-500 mb-1">Valor da Comanda</div>
