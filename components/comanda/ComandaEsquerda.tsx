@@ -316,71 +316,84 @@ export default function ComandaEsquerda({
           </div>
         </div>
 
-        {/* Totais */}
-        <div className="p-3 border-t bg-gray-50 flex-shrink-0">
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-700">Total:</span>
-              <span className="text-lg font-bold text-blue-600">R$ {totalComanda.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-600">Restante:</span>
-              <span className="font-bold text-red-600">R$ {restantePagar.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
+        {/* Totais - AUMENTEI TEXTO */}
+<div className="p-4 border-t bg-gradient-to-r from-gray-50 to-gray-100 flex-shrink-0">
+  <div className="space-y-3">
+    {/* ✅ Total maior */}
+    <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <div>
+        <span className="font-bold text-gray-900 text-lg">Total:</span>
+        <p className="text-sm text-gray-600 mt-1">Valor da comanda</p>
+      </div>
+      <span className="text-2xl font-bold text-blue-600">R$ {totalComanda.toFixed(2)}</span>
+    </div>
+    
+    {/* ✅ Restante maior */}
+    <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <div>
+        <span className="font-bold text-gray-900 text-lg">Restante:</span>
+        <p className="text-sm text-gray-600 mt-1">A pagar</p>
+      </div>
+      <span className={`text-2xl font-bold ${
+        restantePagar > 0 ? 'text-red-600' : 'text-green-600'
+      }`}>
+        R$ {restantePagar.toFixed(2)}
+      </span>
+    </div>
+  </div>
+</div>
 
-        
-
-        {/* Botões de Ação - AGORA COM 2 BOTÕES SEPARADOS */}
-        <div className="p-3 border-t bg-white space-y-2 flex-shrink-0">
-          {/* Botão FECHAR CONTA (chama o modal) */}
-          <button
-            onClick={onMostrarModalPagamento || onFecharConta}
-            className="w-full py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
-            disabled={todosItens.length === 0}
-          >
-            💳 FECHAR CONTA
-          </button>
-          
-          {/* ✅ NOVO: Grid com 2 botões - LIMPAR e APAGAR */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* Botão LIMPAR COMANDA (remove apenas os itens) */}
-            <button
-              onClick={onLimparComanda}
-              className="py-2 border border-amber-600 text-amber-600 font-medium rounded-lg hover:bg-amber-50 text-sm flex items-center justify-center gap-1"
-              disabled={todosItens.length === 0}
-            >
-              <span>🗑️</span>
-              <span>Limpar</span>
-            </button>
-            
-            {/* Botão APAGAR MESA (fecha comanda completamente) */}
-            <button
-              onClick={() => setModalApagarMesa(true)}
-              className="py-2 border border-red-600 text-red-600 font-medium rounded-lg hover:bg-red-50 text-sm flex items-center justify-center gap-1"
-            >
-              <span>❌</span>
-              <span>Apagar</span>
-            </button>
-          </div>
-          
-          {/* Botões secundários */}
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={onImprimirPrevia}
-              className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-xs"
-            >
-              Imprimir
-            </button>
-            <button
-              onClick={onVoltarDashboard}
-              className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-xs"
-            >
-              Voltar
-            </button>
-          </div>
-        </div>
+{/* Botões de Ação - AGORA MAIORES */}
+<div className="p-4 border-t bg-white space-y-3 flex-shrink-0">
+  {/* ✅ Botão FECHAR CONTA MAIOR */}
+  <button
+    onClick={onMostrarModalPagamento || onFecharConta}
+    className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-lg shadow-lg"
+    disabled={todosItens.length === 0}
+  >
+    💳 FECHAR CONTA
+  </button>
+  
+  {/* ✅ Grid com botões MAIORES */}
+  <div className="grid grid-cols-2 gap-3">
+    {/* Botão LIMPAR MAIOR */}
+    <button
+      onClick={onLimparComanda}
+      className="py-3.5 border-2 border-amber-500 bg-amber-50 text-amber-700 font-bold rounded-xl hover:bg-amber-100 text-base flex items-center justify-center gap-2 shadow-sm"
+      disabled={todosItens.length === 0}
+    >
+      <span className="text-xl">🗑️</span>
+      <span>Limpar Comanda</span>
+    </button>
+    
+    {/* Botão APAGAR MAIOR */}
+    <button
+      onClick={() => setModalApagarMesa(true)}
+      className="py-3.5 border-2 border-red-500 bg-red-50 text-red-700 font-bold rounded-xl hover:bg-red-100 text-base flex items-center justify-center gap-2 shadow-sm"
+    >
+      <span className="text-xl">❌</span>
+      <span>Apagar Mesa</span>
+    </button>
+  </div>
+  
+  {/* ✅ Botões secundários MAIORES */}
+  <div className="flex gap-3 pt-2">
+    <button
+      onClick={onImprimirPrevia}
+      className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2"
+    >
+      <span>🖨️</span>
+      <span>Imprimir</span>
+    </button>
+    <button
+      onClick={onVoltarDashboard}
+      className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2"
+    >
+      <span>←</span>
+      <span>Voltar</span>
+    </button>
+  </div>
+</div>
       </div>
 
       {/* Modal de Confirmação de Remoção de Item */}

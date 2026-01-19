@@ -1,4 +1,4 @@
-// app/mesas/[id]/page.tsx - VERSÃO COMPLETA COM MODAL DE ADICIONAIS (CORRIGIDO)
+// app/mesas/[id]/page.tsx - VERSÃO COMPLETA COM MODAL DE ADICIONAIS (CORRIGIDO) E MELHORIAS
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -560,7 +560,14 @@ export default function ComandaPage() {
         );
       }
       
-      alert(`Comanda salva com sucesso!\n${itensNaoSalvos.length} item(s) foram agrupados.`);
+      // MOSTRAR MENSAGEM DE SUCESSO E REDIRECIONAR
+      alert(`Comanda salva com sucesso!\n${itensNaoSalvos.length} item(s) foram agrupados.\n\nRedirecionando para o dashboard...`);
+      
+      // Redirecionar para o dashboard após 1 segundo
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000);
+      
     } else {
       alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
     }
@@ -676,7 +683,7 @@ export default function ComandaPage() {
     setTotalPago(totalComanda);
     setMostrarModalPagamento(false);
     
-    // Voltar para dashboard após 1.5 segundos
+    // Redirecionar para dashboard após 1.5 segundos
     setTimeout(() => {
       router.push('/dashboard');
     }, 1500);
@@ -790,12 +797,17 @@ export default function ComandaPage() {
 
   // ========== FUNÇÕES DE APRESENTAÇÃO ==========
 
+  // Função auxiliar para encontrar a categoria correspondente no banco
+  const encontrarCategoriaPorNome = (nomeCategoria: string) => {
+    return categoriasReais.find(cat => 
+      cat.nome.toLowerCase() === nomeCategoria.toLowerCase()
+    );
+  };
+
   // Filtrar produtos
   const produtosFiltrados = produtosReais.filter(produto => {
     // Encontrar a categoria correspondente no banco
-    const categoriaProduto = categoriasReais.find(cat => 
-      cat.nome.toLowerCase() === produto.categoria.toLowerCase()
-    );
+    const categoriaProduto = encontrarCategoriaPorNome(produto.categoria);
     
     const categoriaProdutoId = categoriaProduto?.id || produto.categoria.toLowerCase().replace(/\s+/g, '-');
     
@@ -842,181 +854,139 @@ export default function ComandaPage() {
   // ========== RENDERIZAÇÃO ==========
 
   if (carregando) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Carregando comanda da mesa {mesaId}...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-      <ComandaLayout>
-    {/* ✅ CORREÇÃO LEVE: Header com menos espaço */}
-    <div className="pt-4 px-6"> {/* ← Só padding top e sides */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4"> {/* ← Menos margin bottom */}
-        <div>
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${
-              configSistema?.presetComanda === 'ficha' ? 'bg-purple-100' :
-              configSistema?.presetComanda === 'mesa' ? 'bg-green-100' :
-              configSistema?.presetComanda === 'pedido' ? 'bg-orange-100' : 'bg-blue-100'
-            }`}>
-              <span className="text-xl">
-                {configSistema?.presetComanda === 'ficha' ? '📋' :
-                 configSistema?.presetComanda === 'mesa' ? '🪑' :
-                 configSistema?.presetComanda === 'pedido' ? '📝' : '🍽️'}
-              </span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {gerarTituloComanda()}
-                {configSistema?.mostrarMesaNumero && mesa?.numero && (
-                  <span className="ml-2 text-base font-normal text-gray-600">
-                    • Mesa {mesa.numero}
-                  </span>
-                )}
-              </h1>
-              <p className="text-gray-600 text-sm mt-0.5">
-                {gerarSubtitulo()}
-                {configSistema?.mostrarGarcom && (
-                  <span className="ml-3 text-gray-500">
-                    Garçom: João
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
+    <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p>Carregando comanda da mesa {mesaId}...</p>
+      </div>
+    </div>
+  );
+}
+
+return (
+  <ComandaLayout>
+    {/* Layout: MENOS comanda, MAIS catálogo */}
+    <div className="flex h-screen bg-white">
+      
+      {/* ✅ Coluna esquerda - COMANDA (APENAS 30% da tela) */}
+      <div className="w-1/3 flex flex-col h-full border-r border-gray-200">
+        {/* Comanda compacta */}
+        <ComandaEsquerda
+          mesa={mesa}
+          itensSalvos={itensSalvos}
+          itensNaoSalvos={itensNaoSalvos}
+          totalComanda={totalComanda}
+          totalPago={totalPago}
+          restantePagar={restantePagar}
+          modificado={modificado}
+          onRemoverItem={removerItem}
+          onAtualizarQuantidade={atualizarQuantidade}
+          onAtualizarObservacao={atualizarObservacao}
+          onSalvarItens={salvarItens}
+          onDescartarAlteracoes={descartarAlteracoes}
+          onEditarAdicionais={abrirEdicaoAdicionais}
+          onLimparComanda={limparComanda}
+          onApagarMesa={apagarMesa} 
+          onImprimirPrevia={imprimirPrevia}
+          onFecharConta={handleFecharConta}
+          onVoltarDashboard={voltarDashboard}
+          comandaId={comandaId}
+          onMostrarModalPagamento={() => setMostrarModalPagamento(true)}
+        />
+      </div>
+      
+      {/* ✅ Coluna direita - CATÁLOGO (70% da tela - MAIOR) */}
+      <div className="w-2/3 flex flex-col h-full">
+        
+        {/* ✅ CATÁLOGO MAIOR (mais espaço agora) */}
+        <div className="flex-1 overflow-hidden">
+          <CatalogoDireita
+            produtos={produtosFiltrados}
+            categorias={categoriasReais}
+            categoriaAtiva={categoriaAtiva}
+            busca={busca}
+            onSelecionarCategoria={setCategoriaAtiva}
+            onBuscar={setBusca}
+            onAdicionarProduto={adicionarItem}
+            // Passar função auxiliar para encontrar categoria
+            encontrarCategoriaPorNome={encontrarCategoriaPorNome}
+          />
         </div>
         
+        {/* BOTÃO DE SALVAR */}
+        {modificado && (
+  <div className="p-4 border-t border-gray-200 bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center">
+        <div className="bg-white/30 p-3 rounded-xl mr-4">
+          <span className="text-white text-2xl">💾</span>
+        </div>
+        <div>
+          <p className="font-bold text-white text-lg">
+            {itensNaoSalvos.length > 0 
+              ? `${itensNaoSalvos.length} item(s) não salvos`
+              : 'Alterações pendentes'
+            }
+          </p>
+          <p className="text-green-100 text-sm">
+            Salve para persistir no banco de dados
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex gap-3">
         <button
-          onClick={voltarDashboard}
-          className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors flex items-center gap-2"
+          onClick={descartarAlteracoes}
+          className="px-6 py-3 bg-white/20 text-white rounded-xl hover:bg-white/30 border border-white/30 font-medium text-sm"
         >
-          <span>←</span>
-          <span>Voltar</span>
+          Descartar
+        </button>
+        <button
+          onClick={salvarItens}
+          className="px-8 py-3 bg-white text-green-700 font-bold rounded-xl hover:bg-gray-100 shadow-lg text-base flex items-center gap-3"
+        >
+          <span className="text-xl">💾</span>
+          SALVAR COMANDA
         </button>
       </div>
     </div>
-
-      {/* Layout de duas colunas */}
-      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] min-h-0 px-4 sm:px-6">
-        {/* Coluna esquerda - Comanda PDV */}
-        <div className="lg:w-1/4 flex flex-col min-h-0">
-          <ComandaEsquerda
-            mesa={mesa}
-            itensSalvos={itensSalvos}
-            itensNaoSalvos={itensNaoSalvos}
-            totalComanda={totalComanda}
-            totalPago={totalPago}
-            restantePagar={restantePagar}
-            modificado={modificado}
-            onRemoverItem={removerItem}
-            onAtualizarQuantidade={atualizarQuantidade}
-            onAtualizarObservacao={atualizarObservacao}
-            onSalvarItens={salvarItens}
-            onDescartarAlteracoes={descartarAlteracoes}
-            onEditarAdicionais={abrirEdicaoAdicionais}
-            onLimparComanda={limparComanda}
-            onApagarMesa={apagarMesa} 
-            onImprimirPrevia={imprimirPrevia}
-            onFecharConta={handleFecharConta}
-            onVoltarDashboard={voltarDashboard}
-            comandaId={comandaId}
-            onMostrarModalPagamento={() => setMostrarModalPagamento(true)}
-          />
-        </div>
-
-        {/* Coluna direita - Catálogo PDV */}
-        <div className="lg:w-3/4 flex flex-col min-h-0">
-          <div className="flex-1 min-h-0">
-            <CatalogoDireita
-              produtos={produtosFiltrados}
-              categorias={categoriasReais}
-              categoriaAtiva={categoriaAtiva}
-              busca={busca}
-              onSelecionarCategoria={setCategoriaAtiva}
-              onBuscar={setBusca}
-              onAdicionarProduto={adicionarItem}
-            />
-          </div>
-          
-          
-          {/* BOTÃO DE SALVAR FIXO NA BASE DO CATÁLOGO */}
-          {modificado && (
-            <div className="mt-4 p-4 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="bg-white/20 p-3 rounded-xl mr-4">
-                    <span className="text-white text-2xl">💾</span>
-                  </div>
-                  <div>
-                    <p className="font-bold text-white text-lg">
-                      {itensNaoSalvos.length > 0 
-                        ? `${itensNaoSalvos.length} item(s) não salvos`
-                        : 'Alterações na comanda não salvas'
-                      }
-                    </p>
-                    <p className="text-green-100 text-sm">
-                      Salve as alterações para persistir no banco de dados
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex gap-3">
-                  <button
-                    onClick={descartarAlteracoes}
-                    className="px-5 py-3 bg-white/20 text-white rounded-lg hover:bg-white/30 border border-white/30 font-medium"
-                  >
-                    Descartar
-                  </button>
-                  <button
-                    onClick={salvarItens}
-                    className="px-6 py-3 bg-white text-green-600 font-bold rounded-lg hover:bg-gray-100 shadow flex items-center gap-3"
-                  >
-                    <span className="text-xl">💾</span>
-                    SALVAR NO BANCO
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+  </div>
+)}
       </div>
+    </div>
 
-      {/* MODAL DE PAGAMENTO COMPLETO */}
-      {mostrarModalPagamento && (
-        <PagamentoModal
-          mesa={{
-            numero: mesa?.numero || mesaId,
-            nome: mesa?.nome || `Mesa ${mesaId}`
-          }}
-          itens={prepararItensParaPagamento()}
-          total={totalComanda}
-          onClose={() => setMostrarModalPagamento(false)}
-          onConfirmar={handleConfirmarPagamento}
-          onSalvarParcial={handleSalvarParcial}
-          comandaId={comandaId}
-          mesaId={mesaId}
-          onAtualizarComanda={handleAtualizarComanda}
-        />
-      )}
+    {/* MODAL DE PAGAMENTO */}
+    {mostrarModalPagamento && (
+      <PagamentoModal
+        mesa={{
+          numero: mesa?.numero || mesaId,
+          nome: mesa?.nome || `Mesa ${mesaId}`
+        }}
+        itens={prepararItensParaPagamento()}
+        total={totalComanda}
+        onClose={() => setMostrarModalPagamento(false)}
+        onConfirmar={handleConfirmarPagamento}
+        onSalvarParcial={handleSalvarParcial}
+        comandaId={comandaId}
+        mesaId={mesaId}
+        onAtualizarComanda={handleAtualizarComanda}
+      />
+    )}
 
-      {/* MODAL DE ADICIONAIS */}
-      {mostrarModalAdicionais && produtoSelecionado && (
-        <ModalAdicionais
-          produto={produtoSelecionado}
-          onClose={() => {
-            setMostrarModalAdicionais(false);
-            setProdutoSelecionado(null);
-            setProdutoIdSelecionado('');
-          }}  
-          onConfirmar={handleConfirmarAdicionais}
-          produtoId={produtoIdSelecionado}
-        />
-      )}
-    </ComandaLayout>
-  );
+    {/* MODAL DE ADICIONAIS */}
+    {mostrarModalAdicionais && produtoSelecionado && (
+      <ModalAdicionais
+        produto={produtoSelecionado}
+        onClose={() => {
+          setMostrarModalAdicionais(false);
+          setProdutoSelecionado(null);
+          setProdutoIdSelecionado('');
+        }}
+        onConfirmar={handleConfirmarAdicionais}
+        produtoId={produtoIdSelecionado}
+      />
+    )}
+  </ComandaLayout>
+);
 }

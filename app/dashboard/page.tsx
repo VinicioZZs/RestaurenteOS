@@ -66,6 +66,23 @@ export default function DashboardPage() {
   }
 };
 
+useEffect(() => {
+  const verificarCaixa = async () => {
+    try {
+      const response = await fetch('/api/caixa/status');
+      const data = await response.json();
+      
+      if (data.success && data.data.status === 'fechado') {
+        // Se caixa fechado, redirecionar para tela de caixa
+        router.push('/caixa');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar caixa:', error);
+    }
+  };
+  
+  verificarCaixa();
+}, []);
 
 useEffect(() => {
     // Desabilitar cache do Next.js para esta página
