@@ -366,29 +366,42 @@ export default function FechamentoCaixaPage() {
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <button
-                          onClick={() => decrementarContador(den.valor)}
-                          className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-gray-800">
-                            {contador[den.valor] || 0}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {formatarMoeda(den.valor * (contador[den.valor] || 0))}
-                          </div>
-                        </div>
-                        
-                        <button
-                          onClick={() => incrementarContador(den.valor)}
-                          className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
+  <button
+    onClick={() => decrementarContador(den.valor)}
+    className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
+    type="button"
+  >
+    <Minus className="h-4 w-4" />
+  </button>
+  
+  <div className="text-center flex flex-col items-center">
+    {/* Input para digitar quantidade */}
+    <input
+      type="number"
+      min="0"
+      value={contador[den.valor] || 0}
+      onChange={(e) => {
+        const novaQuantidade = parseInt(e.target.value) || 0;
+        setContador(prev => ({
+          ...prev,
+          [den.valor]: Math.max(0, novaQuantidade) // Não permite negativo
+        }));
+      }}
+      className="w-16 text-center text-2xl font-bold text-gray-800 bg-transparent border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
+    />
+    <div className="text-sm text-gray-500 mt-1">
+      {formatarMoeda(den.valor * (contador[den.valor] || 0))}
+    </div>
+  </div>
+  
+  <button
+    onClick={() => incrementarContador(den.valor)}
+    className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition-colors"
+    type="button"
+  >
+    <Plus className="h-4 w-4" />
+  </button>
+</div>
                     </div>
                   ))}
                 </div>
