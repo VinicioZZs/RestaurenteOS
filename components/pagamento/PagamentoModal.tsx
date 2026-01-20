@@ -749,8 +749,13 @@ export default function PagamentoModal({
     }
   };
 
-  const handleFinalizarPagamento = () => {
-    if (!validarPagamento()) return;
+  const handleFinalizarPagamento = async () => {
+  if (!validarPagamento()) return;
+  
+  setCarregando(true);
+  
+  try {
+    const totalGeral = calcularTotalGeral();
     
     const data = {
       comandaId: comandaId || `comanda_${Date.now()}`,
@@ -761,7 +766,7 @@ export default function PagamentoModal({
         total: calcularTotalPagador(p),
         troco: calcularTroco(p)
       })),
-      total: calcularTotalGeral(),
+      total: totalGeral,
       itens,
       formasPagamentoUtilizadas: formasPagamento.filter(fp => 
         pagadores.some(p => p.formaPagamento === fp.id)
@@ -769,8 +774,110 @@ export default function PagamentoModal({
       timestamp: new Date().toISOString(),
       status: 'finalizado'
     };
-    onConfirmar(data);
-  };
+    
+    console.log('📤 Enviando para fechar comanda:', {
+      comandaId,
+      mesaNumero: mesa.numero,
+      total: totalGeral
+    });
+    
+    // Usar o novo endpoint
+    const response = await fetch('/api/comandas/fechar-completo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        comandaId: comandaId,
+        mesaId: mesaId,
+        numeroMesa: mesa.numero,
+        dados: {
+          ...data,
+          total: totalGeral
+        }
+      }),
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Comanda fechada com sucesso:', result.data);
+      
+      // 🔥 1. DISPARAR EVENTO PARA O DASHBOARD
+      const eventoComandaFechada = new CustomEvent('comanda-fechada', {
+        detail: {
+          comandaId: comandaId,
+          mesaId: mesaId,
+          numeroMesa: mesa.numero,
+          mesaNumero: result.data.mesaNumero || mesa.numero,
+          success: true,
+          timestamp: new Date().toISOString(),
+          // Adicionar estes campos importantes
+          total: totalGeral,
+          mesaAtualizada: result.data.mesaAtualizada
+        }
+      });
+      
+      // Disparar no window atual
+      window.dispatchEvent(eventoComandaFechada);
+      
+      // 🔥 2. DISPARAR EVENTO GLOBAL (para outras abas/janelas)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ultima_comanda_fechada', JSON.stringify({
+          comandaId,
+          mesaNumero: mesa.numero,
+          timestamp: new Date().toISOString()
+        }));
+        
+        // Forçar sincronização entre abas
+        localStorage.setItem('sync_dashboard', Date.now().toString());
+      }
+      
+      // 🔥 3. SALVAR NO LOCALSTORAGE COMO BACKUP
+      localStorage.setItem(`mesa_fechada_${mesa.numero}`, JSON.stringify({
+        mesaId: mesaId,
+        numeroMesa: mesa.numero,
+        numeroMesaFormatado: result.data.mesaNumero || mesa.numero.toString().padStart(2, '0'),
+        removidoEm: new Date().toISOString(),
+        comandaId: comandaId
+      }));
+      
+      // 🔥 4. FECHAR O MODAL PRIMEIRO
+      onClose();
+      
+      // 🔥 5. AGUARDAR UM POUCO E REDIRECIONAR
+      setTimeout(() => {
+        // Chamar o callback de confirmação
+        if (onConfirmar) {
+          onConfirmar(data);
+        }
+        
+        // 🔥 6. REDIRECIONAR PARA O DASHBOARD
+        // Se estiver na página /mesas/[numero], voltar para dashboard
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname;
+          if (currentPath.includes('/mesas/')) {
+            // Forçar atualização do dashboard
+            window.dispatchEvent(new Event('dashboard-refresh'));
+            
+            // Redirecionar para dashboard
+            window.location.href = '/dashboard';
+          } else {
+            // Se não estiver na página da mesa, apenas recarregar
+            window.location.reload();
+          }
+        }
+      }, 800); // Aguardar 800ms para garantir que tudo foi processado
+      
+    } else {
+      alert(`❌ Erro ao fechar comanda: ${result.error}`);
+      setCarregando(false);
+    }
+    
+  } catch (error) {
+    console.error('Erro ao finalizar pagamento:', error);
+    alert('❌ Erro ao conectar com o servidor');
+    setCarregando(false);
+  }
+};
 
   const getQuantidadeAtribuida = (itemId: number, pagadorId: string): number => {
     const pagador = pagadores.find(p => p.id === pagadorId);

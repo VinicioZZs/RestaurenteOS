@@ -39,7 +39,7 @@ export async function connectDB(): Promise<mongoose.Connection | null> {
     
     const opts = {
       bufferCommands: false,
-      dbName: 'restauranteos',
+      dbName: 'restaurante',
     };
 
     try {

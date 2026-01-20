@@ -1,37 +1,48 @@
-// app/api/mesas/buscar-mesa/route.ts
+// app/api/mesas/buscar/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { Mesa } from '@/lib/models';
+import { MongoClient, ObjectId } from 'mongodb';
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const DB_NAME = 'restaurante';
 
 export async function GET(request: NextRequest) {
+  const client = new MongoClient(MONGODB_URI);
+  
   try {
     const { searchParams } = new URL(request.url);
-    const numero = searchParams.get('numero');
+    const termo = searchParams.get('termo');
     
-    if (!numero) {
+    if (!termo) {
       return NextResponse.json(
-        { success: false, error: 'Parâmetro número é obrigatório' },
+        { success: false, error: 'Termo de busca é obrigatório' },
         { status: 400 }
       );
     }
     
-    // Conectar ao banco
-    const conn = await connectDB();
-    if (!conn) {
-      return NextResponse.json(
-        { success: false, error: 'Banco de dados não disponível' },
-        { status: 500 }
-      );
+    await client.connect();
+    const db = client.db(DB_NAME);
+    
+    // Criar condições de busca flexíveis
+    const condicoesBusca: any[] = [
+      { numero: termo },
+      { numero: termo.toString().padStart(2, '0') },
+      { nome: { $regex: termo, $options: 'i' } }
+    ];
+    
+    // Se for ObjectId válido
+    if (ObjectId.isValid(termo)) {
+      condicoesBusca.push({ _id: new ObjectId(termo) });
     }
     
-    // Buscar mesa pelo número
-    const mesa = await Mesa.findOne({ numero: numero.toString() });
+    const mesa = await db.collection('mesas').findOne({
+      $or: condicoesBusca
+    });
     
     if (!mesa) {
       return NextResponse.json({
-        success: false,
-        error: 'Mesa não encontrada',
-        data: null
+        success: true,
+        data: null,
+        message: 'Mesa não encontrada'
       });
     }
     
@@ -41,22 +52,20 @@ export async function GET(request: NextRequest) {
         _id: mesa._id.toString(),
         numero: mesa.numero,
         nome: mesa.nome,
-        capacidade: mesa.capacidade,
-        status: mesa.status,
+        status: mesa.status || 'livre',
+        capacidade: mesa.capacidade || 4,
         criadoEm: mesa.criadoEm,
         atualizadoEm: mesa.atualizadoEm
       }
     });
     
-  } catch (error: any) {
-    console.error('❌ Erro ao buscar mesa:', error);
+  } catch (error) {
+    console.error('Erro ao buscar mesa:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Erro interno',
-        details: error.message
-      },
+      { success: false, error: 'Erro ao buscar mesa' },
       { status: 500 }
     );
+  } finally {
+    await client.close();
   }
 }

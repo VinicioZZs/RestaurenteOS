@@ -61,7 +61,7 @@ export default function LoginForm() {
   return (
     <div className="w-full max-w-md">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-800">RestauranteOS</h1>
+        <h1 className="text-3xl font-bold text-gray-800">restaurante</h1>
         <p className="text-gray-600 mt-2">Faça login para acessar o sistema</p>
       </div>
 

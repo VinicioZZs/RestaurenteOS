@@ -59,5 +59,6 @@ const CaixaSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Evitar criar múltiplos modelos
 const Caixa = mongoose.models?.Caixa || mongoose.model('Caixa', CaixaSchema);
 export default Caixa;

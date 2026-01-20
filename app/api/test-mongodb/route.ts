@@ -16,7 +16,7 @@ export async function GET() {
   try {
     // Testa a conexão
     await mongoose.connect(MONGODB_URI, {
-      dbName: 'restauranteos',
+      dbName: 'restaurante',
       serverSelectionTimeoutMS: 5000, // Timeout de 5 segundos
     });
 

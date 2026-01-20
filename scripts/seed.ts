@@ -8,7 +8,7 @@ async function seed() {
     console.log('🔗 Conectando ao MongoDB...')
     
     await mongoose.connect(MONGODB_URI, {
-      dbName: 'restauranteos'
+      dbName: 'restaurante'
     })
     
     console.log('✅ Conectado!')

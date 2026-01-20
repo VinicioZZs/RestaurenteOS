@@ -6,7 +6,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'RestauranteOS',
+  title: 'restaurante',
   description: 'Sistema de gerenciamento para restaurantes',
 }
 

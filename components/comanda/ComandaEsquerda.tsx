@@ -212,9 +212,9 @@ export default function ComandaEsquerda({
                               >
                                 ✕
                               </button>
-                              <h3 className="font-medium text-gray-900 text-sm truncate" title={item.produto.nome}>
-                                {item.produto.nome}
-                              </h3>
+                              <h3 className="font-medium text-gray-900 text-sm truncate" title={item.produto?.nome || 'Produto não encontrado'}>
+                              {item.produto?.nome || 'Produto não encontrado'}
+                            </h3>
                               {isNaoSalvo && (
                                 <span className="text-xs bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded flex-shrink-0">
                                   NOVO

@@ -1,4 +1,4 @@
-// app/mesas/[id]/page.tsx - VERSÃO COMPLETA COM MODAL DE ADICIONAIS (CORRIGIDO) E MELHORIAS
+// app/mesas/[id]/page.tsx - VERSÃO COMPLETA CORRIGIDA
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,6 +8,8 @@ import CatalogoDireita from '@/components/comanda/CatalogoDireita';
 import ComandaLayout from '@/components/comanda/ComandaLayout';
 import PagamentoModal from '@/components/pagamento/PagamentoModal';
 import ModalAdicionais from '@/components/comanda/ModalAdicionais';
+import ModalConfirmacaoFechar from '@/components/comanda/ModalConfirmacaoFechar';
+
 
 interface Produto {
   id: string;
@@ -15,6 +17,16 @@ interface Produto {
   preco: number;
   categoria: string;
   imagem: string;
+}
+
+interface ProdutoCompleto {
+  id: string;
+  nome: string;
+  preco: number;
+  categoria: string;
+  imagem: string;
+  descricao?: string;
+  ativo?: boolean;
 }
 
 interface ItemComanda {
@@ -36,40 +48,51 @@ interface ComandaDB {
   status: string;
 }
 
-// ========== FUNÇÕES AUXILIARES (OK FORA DO COMPONENTE) ==========
+// ========== FUNÇÕES AUXILIARES ==========
 
 async function fetchComanda(mesaIdOuNumero: string): Promise<ComandaDB | null> {
   try {
-    // Tenta buscar pelo ID/número
-    const response = await fetch(`/api/comandas?mesaId=${mesaIdOuNumero}`);
-    if (!response.ok) return null;
+    // Primeiro, tentar buscar mesa pelo número para obter o _id correto
+    const mesaResponse = await fetch(`/api/mesas/buscar?termo=${encodeURIComponent(mesaIdOuNumero)}`);
     
-    const data = await response.json();
-    
-    // Se não encontrou, tenta buscar pelo número da mesa
-    if (!data.success || !data.data) {
-      // Primeiro buscar a mesa para pegar o _id
-      const mesaResponse = await fetch(`/api/mesas/buscar-mesa?numero=${mesaIdOuNumero}`);
-      if (mesaResponse.ok) {
-        const mesaData = await mesaResponse.json();
-        if (mesaData.success && mesaData.data) {
-          // Agora busca a comanda com o _id real
-          const comandaResponse = await fetch(`/api/comandas?mesaId=${mesaData.data._id}`);
-          if (comandaResponse.ok) {
-            const comandaData = await comandaResponse.json();
-            return comandaData.success ? comandaData.data : null;
+    if (mesaResponse.ok) {
+      const mesaData = await mesaResponse.json();
+      
+      if (mesaData.success && mesaData.data) {
+        const mesa = mesaData.data;
+        const mesaIdReal = mesa._id;
+        
+        // Buscar comanda usando o _id real da mesa
+        const comandaResponse = await fetch(`/api/comandas?mesaId=${mesaIdReal}`);
+        
+        if (comandaResponse.ok) {
+          const comandaData = await comandaResponse.json();
+          
+          if (comandaData.success && comandaData.data) {
+            return comandaData.data;
           }
         }
       }
-      return null;
     }
     
-    return data.data;
+    // Se não encontrou pela mesa, tentar buscar direto pela comanda
+    const response = await fetch(`/api/comandas?mesaId=${mesaIdOuNumero}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        return data.data;
+      }
+    }
+    
+    return null;
   } catch (error) {
     console.error('Erro ao buscar comanda:', error);
     return null;
   }
 }
+
 
 async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: ItemComanda[], total: number) {
   console.log('📤 Enviando para API /api/comandas:', {
@@ -84,52 +107,52 @@ async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: Item
       produtoId: item.produtoId,
       quantidade: item.quantidade,
       precoUnitario: item.precoUnitario,
-      observacao: item.observacao
+      observacao: item.observacao,
+      nome: item.produto?.nome || 'Produto',
+      categoria: item.produto?.categoria || 'Geral'
     }));
     
-    console.log('📦 Itens para salvar:', itensParaSalvar);
-    
-    // Usar o número da mesa corretamente
     const numeroMesaParaEnviar = numeroMesa || mesaId;
-    
-    console.log('🔍 Enviando com:', {
-      mesaId: numeroMesaParaEnviar,
-      numeroMesa: numeroMesaParaEnviar
-    });
     
     const response = await fetch('/api/comandas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        mesaId: numeroMesaParaEnviar,
+        mesaId: numeroMesaParaEnviar, // Enviar número da mesa
         numeroMesa: numeroMesaParaEnviar,
         itens: itensParaSalvar,
         total,
       }),
     });
     
-    console.log('📥 Resposta da API:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    });
-    
-    // Pegar o texto da resposta primeiro
     const responseText = await response.text();
-    console.log('📄 Conteúdo da resposta:', responseText);
+    console.log('📄 Resposta da API:', responseText.substring(0, 500));
     
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
       console.error('❌ Erro ao parsear JSON:', parseError);
-      throw new Error(`Resposta não é JSON válido: ${responseText.substring(0, 100)}...`);
+      return { 
+        success: false, 
+        error: new Error(`Resposta não é JSON válido: ${responseText.substring(0, 100)}...`) 
+      };
     }
     
-    console.log('✅ Dados parseados:', data);
-    
     if (!response.ok) {
-      throw new Error(data.error || `Erro HTTP ${response.status}: ${response.statusText}`);
+      // Se for erro 409 (Conflito - comanda já existe)
+      if (response.status === 409) {
+        return {
+          success: false,
+          error: new Error('Já existe uma comanda aberta para esta mesa'),
+          data: data.data
+        };
+      }
+      
+      return {
+        success: false,
+        error: new Error(data.error || `Erro HTTP ${response.status}: ${response.statusText}`)
+      };
     }
     
     return data;
@@ -137,8 +160,7 @@ async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: Item
     console.error('❌ Erro completo ao salvar comanda:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
-      details: error 
+      error: error instanceof Error ? error : new Error('Erro desconhecido')
     };
   }
 }
@@ -146,30 +168,41 @@ async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: Item
 async function fetchProdutosReais(): Promise<Produto[]> {
   try {
     const response = await fetch('/api/produtos?ativos=true');
-    if (!response.ok) throw new Error('Erro ao buscar produtos');
+    if (!response.ok) {
+      console.warn('⚠️ Erro ao buscar produtos da API, usando dados mockados');
+      return getProdutosMockados();
+    }
     
     const data = await response.json();
     
-    if (data.success && data.data) {
+    if (data.success && data.data && Array.isArray(data.data)) {
       return data.data.map((produto: any) => ({
-        id: produto._id.toString(),
-        nome: produto.nome,
+        id: produto._id?.toString() || Math.random().toString(),
+        nome: produto.nome || 'Produto sem nome',
         preco: produto.precoVenda || produto.preco || 0,
-        categoria: produto.categoria || 'Sem Categoria',
+        categoria: produto.categoria?.nome || produto.categoria || 'Sem Categoria',
         imagem: produto.imagem || '/placeholder-product.jpg'
       }));
     }
-    return [];
+    
+    return getProdutosMockados();
   } catch (error) {
     console.error('Erro ao buscar produtos:', error);
-    // Fallback para teste
-    return [
-      { id: '1', nome: 'Coca-Cola 350ml', preco: 5.00, categoria: 'Bebidas', imagem: '/placeholder-product.jpg' },
-      { id: '2', nome: 'Hambúrguer Artesanal', preco: 25.00, categoria: 'Lanches', imagem: '/placeholder-product.jpg' },
-      { id: '3', nome: 'Batata Frita', preco: 15.00, categoria: 'Acompanhamentos', imagem: '/placeholder-product.jpg' },
-    ];
+    return getProdutosMockados();
   }
 }
+
+// Função auxiliar com produtos mockados
+function getProdutosMockados(): Produto[] {
+  return [
+    { id: '1', nome: 'Coca-Cola 350ml', preco: 5.00, categoria: 'Bebidas', imagem: '/placeholder-product.jpg' },
+    { id: '2', nome: 'Hambúrguer Artesanal', preco: 25.00, categoria: 'Lanches', imagem: '/placeholder-product.jpg' },
+    { id: '3', nome: 'Batata Frita', preco: 15.00, categoria: 'Acompanhamentos', imagem: '/placeholder-product.jpg' },
+    { id: '4', nome: 'Água Mineral 500ml', preco: 3.00, categoria: 'Bebidas', imagem: '/placeholder-product.jpg' },
+    { id: '5', nome: 'Sorvete Casquinha', preco: 8.00, categoria: 'Sobremesas', imagem: '/placeholder-product.jpg' },
+  ];
+}
+
 
 async function fetchCategoriasReais(): Promise<Array<{
   id: string;
@@ -200,7 +233,6 @@ async function fetchCategoriasReais(): Promise<Array<{
     return [];
   } catch (error) {
     console.error('Erro ao buscar categorias:', error);
-    // Fallback com ícones maiores
     return [
       { id: 'todos', nome: 'Todos', icone: '📦', usaImagem: false },
       { id: 'bebidas', nome: 'Bebidas', icone: '🥤', usaImagem: false },
@@ -217,9 +249,8 @@ export default function ComandaPage() {
   const router = useRouter();
   const mesaId = params.id as string;
   
-  // ========== ESTADOS (HOOKS DENTRO DO COMPONENTE) ==========
+  // ========== ESTADOS ==========
   
-  // Estados principais
   const [mesa, setMesa] = useState<any>(null);
   const [itensSalvos, setItensSalvos] = useState<ItemComanda[]>([]);
   const [itensNaoSalvos, setItensNaoSalvos] = useState<ItemComanda[]>([]);
@@ -235,15 +266,12 @@ export default function ComandaPage() {
   ]);
   const [mostrarModalPagamento, setMostrarModalPagamento] = useState(false);
   
-  // Estados para o modal de adicionais
   const [mostrarModalAdicionais, setMostrarModalAdicionais] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const [produtoIdSelecionado, setProdutoIdSelecionado] = useState<string>('');
 
-  // Estado para configurações do sistema
   const [configSistema, setConfigSistema] = useState<any>(null);
 
-  // Estado para edição de adicionais
   const [itemEditando, setItemEditando] = useState<{
     id: number;
     produtoId: string;
@@ -251,9 +279,44 @@ export default function ComandaPage() {
     observacao: string;
   } | null>(null);
 
+  const [mostrarModalConfirmacaoFechar, setMostrarModalConfirmacaoFechar] = useState(false);
+
   // ========== USEFFECTS ==========
   
-  // Carregar configurações do sistema
+  useEffect(() => {
+  const verificarComandaExistente = async () => {
+    if (!mesaId || carregando) return;
+    
+    try {
+      // Verificar se já existe comanda para esta mesa
+      const response = await fetch(`/api/comandas?mesaId=${mesaId}`);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Já tem comanda - usar ela
+        setComandaId(data.data._id);
+        setItensSalvos(data.data.itens || []);
+        
+        console.log('✅ Usando comanda existente:', data.data._id);
+      } else {
+        // Não tem comanda - verificar se pode criar
+        const verificaResponse = await fetch(`/api/comandas/verificar-mesa?mesaId=${mesaId}`);
+        const verificaData = await verificaResponse.json();
+        
+        if (verificaData.success && verificaData.comandaExistente) {
+          // Redirecionar para a comanda existente
+          alert('Esta mesa já tem uma comanda aberta! Redirecionando...');
+          router.push(`/mesas/${verificaData.comandaExistente.numeroMesa}`);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar comanda:', error);
+    }
+  };
+  
+  verificarComandaExistente();
+}, [mesaId, carregando, router]);
+
   useEffect(() => {
     async function carregarConfiguracoes() {
       try {
@@ -272,27 +335,23 @@ export default function ComandaPage() {
     carregarConfiguracoes();
   }, []);
 
-  // Carregar dados iniciais da comanda
+
   useEffect(() => {
     async function carregarComanda() {
       setCarregando(true);
       
       try {
-        // 1. Carregar produtos
         const produtosDB = await fetchProdutosReais();
         setProdutosReais(produtosDB);
         
-        // 2. Buscar categorias do banco de dados
         const categoriasDB = await fetchCategoriasReais();
         
-        // Adicionar "Todos" no início se não existir
         if (!categoriasDB.some(cat => cat.id === 'todos')) {
           categoriasDB.unshift({ id: 'todos', nome: 'Todos', icone: '📦' });
         }
         
         setCategoriasReais(categoriasDB);
           
-        // 3. Buscar a mesa REAL do banco de dados
         const response = await fetch(`/api/mesas/buscar-mesa?numero=${mesaId}`);
         let mesaReal = null;
         
@@ -303,7 +362,6 @@ export default function ComandaPage() {
           }
         }
         
-        // Se não encontrou, criar uma mock ou buscar pelo número
         const mesa = mesaReal || {
           id: mesaId,
           _id: mesaId,
@@ -315,28 +373,31 @@ export default function ComandaPage() {
         
         setMesa(mesa);
         
-        // 4. Buscar comanda existente
         const mesaIdParaBuscar = mesa._id || mesa.id || mesaId;
         const comandaDB = await fetchComanda(mesaIdParaBuscar);
         
         if (comandaDB) {
           setComandaId(comandaDB._id);
           
-          // Converter itens da comanda
           const itensComProdutos = comandaDB.itens.map((item: any) => {
-            const produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
-            return {
-              id: Date.now() + Math.random(),
-              produtoId: item.produtoId,
-              quantidade: item.quantidade,
-              precoUnitario: item.precoUnitario,
-              observacao: item.observacao || '',
-              produto: produtoEncontrado || {
-                nome: 'Produto não encontrado',
-                categoria: 'desconhecida'
-              }
-            };
-          });
+  // Buscar produto nos produtos já carregados
+  const produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
+  
+  return {
+    id: Date.now() + Math.random(),
+    produtoId: item.produtoId,
+    quantidade: item.quantidade,
+    precoUnitario: item.precoUnitario,
+    observacao: item.observacao || '',
+    produto: produtoEncontrado || {
+      id: item.produtoId,
+      nome: item.nome || 'Produto não encontrado',
+      preco: item.precoUnitario || 0,
+      categoria: item.categoria || 'Sem categoria',
+      imagem: '/placeholder-product.jpg'
+    }
+  };
+});
           
           setItensSalvos(itensComProdutos);
         }
@@ -351,29 +412,66 @@ export default function ComandaPage() {
     carregarComanda();
   }, [mesaId]);
 
-  // ========== FUNÇÕES AUXILIARES DO COMPONENTE ==========
+   useEffect(() => {
+  // Verificar periodicamente se a mesa foi fechada
+  const verificarStatusMesa = async () => {
+    if (!mesaId || !mesa?._id) return;
+    
+    try {
+      // Verificar se ainda existe comanda aberta para esta mesa
+      const response = await fetch(`/api/comandas?mesaId=${mesa._id}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        console.log('🔍 Verificação periódica da mesa:', {
+          mesaId: mesa._id,
+          temComanda: data.success && data.data,
+          status: data.data?.status
+        });
+        
+        // SÓ redirecionar se a comanda estiver com status "fechada"
+        if (data.success && data.data && data.data.status === 'fechada') {
+          console.log('🔄 Comanda foi fechada, redirecionando...');
+          
+          // Pequeno delay antes de mostrar o alerta
+          setTimeout(() => {
+            if (confirm('Esta comanda foi fechada. Deseja voltar ao dashboard?')) {
+              router.push('/dashboard');
+            }
+          }, 500);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar status da mesa:', error);
+    }
+  };
   
-  // Calcular totais
+  // Verificar a cada 15 segundos (não 8)
+  const interval = setInterval(verificarStatusMesa, 15000);
+  
+  return () => clearInterval(interval);
+}, [mesaId, mesa?._id, router]);
+
+  // ========== FUNÇÕES AUXILIARES ==========
+  
   const todosItens = [...itensSalvos, ...itensNaoSalvos];
   const totalComanda = todosItens.reduce((sum, item) => 
     sum + (item.precoUnitario * item.quantidade), 0
   );
   const restantePagar = totalComanda - totalPago;
 
-  // Extrair adicionais da observação
   const extrairAdicionaisDaObservacao = (observacao: string) => {
     if (!observacao.includes('Adicionais:')) return [];
     
     const partes = observacao.split('Adicionais:')[1].trim();
     const adicionaisArray = partes.split(',').map(item => item.trim());
     
-    // Aqui você precisaria mapear os nomes para IDs
     return [];
   };
 
   // ========== FUNÇÕES DA COMANDA ==========
 
-  // Abrir modal para editar adicionais de um item existente
   const abrirEdicaoAdicionais = (itemId: number, produtoId: string, produto: any, observacao: string) => {
     const produtoObj = produtosReais.find(p => p.id === produtoId);
     if (!produtoObj) return;
@@ -385,7 +483,6 @@ export default function ComandaPage() {
       observacao
     });
     
-    // Extrair adicionais existentes da observação
     const adicionaisExistentes = extrairAdicionaisDaObservacao(observacao);
     
     setProdutoSelecionado(produtoObj);
@@ -393,28 +490,22 @@ export default function ComandaPage() {
     setMostrarModalAdicionais(true);
   };
 
-  // Verificar adicionais do produto
   const verificarAdicionaisDoProduto = async (produtoId: string, produto: Produto) => {
     try {
-      // Buscar informações completas do produto
       const response = await fetch(`/api/produtos/${produtoId}`);
       
       if (response.ok) {
         const data = await response.json();
         const produtoCompleto = data.data;
         
-        // Verificar se o produto tem adicionais configurados
         if (produtoCompleto?.adicionais && produtoCompleto.adicionais.length > 0) {
-          // Abrir modal de adicionais
           setProdutoSelecionado(produto);
           setProdutoIdSelecionado(produtoId);
           setMostrarModalAdicionais(true);
         } else {
-          // Adicionar diretamente sem adicionais
           adicionarItemDiretamente(produtoId, produto);
         }
       } else {
-        // Se erro na API, adicionar diretamente
         adicionarItemDiretamente(produtoId, produto);
       }
     } catch (error) {
@@ -423,16 +514,13 @@ export default function ComandaPage() {
     }
   };
 
-  // Adiciona item (com verificação de adicionais)
   const adicionarItem = (produtoId: string) => {
     const produto = produtosReais.find(p => p.id === produtoId);
     if (!produto) return;
     
-    // Verificar se o produto tem adicionais disponíveis
     verificarAdicionaisDoProduto(produtoId, produto);
   };
 
-  // Adicionar item sem modal
   const adicionarItemDiretamente = (produtoId: string, produto: Produto) => {
     const novoItem: ItemComanda = {
       id: Date.now() + Math.random(),
@@ -448,7 +536,15 @@ export default function ComandaPage() {
     setModificado(true);
   };
 
-  // Função para remover item
+  const calcularItensNaoSalvos = () => {
+  const quantidade = itensNaoSalvos.length;
+  const valor = itensNaoSalvos.reduce((sum, item) => 
+    sum + (item.precoUnitario * item.quantidade), 0);
+  
+  return { quantidade, valor };
+};
+
+
   const removerItem = (itemId: number, tipo: 'salvo' | 'naoSalvo') => {
     if (tipo === 'salvo') {
       setItensSalvos(itensSalvos.filter(item => item.id !== itemId));
@@ -458,7 +554,6 @@ export default function ComandaPage() {
     setModificado(true);
   };
 
-  // Função para atualizar quantidade
   const atualizarQuantidade = (itemId: number, novaQuantidade: number, tipo: 'salvo' | 'naoSalvo') => {
     if (novaQuantidade < 1) {
       removerItem(itemId, tipo);
@@ -477,7 +572,6 @@ export default function ComandaPage() {
     setModificado(true);
   };
 
-  // Função para atualizar observação
   const atualizarObservacao = (itemId: number, observacao: string, tipo: 'salvo' | 'naoSalvo') => {
     if (tipo === 'salvo') {
       setItensSalvos(itensSalvos.map(item => 
@@ -491,28 +585,24 @@ export default function ComandaPage() {
     setModificado(true);
   };
 
-  // Função para salvar - Agora agrupa itens iguais
-  const salvarItens = async () => {
-    if (itensNaoSalvos.length === 0 && !modificado) {
-      alert('Não há alterações para salvar!');
-      return;
-    }
-    
-    // Antes de salvar, agrupa itens iguais
+  const salvarItens = async (): Promise<boolean> => {
+  if (itensNaoSalvos.length === 0 && !modificado) {
+    alert('Não há alterações para salvar!');
+    return false;
+  }
+  
+  try {
     const todosItensParaProcessar = [...itensSalvos, ...itensNaoSalvos];
     
-    // Agrupar por produtoId e observação
     const itensAgrupados = new Map();
     
     todosItensParaProcessar.forEach(item => {
       const chave = `${item.produtoId}-${item.observacao}`;
       
       if (itensAgrupados.has(chave)) {
-        // Soma quantidade
         const existente = itensAgrupados.get(chave);
         existente.quantidade += item.quantidade;
       } else {
-        // Novo item agrupado
         itensAgrupados.set(chave, {
           ...item,
           id: Date.now() + Math.random()
@@ -525,10 +615,15 @@ export default function ComandaPage() {
       sum + (item.precoUnitario * item.quantidade), 0
     );
     
-    // Enviar o número correto da mesa
     const numeroMesaParaSalvar = mesa?.numero || mesaId;
     
-    // Salvar no banco
+    console.log('💾 Salvando comanda...', {
+      mesaId,
+      numeroMesa: numeroMesaParaSalvar,
+      totalItens: itensParaSalvar.length,
+      totalValor: totalAgrupado
+    });
+    
     const resultado = await salvarComandaNoDB(
       mesaId,
       numeroMesaParaSalvar,
@@ -537,41 +632,83 @@ export default function ComandaPage() {
     );
     
     if (resultado.success) {
-      // Atualiza com os itens AGRUPADOS
       setItensSalvos(itensParaSalvar);
       setItensNaoSalvos([]);
       setModificado(false);
+      
       if (resultado.data?._id) {
         setComandaId(resultado.data._id);
       }
       
-      // Forçar atualização do dashboard
+      // 🔥🔥🔥 IMPORTANTE: NÃO disparar evento de comanda-fechada
+      // Disparar APENAS evento de atualização
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('comanda-atualizada', {
-          detail: { mesaId, total: totalAgrupado }
+          detail: { 
+            mesaId, 
+            numeroMesa: numeroMesaParaSalvar,
+            total: totalAgrupado,
+            quantidadeItens: itensParaSalvar.length,
+            action: 'update' // Indica que é apenas atualização, não fechamento
+          }
         }));
         
+        // Salvar no localStorage para sincronização entre abas
         localStorage.setItem(`comanda_atualizada_${mesaId}`, 
           JSON.stringify({
             total: totalAgrupado,
             quantidadeItens: itensParaSalvar.length,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            action: 'update' // Indica atualização
           })
         );
       }
       
-      // MOSTRAR MENSAGEM DE SUCESSO E REDIRECIONAR
-      alert(`Comanda salva com sucesso!\n${itensNaoSalvos.length} item(s) foram agrupados.\n\nRedirecionando para o dashboard...`);
-      
-      // Redirecionar para o dashboard após 1 segundo
+      // 🔥🔥🔥 ADICIONEI APENAS ESTAS LINHAS:
+      // Redireciona para o dashboard após salvar
       setTimeout(() => {
+        alert('✅ Comanda salva com sucesso! Voltando ao dashboard...');
         router.push('/dashboard');
-      }, 1000);
+      }, 500);
+      
+      return true;
       
     } else {
+      // Se for erro de comanda já existente, usar a existente
+      if (resultado.error?.includes('Já existe uma comanda')) {
+        console.log('⚠️ Usando comanda existente...');
+        
+        // Buscar a comanda existente
+        const buscarResponse = await fetch(`/api/comandas?mesaId=${mesaId}`);
+        if (buscarResponse.ok) {
+          const buscarData = await buscarResponse.json();
+          if (buscarData.success && buscarData.data) {
+            setComandaId(buscarData.data._id);
+            setItensSalvos(buscarData.data.itens || []);
+            setItensNaoSalvos([]);
+            setModificado(false);
+            
+            // 🔥🔥🔥 ADICIONEI TAMBÉM AQUI:
+            setTimeout(() => {
+              alert('⚠️ Usando comanda existente para esta mesa. Voltando ao dashboard...');
+              router.push('/dashboard');
+            }, 500);
+            
+            return true;
+          }
+        }
+      }
+      
       alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
+      return false;
     }
-  };
+    
+  } catch (error) {
+    console.error('Erro ao salvar itens:', error);
+    alert('Erro ao salvar itens: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+    return false;
+  }
+};
 
   const descartarAlteracoes = () => {
     if (!modificado && itensNaoSalvos.length === 0) return;
@@ -603,14 +740,12 @@ export default function ComandaPage() {
     }
   };
 
-  // Apagar mesa (fecha comanda completamente)
   const apagarMesa = async () => {
     if (!confirm('Tem certeza que deseja APAGAR esta mesa completamente? Esta ação não pode ser desfeita.')) {
       return;
     }
     
     try {
-      // 1. Deletar do banco
       const response = await fetch(`/api/mesas/${mesaId}`, {
         method: 'DELETE',
         headers: {
@@ -624,7 +759,6 @@ export default function ComandaPage() {
         throw new Error(error.error || 'Erro ao apagar mesa');
       }
       
-      // 2. Forçar recarregar a página do dashboard
       window.location.href = '/dashboard';
       
     } catch (error) {
@@ -637,17 +771,80 @@ export default function ComandaPage() {
     alert('Prévia da comanda impressa!');
   };
 
-  const handleFecharConta = () => {
-    if (modificado) {
-      if (confirm('Há alterações não salvas. Salvar antes de fechar a conta?')) {
-        salvarItens().then(() => {
-          setMostrarModalPagamento(true);
-        });
-      }
+ const handleFecharConta = () => {
+  const { quantidade, valor } = calcularItensNaoSalvos();
+  
+  console.log('🔍 DEBUG handleFecharConta:');
+  console.log('  - itensNaoSalvos.length:', itensNaoSalvos.length);
+  console.log('  - quantidade (calculada):', quantidade);
+  console.log('  - modificado:', modificado);
+  console.log('  - deve mostrar modal?', quantidade > 0 || modificado);
+  
+  // Se tem itens não salvos OU a comanda foi modificada
+  if (quantidade > 0 || modificado) {
+    console.log('🟡 MOSTRANDO MODAL DE CONFIRMAÇÃO');
+    setMostrarModalConfirmacaoFechar(true);
+  } else {
+    // Se não tem itens não salvos, vai direto para o pagamento
+    console.log('🟢 Indo direto para pagamento (nada não salvo)');
+    setMostrarModalPagamento(true);
+  }
+};
+
+const handleSalvarEFechar = async () => {
+  try {
+    // Salva os itens e aguarda o resultado
+    const salvouComSucesso = await salvarItens();
+    
+    // Fecha o modal de confirmação
+    setMostrarModalConfirmacaoFechar(false);
+    
+    // Se salvou com sucesso, abre o modal de pagamento
+    if (salvouComSucesso) {
+      // Pequeno delay para dar tempo da UI atualizar
+      setTimeout(() => {
+        setMostrarModalPagamento(true);
+      }, 500);
     } else {
-      setMostrarModalPagamento(true);
+      // Se não salvou, mantém na mesma tela
+      alert('Não foi possível salvar os itens. Tente novamente.');
     }
-  };
+    
+  } catch (error) {
+    console.error('Erro ao salvar e fechar:', error);
+    alert('Erro ao processar. Tente novamente.');
+    setMostrarModalConfirmacaoFechar(false);
+  }
+};
+
+const handleFecharSemSalvar = () => {
+  // Confirma se o usuário realmente quer perder os itens
+  if (itensNaoSalvos.length > 0) {
+    const confirmacao = confirm(
+      `Tem certeza que deseja descartar ${itensNaoSalvos.length} item${itensNaoSalvos.length !== 1 ? 's' : ''} não salvo${itensNaoSalvos.length !== 1 ? 's' : ''}?\n\nValor: R$ ${calcularItensNaoSalvos().valor.toFixed(2)}\n\nEsta ação não pode ser desfeita!`
+    );
+    
+    if (!confirmacao) {
+      return; // Usuário cancelou
+    }
+  }
+  
+  // Descarta os itens não salvos
+  setItensNaoSalvos([]);
+  setModificado(false);
+  
+  // Fecha o modal de confirmação
+  setMostrarModalConfirmacaoFechar(false);
+  
+  // Abre o modal de pagamento
+  setTimeout(() => {
+    setMostrarModalPagamento(true);
+  }, 300);
+};
+
+const handleCancelarFechar = () => {
+  setMostrarModalConfirmacaoFechar(false);
+};
 
   const voltarDashboard = () => {
     if (modificado) {
@@ -660,7 +857,6 @@ export default function ComandaPage() {
 
   // ========== FUNÇÕES PARA O MODAL DE PAGAMENTO ==========
 
-  // Função para formatar itens para o PagamentoModal
   const prepararItensParaPagamento = () => {
     return todosItens.map(item => ({
       id: item.id,
@@ -674,22 +870,110 @@ export default function ComandaPage() {
     }));
   };
 
-  // Função para confirmar pagamento (chamada pelo modal)
-  const handleConfirmarPagamento = (data: any) => {
-    console.log('Pagamento confirmado:', data);
-    alert(`Pagamento realizado com sucesso!\nTotal: R$ ${data.total.toFixed(2)}`);
+  // 🔥🔥🔥 FUNÇÃO CORRIGIDA - handleConfirmarPagamento 🔥🔥🔥
+  const handleConfirmarPagamento = async (pagamentoData: any) => {
+    console.log('Pagamento confirmado:', pagamentoData);
     
-    // Aqui você faria a lógica para fechar a comanda no banco
-    setTotalPago(totalComanda);
-    setMostrarModalPagamento(false);
-    
-    // Redirecionar para dashboard após 1.5 segundos
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 1500);
+    try {
+      const todosPagadoresPagos = pagamentoData.pagadores.every((p: any) => p.pago);
+      
+      if (!todosPagadoresPagos) {
+        const response = await fetch('/api/comandas/pagamento-parcial', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            comandaId: pagamentoData.comandaId || comandaId,
+            dados: pagamentoData,
+            action: 'fechar' // <-- Este campo é essencial!
+          })
+        });
+        
+        const resultado = await response.json();
+        
+        if (resultado.success) {
+          alert('✅ Pagamento parcial salvo!');
+          setMostrarModalPagamento(false);
+        }
+        
+        return;
+      }
+      
+      console.log('🔒 Fechando comanda totalmente...');
+      
+      const response = await fetch('/api/comandas/pagamento-parcial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          comandaId: pagamentoData.comandaId || comandaId,
+          dados: pagamentoData,
+          action: 'fechar'
+        })
+      });
+      
+      const resultado = await response.json();
+      
+      if (resultado.success) {
+        alert(`✅ Comanda fechada com sucesso!\nTotal: R$ ${pagamentoData.total.toFixed(2)}`);
+        
+        // 🔥 DISPARAR EVENTOS PARA O DASHBOARD
+        if (typeof window !== 'undefined') {
+          const numeroMesaFechada = pagamentoData.mesa?.numero || mesa?.numero || mesaId;
+          
+          console.log('🚀 Disparando eventos para dashboard...', {
+            mesaId: mesaId,
+            numeroMesa: numeroMesaFechada,
+            comandaId: pagamentoData.comandaId || comandaId
+          });
+          
+          // 1. Evento principal que o dashboard já escuta
+          // Dentro de handleConfirmarPagamento
+          window.dispatchEvent(new CustomEvent('comanda-fechada', {
+            detail: { 
+              mesaId: mesa._id, // O ID do MongoDB
+              numeroMesa: mesa.numero // O número visível
+            }
+          }));
+          
+          // 2. Evento específico para fechamento
+          window.dispatchEvent(new CustomEvent('comanda-fechada', {
+            detail: { 
+              mesaId: mesaId,
+              numeroMesa: numeroMesaFechada,
+              comandaId: pagamentoData.comandaId || comandaId
+            }
+          }));
+          
+          // 3. Salvar no localStorage como backup
+          localStorage.setItem(`mesa_fechada_${mesaId}`, 
+            JSON.stringify({
+              mesaId: mesaId,
+              numeroMesa: numeroMesaFechada,
+              comandaId: pagamentoData.comandaId || comandaId,
+              timestamp: new Date().toISOString(),
+              action: 'fechar'
+            })
+          );
+          
+          console.log('✅ Eventos disparados e localStorage salvo');
+        }
+        
+        setTotalPago(totalComanda);
+        setMostrarModalPagamento(false);
+        
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1000);
+        
+      } else {
+        throw new Error(resultado.error || 'Erro ao fechar comanda');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Erro:', error);
+      alert(`❌ Erro: ${error.message}`);
+    }
   };
 
-  // Função para salvar pagamento parcial
   const handleSalvarParcial = (data: any) => {
     console.log('Pagamento parcial salvo:', data);
     const valorPago = data.pagadores
@@ -700,7 +984,6 @@ export default function ComandaPage() {
     alert(`Pagamento parcial salvo!\nR$ ${valorPago.toFixed(2)} já pagos\nR$ ${(totalComanda - valorPago).toFixed(2)} restantes`);
   };
 
-  // Função para atualizar comanda no MongoDB (para pagamento parcial)
   const handleAtualizarComanda = async (comandaId: string, dados: any) => {
     try {
       const response = await fetch(`/api/comandas/${comandaId}`, {
@@ -718,7 +1001,6 @@ export default function ComandaPage() {
     }
   };
 
-  // Lidar com confirmação do modal de adicionais
   const handleConfirmarAdicionais = async (
     produtoId: string, 
     adicionaisSelecionados: Array<{
@@ -732,20 +1014,17 @@ export default function ComandaPage() {
     const produto = produtosReais.find(p => p.id === produtoId);
     if (!produto) return;
     
-    // Calcular preço total com adicionais
     const precoAdicionais = adicionaisSelecionados.reduce((total, adicional) => 
       total + (adicional.precoUnitario * adicional.quantidade), 0);
     
     const precoTotal = produto.preco + precoAdicionais;
     
-    // Criar observação com os adicionais
     const observacao = adicionaisSelecionados.length > 0
       ? `Adicionais: ${adicionaisSelecionados.map(a => 
           `${a.nome}${a.quantidade > 1 ? ` (${a.quantidade}x)` : ''}`
         ).join(', ')}`
       : '';
     
-    // Se for edição, atualizar o item existente
     if (itemId && itemEditando) {
       const novoItem: ItemComanda = {
         id: itemId,
@@ -757,24 +1036,20 @@ export default function ComandaPage() {
         isNew: true
       };
       
-      // Encontrar onde está o item (salvo ou não salvo)
       const itemIndexSalvo = itensSalvos.findIndex(item => item.id === itemId);
       const itemIndexNaoSalvo = itensNaoSalvos.findIndex(item => item.id === itemId);
       
       if (itemIndexSalvo !== -1) {
-        // Atualizar em itensSalvos
         const novosItens = [...itensSalvos];
         novosItens[itemIndexSalvo] = novoItem;
         setItensSalvos(novosItens);
       } else if (itemIndexNaoSalvo !== -1) {
-        // Atualizar em itensNaoSalvos
         const novosItens = [...itensNaoSalvos];
         novosItens[itemIndexNaoSalvo] = novoItem;
         setItensNaoSalvos(novosItens);
       }
       
     } else {
-      // Se for novo item, criar normalmente
       const novoItem: ItemComanda = {
         id: Date.now() + Math.random(),
         produtoId,
@@ -797,16 +1072,13 @@ export default function ComandaPage() {
 
   // ========== FUNÇÕES DE APRESENTAÇÃO ==========
 
-  // Função auxiliar para encontrar a categoria correspondente no banco
   const encontrarCategoriaPorNome = (nomeCategoria: string) => {
     return categoriasReais.find(cat => 
       cat.nome.toLowerCase() === nomeCategoria.toLowerCase()
     );
   };
 
-  // Filtrar produtos
   const produtosFiltrados = produtosReais.filter(produto => {
-    // Encontrar a categoria correspondente no banco
     const categoriaProduto = encontrarCategoriaPorNome(produto.categoria);
     
     const categoriaProdutoId = categoriaProduto?.id || produto.categoria.toLowerCase().replace(/\s+/g, '-');
@@ -817,7 +1089,6 @@ export default function ComandaPage() {
     return passaCategoria && passaBusca;
   });
 
-  // Função para gerar o título baseado no preset
   const gerarTituloComanda = () => {
     if (!configSistema || !mesa) return `PDV - ${mesa?.nome || ''}`;
     
@@ -836,7 +1107,6 @@ export default function ComandaPage() {
     }
   };
 
-  // Função para gerar subtítulo
   const gerarSubtitulo = () => {
     if (!configSistema) return 'Sistema de atendimento';
     
@@ -866,12 +1136,9 @@ export default function ComandaPage() {
 
 return (
   <ComandaLayout>
-    {/* Layout: MENOS comanda, MAIS catálogo */}
     <div className="flex h-screen bg-white">
       
-      {/* ✅ Coluna esquerda - COMANDA (APENAS 30% da tela) */}
       <div className="w-1/3 flex flex-col h-full border-r border-gray-200">
-        {/* Comanda compacta */}
         <ComandaEsquerda
           mesa={mesa}
           itensSalvos={itensSalvos}
@@ -896,10 +1163,8 @@ return (
         />
       </div>
       
-      {/* ✅ Coluna direita - CATÁLOGO (70% da tela - MAIOR) */}
       <div className="w-2/3 flex flex-col h-full">
         
-        {/* ✅ CATÁLOGO MAIOR (mais espaço agora) */}
         <div className="flex-1 overflow-hidden">
           <CatalogoDireita
             produtos={produtosFiltrados}
@@ -909,12 +1174,10 @@ return (
             onSelecionarCategoria={setCategoriaAtiva}
             onBuscar={setBusca}
             onAdicionarProduto={adicionarItem}
-            // Passar função auxiliar para encontrar categoria
             encontrarCategoriaPorNome={encontrarCategoriaPorNome}
           />
         </div>
         
-        {/* BOTÃO DE SALVAR */}
         {modificado && (
   <div className="p-4 border-t border-gray-200 bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg">
     <div className="flex items-center justify-between">
@@ -956,7 +1219,8 @@ return (
       </div>
     </div>
 
-    {/* MODAL DE PAGAMENTO */}
+    
+
     {mostrarModalPagamento && (
       <PagamentoModal
         mesa={{
@@ -973,8 +1237,18 @@ return (
         onAtualizarComanda={handleAtualizarComanda}
       />
     )}
-
-    {/* MODAL DE ADICIONAIS */}
+    
+    {mostrarModalConfirmacaoFechar && (
+  <ModalConfirmacaoFechar
+    aberto={mostrarModalConfirmacaoFechar}
+    quantidadeItensNaoSalvos={calcularItensNaoSalvos().quantidade}
+    valorItensNaoSalvos={calcularItensNaoSalvos().valor}
+    onCancelar={handleCancelarFechar}
+    onSalvarEFechar={handleSalvarEFechar}
+    onFecharSemSalvar={handleFecharSemSalvar}
+  />
+)}
+    
     {mostrarModalAdicionais && produtoSelecionado && (
       <ModalAdicionais
         produto={produtoSelecionado}
