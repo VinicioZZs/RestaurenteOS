@@ -18,7 +18,7 @@ export async function GET(
     const db = client.db(DB_NAME);
     
     // Buscar mesa
-    const mesa = await db.collection('mesas').findOne({
+    const mesa = await db.collection('comandas').findOne({
       numero: numero.toString().padStart(2, '0')
     });
     

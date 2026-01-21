@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       condicoesBusca.push({ _id: new ObjectId(termo) });
     }
     
-    const mesa = await db.collection('mesas').findOne({
+    const mesa = await db.collection('comandas').findOne({
       $or: condicoesBusca
     });
     

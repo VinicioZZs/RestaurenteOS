@@ -1,9 +1,9 @@
-// /app/api/mesas/buscar/route.ts - VERSÃO CORRIGIDA
+// /app/api/mesas/buscar/route.ts - VERSÃO UNIFICADA (SÓ COMANDAS)
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const DB_NAME = 'restaurante'; // ← MUDE PARA 'restaurante' se estiver 'restaurante'
+const DB_NAME = 'restaurante';
 
 export async function GET(request: NextRequest) {
   const client = new MongoClient(MONGODB_URI);
@@ -13,77 +13,45 @@ export async function GET(request: NextRequest) {
     const termo = searchParams.get('termo') || '';
     
     if (!termo.trim()) {
-      return NextResponse.json(
-        { success: false, error: 'Termo de busca é obrigatório' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: true, data: [] });
     }
-    
+
     await client.connect();
-    const db = client.db(DB_NAME); // ← VAI LER DO BANCO CORRETO!
+    const db = client.db(DB_NAME);
     
-    console.log(`🔍 Buscando mesas no banco ${DB_NAME} com termo: "${termo}"`);
+    // 🔥 A MÁGICA: Normalizamos o termo que o usuário digitou.
+    // Se ele digitou "013", isso vira "13". Se digitou "1", vira "01".
+    const termoLimpo = parseInt(termo, 10).toString().padStart(2, '0');
+
+    console.log(`🔍 Buscando mesa exata: "${termoLimpo}"`);
     
-    // Buscar mesas que correspondam ao termo
-    const mesas = await db.collection('mesas')
+    const comandasEncontradas = await db.collection('comandas')
       .find({
         $or: [
-          { numero: { $regex: termo, $options: 'i' } },
-          { nome: { $regex: termo, $options: 'i' } }
+          { numeroMesa: termoLimpo }, // Busca o número já normalizado
+          { nomeMesa: { $regex: termo, $options: 'i' } } // Nome pode continuar flexível
         ]
       })
-      .sort({ numero: 1 })
       .toArray();
-    
-    // Buscar comandas abertas para calcular totais
-    const comandas = await db.collection('comandas')
-      .find({ status: 'aberta' })
-      .toArray();
-    
-    const mesasComTotais = mesas.map(mesa => {
-      const comanda = comandas.find(c => 
-        c.mesaId === mesa._id.toString() || 
-        c.numeroMesa === mesa.numero ||
-        c.numeroMesa === mesa.numero.toString().padStart(2, '0')
-      );
-      
-      const totalComanda = comanda?.itens?.reduce((sum: number, item: any) => 
-        sum + (item.precoUnitario * item.quantidade), 0) || 0;
-      
-      return {
-        _id: mesa._id.toString(),
-        numero: mesa.numero,
-        nome: mesa.nome,
-        totalComanda,
-        quantidadeItens: comanda?.itens?.length || 0,
-        atualizadoEm: comanda?.atualizadoEm || mesa.criadoEm || new Date(),
-        status: totalComanda > 0 ? 'ocupada' : 'livre'
-      };
-    });
-    
-    console.log(`✅ Encontradas ${mesasComTotais.length} mesas no banco ${DB_NAME}`);
+
+    const resultado = comandasEncontradas.map(comanda => ({
+      _id: comanda._id.toString(),
+      numero: comanda.numeroMesa || comanda.numero,
+      nome: comanda.nomeMesa || `Mesa ${comanda.numeroMesa}`,
+      totalComanda: comanda.total || 0,
+      quantidadeItens: comanda.itens?.length || 0,
+      atualizadoEm: comanda.atualizadoEm || new Date(),
+      status: 'ocupada' // Se está na coleção 'comandas', ela está ativa/ocupada
+    }));
     
     return NextResponse.json({
       success: true,
-      data: mesasComTotais,
-      debug: {
-        banco: DB_NAME,
-        termo,
-        totalEncontrado: mesasComTotais.length,
-        numerosEncontrados: mesasComTotais.map(m => m.numero)
-      }
+      data: resultado
     });
     
   } catch (error) {
-    console.error('❌ Erro ao buscar mesas:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Erro ao buscar mesas',
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      },
-      { status: 500 }
-    );
+    console.error('❌ Erro na busca:', error);
+    return NextResponse.json({ success: false, error: 'Erro interno' }, { status: 500 });
   } finally {
     await client.close();
   }

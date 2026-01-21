@@ -347,12 +347,12 @@ export default function ComandaEsquerda({
 <div className="p-4 border-t bg-white space-y-3 flex-shrink-0">
   {/* ✅ Botão FECHAR CONTA MAIOR */}
   <button
-    onClick={onMostrarModalPagamento || onFecharConta}
-    className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-lg shadow-lg"
-    disabled={todosItens.length === 0}
-  >
-    💳 FECHAR CONTA
-  </button>
+  onClick={onFecharConta}  // ← APENAS onFecharConta
+  className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-lg shadow-lg"
+  disabled={todosItens.length === 0}
+>
+  💳 FECHAR CONTA
+</button>
   
   {/* ✅ Grid com botões MAIORES */}
   <div className="grid grid-cols-2 gap-3">

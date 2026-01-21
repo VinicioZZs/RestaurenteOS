@@ -1,230 +1,100 @@
-// app/api/comandas/route.ts - VERSÃO CORRIGIDA COMPLETA
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const DB_NAME = 'restaurante';
 
+// BUSCAR COMANDAS (DASHBOARD)
 export async function GET(request: NextRequest) {
   const client = new MongoClient(MONGODB_URI);
-  
   try {
-    await client.connect();
-    const db = client.db(DB_NAME);
-    
     const { searchParams } = new URL(request.url);
     const mesaId = searchParams.get('mesaId');
-    
+    await client.connect();
+    const db = client.db(DB_NAME);
+
     if (!mesaId) {
-      return NextResponse.json(
-        { success: false, error: 'mesaId é obrigatório' },
-        { status: 400 }
-      );
-    }
-    
-    // Criar condições de busca flexíveis
-    const condicoesBusca: any[] = [
-      { numero: mesaId },
-      { numero: mesaId.toString().padStart(2, '0') }
-    ];
-    
-    // Se for ObjectId válido, adicionar essa condição também
+  // 🔥 Adicionamos o .sort({ numeroMesa: 1 }) para ordenar de 01 a 99
+  const comandas = await db.collection('comandas')
+    .find({})
+    .sort({ numeroMesa: 1 }) 
+    .toArray();
+  
+  return NextResponse.json({
+    success: true,
+    data: comandas.map(c => ({
+      _id: c._id.toString(),
+      numero: c.numeroMesa || c.numero, 
+      nome: c.nomeMesa || `Mesa ${c.numeroMesa}`,
+      totalComanda: c.total || 0,
+      quantidadeItens: c.itens?.length || 0,
+      atualizadoEm: c.atualizadoEm || c.criadoEm
+    }))
+  });
+}
+
+    // 🔥 FILTRO CORRIGIDO PARA TS:
+    const filtro: any = {
+      $or: [
+        { numeroMesa: mesaId },
+        { numeroMesa: mesaId.toString().padStart(2, '0') }
+      ]
+    };
+
     if (ObjectId.isValid(mesaId)) {
-      condicoesBusca.push({ _id: new ObjectId(mesaId) });
+      filtro.$or.push({ _id: new ObjectId(mesaId) });
     }
-    
-    // Buscar mesa
-    const mesa = await db.collection('mesas').findOne({
-      $or: condicoesBusca
-    });
-    
-    if (!mesa) {
-      return NextResponse.json({
-        success: true,
-        data: null,
-        message: 'Mesa não encontrada'
-      });
-    }
-    
-    // Buscar comanda usando o _id da mesa
-    const comanda = await db.collection('comandas').findOne({
-      mesaId: mesa._id.toString(),
-      status: 'aberta'
-    });
-    
-    if (!comanda) {
-      return NextResponse.json({
-        success: true,
-        data: null,
-        message: 'Nenhuma comanda aberta para esta mesa'
-      });
-    }
-    
-    return NextResponse.json({
-      success: true,
-      data: {
-        _id: comanda._id.toString(),
-        mesaId: comanda.mesaId,
-        numeroMesa: comanda.numeroMesa,
-        itens: comanda.itens || [],
-        total: comanda.total || 0,
-        status: comanda.status || 'aberta',
-        criadoEm: comanda.criadoEm,
-        atualizadoEm: comanda.atualizadoEm
-      }
-    });
-    
-  } catch (error) {
-    console.error('Erro ao buscar comanda:', error);
-    return NextResponse.json(
-      { success: false, error: 'Erro ao buscar comanda' },
-      { status: 500 }
-    );
+
+    const comanda = await db.collection('comandas').findOne(filtro);
+
+    // Retorna a comanda BRUTA para que os produtos apareçam (nome, preço, etc)
+    return NextResponse.json({ success: true, data: comanda });
   } finally {
     await client.close();
   }
 }
 
+// SALVAR ITENS (CORREÇÃO DO UNDEFINED)
 export async function POST(request: NextRequest) {
   const client = new MongoClient(MONGODB_URI);
-  
   try {
     const body = await request.json();
     
-    console.log('📥 Recebendo POST /api/comandas:', {
-      mesaId: body.mesaId,
-      numeroMesa: body.numeroMesa,
-      totalItens: body.itens?.length || 0
-    });
+    // 🔥 Pega o que vier: numeroMesa, mesaId ou numero
+    const identificador = body.numeroMesa || body.mesaId || body.numero;
     
-    if (!body.mesaId) {
-      return NextResponse.json(
-        { success: false, error: 'mesaId é obrigatório' },
-        { status: 400 }
-      );
-    }
-    
+    if (!identificador) throw new Error("Número da mesa não identificado");
+
     await client.connect();
     const db = client.db(DB_NAME);
-    
-    // Buscar mesa (com múltiplas condições)
-    const condicoesBusca: any[] = [
-      { numero: body.mesaId.toString() },
-      { numero: body.mesaId.toString().padStart(2, '0') }
-    ];
-    
-    // Se for ObjectId válido
-    if (ObjectId.isValid(body.mesaId)) {
-      condicoesBusca.push({ _id: new ObjectId(body.mesaId) });
-    }
-    
-    const mesa = await db.collection('mesas').findOne({
-      $or: condicoesBusca
-    });
-    
-    if (!mesa) {
-      console.log('❌ Mesa não encontrada:', body.mesaId);
-      return NextResponse.json(
-        { success: false, error: `Mesa ${body.mesaId} não encontrada` },
-        { status: 404 }
-      );
-    }
-    
-    const mesaId = mesa._id.toString();
-    const numeroMesa = mesa.numero.toString();
-    const agora = new Date();
-    
-    // Verificar se já existe comanda aberta
-    const comandaExistente = await db.collection('comandas').findOne({
-      mesaId: mesaId,
-      status: 'aberta'
-    });
-    
-    if (comandaExistente) {
-  console.log('⚠️ Comanda já existe, atualizando...', {
-    comandaId: comandaExistente._id.toString(),
-    mesaId,
-    numeroMesa
-  });
-  
-  // Atualizar comanda existente
-  const resultadoAtualizacao = await db.collection('comandas').updateOne(
-    { _id: comandaExistente._id },
-    {
-      $set: {
-        itens: body.itens || [],
-        total: body.total || 0,
-        atualizadoEm: agora,
-        status: 'aberta' // Garantir que continua aberta
-      }
-    }
-  );
-  
-  return NextResponse.json({
-    success: true,
-    data: {
-      _id: comandaExistente._id.toString(),
-      mesaId,
-      numeroMesa,
-      itens: body.itens || [],
-      total: body.total || 0,
-      status: 'aberta',
-      atualizadoEm: agora.toISOString()
-    },
-    message: 'Comanda atualizada com sucesso'
-  });
-}
-    
-    // Criar nova comanda
-    const novaComanda = {
-      mesaId: mesaId,
-      numeroMesa: numeroMesa,
-      itens: body.itens || [],
-      total: body.total || 0,
-      status: 'aberta',
-      criadoEm: agora,
-      atualizadoEm: agora,
-      totalPago: 0,
-      formasPagamento: []
-    };
-    
-    const resultado = await db.collection('comandas').insertOne(novaComanda);
-    
-    console.log('✅ Comanda criada:', {
-      comandaId: resultado.insertedId.toString(),
-      mesaId,
-      numeroMesa
-    });
-    
-    // Atualizar status da mesa
-    await db.collection('mesas').updateOne(
-      { _id: mesa._id },
+    const numeroFormatado = identificador.toString().padStart(2, '0');
+
+    // Atualiza a comanda. Se o campo no seu banco for 'numero', mude aqui.
+    const resultado = await db.collection('comandas').updateOne(
+      { 
+        $or: [
+          { numeroMesa: numeroFormatado },
+          { numero: numeroFormatado }
+        ]
+      },
       { 
         $set: { 
-          status: 'ocupada',
-          atualizadoEm: agora
+          itens: body.itens || [], 
+          total: body.total || 0, 
+          atualizadoEm: new Date() 
         } 
       }
     );
-    
-    return NextResponse.json({
-      success: true,
-      data: {
-        _id: resultado.insertedId.toString(),
-        ...novaComanda
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro ao salvar comanda:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Erro ao salvar comanda',
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      },
-      { status: 500 }
-    );
+
+    if (resultado.matchedCount === 0) {
+      return NextResponse.json({ success: false, error: "Comanda não encontrada no banco." }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: "Itens gravados no banco!" });
+
+  } catch (error: any) {
+    console.error('❌ Erro ao salvar:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   } finally {
     await client.close();
   }

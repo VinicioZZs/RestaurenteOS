@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const carregarStatusCaixa = async () => {
     try {
       setCarregandoCaixa(true);
-      const response = await fetch('/api/caixa/status');
+      const response = await fetch('/api/comandas?status=aberta');
       const data = await response.json();
       
       if (data.success) {
@@ -77,97 +77,60 @@ export default function DashboardPage() {
 
   // ========== FUNÇÕES ORIGINAIS DO DASHBOARD ==========
 
-  const carregarMesas = async (termoBusca?: string) => {
-  console.log('🔄 Carregando mesas...');
-  
+  const carregarMesas = async () => {
+  console.log('🔄 Carregando comandas para o dashboard...');
   try {
-    const url = termoBusca 
-      ? `/api/mesas?busca=${encodeURIComponent(termoBusca)}&t=${Date.now()}`
-      : `/api/mesas?t=${Date.now()}`;
-    
-    console.log('📡 URL da requisição:', url);
-    
-    const response = await fetch(url, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
-    });
-    
+    const response = await fetch('/api/comandas');
     const data = await response.json();
-    console.log('📦 Resposta da API:', data);
     
-    if (data.success) {
-      const mesasComComanda = data.data.filter((mesa: Mesa) => mesa.totalComanda > 0);
+    if (data.success && data.data) {
+      const comandas: any[] = data.data;
       
-      setMesas(mesasComComanda);
+      // Mapeia os dados do banco para o que o componente visual espera
+      const mesasFormatadas: Mesa[] = data.data.map((comanda: any) => ({
+        _id: comanda._id,
+        numero: comanda.numero, // O número da mesa
+        nome: comanda.nome,
+        totalComanda: comanda.totalComanda || 0, // 🔥 Aqui deve bater com o nome da API acima
+        quantidadeItens: comanda.quantidadeItens || 0,
+        atualizadoEm: comanda.atualizadoEm
+      }));
       
-      console.log('✅ Dashboard atualizado:', {
-        totalMesasAPI: data.data.length,
-        mesasComComanda: mesasComComanda.length
-      });
-    } else {
-      console.error('❌ Erro na API:', data.error);
-      setMesas([]);
+      setMesas(mesasFormatadas);
+      console.log(`✅ ${mesasFormatadas.length} mesas carregadas.`);
     }
   } catch (error) {
     console.error('❌ Erro ao carregar mesas:', error);
-    setMesas([]);
+  } finally {
+    setCarregando(false);
   }
 };
 
   const buscarMesa = async () => {
-  if (!busca.trim()) {
-    await carregarMesas();
-    setResultadoBusca([]);
-    return;
-  }
+  if (!busca.trim()) return;
   
   try {
-    // Normalizar o número para verificação
-    const buscaNormalizada = busca.trim().padStart(2, '0');
-    
     const response = await fetch(`/api/mesas/buscar?termo=${encodeURIComponent(busca)}`);
     const data = await response.json();
     
-    if (data.success) {
-      if (data.data && data.data.length > 0) {
-        setResultadoBusca(data.data);
-        
-        if (data.data.length === 1) {
-          const mesaEncontrada = data.data[0];
-          setMesaExistenteInfo(mesaEncontrada);
-          setMostrarModalMesaExistente(true);
-        } else {
-          setMesas(data.data);
-        }
+    if (data.success && data.data) {
+      const mesaEncontrada = data.data;
+
+      // SE A MESA EXISTE MAS ESTÁ LIVRE (Total 0), ENTRA DIRETO
+      if (mesaEncontrada.totalComanda === 0 || mesaEncontrada.status === 'livre') {
+        router.push(`/mesas/${mesaEncontrada.numero}`);
       } else {
-        // 🔥 AGORA: Verificar se existe mesa com número normalizado
-        const verificarMesaNormalizada = async () => {
-          const responseNormalizada = await fetch(`/api/mesas/buscar?termo=${encodeURIComponent(buscaNormalizada)}`);
-          const dataNormalizada = await responseNormalizada.json();
-          
-          if (dataNormalizada.success && dataNormalizada.data && dataNormalizada.data.length > 0) {
-            // Mesa existe com número normalizado
-            setMesaExistenteInfo(dataNormalizada.data[0]);
-            setMostrarModalMesaExistente(true);
-            return true;
-          }
-          return false;
-        };
-        
-        const mesaExisteComNormalizacao = await verificarMesaNormalizada();
-        
-        if (!mesaExisteComNormalizacao) {
-          // Só mostra modal de criação se realmente não existir
-          setMesaParaCriar(busca);
-          setMostrarModalNaoEncontrada(true);
-        }
+        // SE ESTIVER OCUPADA, MOSTRA O MODAL DE MESA EXISTENTE
+        setMesaExistenteInfo(mesaEncontrada);
+        setMostrarModalMesaExistente(true);
       }
+    } else {
+      // SE REALMENTE NÃO EXISTIR NO BANCO, PERGUNTA SE QUER CRIAR
+      setMesaParaCriar(busca);
+      setMostrarModalNaoEncontrada(true);
     }
   } catch (error) {
     console.error('Erro ao buscar mesa:', error);
-    await carregarMesas(busca);
   }
 };
 
@@ -397,16 +360,17 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    const carregarInicial = async () => {
-      setCarregando(true);
-      await carregarMesas();
-      setCarregando(false);
-    };
-    
-    if (caixaStatus === 'aberto') {
-      carregarInicial();
-    }
-  }, [caixaStatus]);
+  const carregarInicial = async () => {
+    setCarregando(true);
+    await carregarMesas();
+    setCarregando(false);
+  };
+  
+  // MUDANÇA: Se o status for undefined ou aberto, ele tenta carregar
+  if (caixaStatus === 'aberto' || caixaStatus === undefined) {
+    carregarInicial();
+  }
+}, [caixaStatus]);
 
   useEffect(() => {
   const handleComandaFechada = (event: CustomEvent) => {
@@ -423,7 +387,7 @@ export default function DashboardPage() {
     }));
 
     // Recarregar do banco para garantir sincronia total
-    setTimeout(() => carregarMesas(busca), 500);
+    setTimeout(() => carregarMesas(), 500);
   };
 
   window.addEventListener('comanda-fechada' as any, handleComandaFechada);
@@ -440,31 +404,6 @@ export default function DashboardPage() {
       });
     }
   }, []);
-
-  useEffect(() => {
-  const verificarMesasFechadasNoBanco = async () => {
-    try {
-      // Verificar no banco quais mesas realmente estão livres
-      const response = await fetch('/api/mesas/status-verificacao');
-      const data = await response.json();
-      
-      if (data.success && data.mesasLivres) {
-        // Remover mesas que estão livres no banco mas ainda aparecem no dashboard
-        setMesas(prev => prev.filter(mesa => 
-          !data.mesasLivres.includes(mesa.numero) && 
-          !data.mesasLivres.includes(mesa._id)
-        ));
-      }
-    } catch (error) {
-      console.error('Erro ao verificar status das mesas:', error);
-    }
-  };
-  
-  // Verificar a cada 3 segundos
-  const interval = setInterval(verificarMesasFechadasNoBanco, 3000);
-  
-  return () => clearInterval(interval);
-}, []);
 
 
   useEffect(() => {
@@ -498,7 +437,7 @@ export default function DashboardPage() {
     
     // Forçar recarregar do banco
     setTimeout(() => {
-      carregarMesas(busca);
+      carregarMesas;
       console.log('🔄 Recarregando mesas do banco...');
     }, 500);
   };
@@ -509,14 +448,14 @@ export default function DashboardPage() {
   return () => {
     window.removeEventListener('comanda-fechada' as any, handleComandaFechada);
   };
-}, [busca, carregarMesas]);
+}, [carregarMesas]);
 
 // ADICIONE ESTE useEffect PARA SINCRONIZAÇÃO ENTRE ABAS
 useEffect(() => {
   const handleStorageChange = (event: StorageEvent) => {
     if (event.key === 'sync_dashboard') {
       console.log('🔄 Sincronizando dashboard entre abas...');
-      carregarMesas(busca);
+      carregarMesas;
     }
     
     if (event.key?.startsWith('mesa_fechada_')) {
@@ -564,18 +503,18 @@ useEffect(() => {
   
   // Adicionar listeners
   window.addEventListener('storage', handleStorageChange);
-  window.addEventListener('dashboard-refresh', () => carregarMesas(busca));
+  window.addEventListener('dashboard-refresh', () => carregarMesas);
   
   return () => {
     window.removeEventListener('storage', handleStorageChange);
-    window.removeEventListener('dashboard-refresh', () => carregarMesas(busca));
+    window.removeEventListener('dashboard-refresh', () => carregarMesas);
   };
-}, [busca, carregarMesas]);
+}, [carregarMesas]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && caixaStatus === 'aberto') {
-        carregarMesas(busca);
+        carregarMesas;
       }
     };
     
@@ -584,7 +523,117 @@ useEffect(() => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [busca, caixaStatus]);
+  }, [caixaStatus]);
+
+  useEffect(() => {
+  // 🔥 LISTENER FORTE PARA COMANDA FECHADA
+  const handleComandaFechadaForte = (event: CustomEvent) => {
+    console.log('🔥🔥🔥 EVENTO COMANDA-FECHADA DETECTADO:', event.detail);
+    
+    const { 
+      comandaId, 
+      mesaId, 
+      numeroMesa, 
+      mesaNumero,
+      total,
+      mesaAtualizada,
+      source
+    } = event.detail || {};
+    
+    console.log('📦 Dados do evento:', {
+      comandaId,
+      mesaId,
+      numeroMesa,
+      mesaNumero,
+      total,
+      mesaAtualizada,
+      source
+    });
+    
+    // Determinar qual número usar para remover
+    const numeroParaRemover = mesaNumero || numeroMesa || mesaId;
+    
+    if (!numeroParaRemover) {
+      console.warn('⚠️ Evento sem número identificável');
+      return;
+    }
+    
+    console.log(`🗑️ REMOVENDO MESA: ${numeroParaRemover}`);
+    
+    // Remover MESMO SE O TOTAL NÃO FOR ZERO
+    setMesas(prev => {
+      const novasMesas = prev.filter(mesa => {
+        // Múltiplas formas de identificar a mesa
+        const deveRemover = 
+          mesa._id === mesaId ||
+          mesa.numero === numeroParaRemover ||
+          mesa.numero === numeroParaRemover.toString() ||
+          mesa.numero === numeroParaRemover.toString().padStart(2, '0') ||
+          mesa.numero === mesaId?.toString() ||
+          (mesaNumero && mesa.numero === mesaNumero) ||
+          (numeroMesa && mesa.numero === numeroMesa);
+        
+        if (deveRemover) {
+          console.log(`   🚫 Removendo mesa ${mesa.numero} (ID: ${mesa._id})`);
+        }
+        
+        return !deveRemover;
+      });
+      
+      console.log(`📊 Dashboard atualizado: ${prev.length} → ${novasMesas.length} mesas`);
+      return novasMesas;
+    });
+    
+    // 🔥 FORÇAR RECARREGAMENTO DO BANCO
+    console.log('🔄 Forçando recarregamento do banco...');
+    setTimeout(() => {
+      carregarMesas;
+    }, 300);
+    
+    // 🔥 SALVAR NO LOCALSTORAGE PARA EVITAR REAPARECIMENTO
+    if (typeof window !== 'undefined') {
+      const chave = `mesa_removida_${numeroParaRemover}_${Date.now()}`;
+      localStorage.setItem(chave, JSON.stringify({
+        mesaId,
+        numeroMesa,
+        mesaNumero,
+        removidoEm: new Date().toISOString(),
+        source: 'dashboard-listener'
+      }));
+    }
+  };
+  
+  // 🔥 LISTENER PARA EVENTO ALTERNATIVO
+  const handleMesaFechada = (event: CustomEvent) => {
+    console.log('🔥 EVENTO MESA-FECHADA:', event.detail);
+    
+    const { mesaId, numeroMesa, mesaNumero, action } = event.detail || {};
+    const numeroParaRemover = mesaNumero || numeroMesa;
+    
+    if (numeroParaRemover) {
+      console.log(`🗑️ Removendo via mesa-fechada: ${numeroParaRemover}`);
+      
+      setMesas(prev => prev.filter(mesa => 
+        mesa._id !== mesaId &&
+        mesa.numero !== numeroParaRemover &&
+        mesa.numero !== numeroParaRemover.toString().padStart(2, '0')
+      ));
+      
+      setTimeout(() => carregarMesas, 300);
+    }
+  };
+  
+  console.log('👂 Adicionando listeners fortes para eventos...');
+  
+  // Adicionar ambos listeners
+  window.addEventListener('comanda-fechada' as any, handleComandaFechadaForte);
+  window.addEventListener('mesa-fechada' as any, handleMesaFechada);
+  
+  return () => {
+    window.removeEventListener('comanda-fechada' as any, handleComandaFechadaForte);
+    window.removeEventListener('mesa-fechada' as any, handleMesaFechada);
+  };
+}, [carregando, carregarMesas]);
 
   useEffect(() => {
   const handleComandaAtualizada = (event: CustomEvent) => {
@@ -595,7 +644,7 @@ useEffect(() => {
     // 🔥 SE action for 'update', apenas recarregar, NÃO remover
     if (action === 'update') {
       console.log('🔄 Atualização normal da comanda, recarregando...');
-      carregarMesas(busca);
+      carregarMesas;
       return;
     }
     
@@ -613,12 +662,12 @@ useEffect(() => {
       });
       
       setTimeout(() => {
-        carregarMesas(busca);
+        carregarMesas;
       }, 300);
       
     } else {
       // Se não for zero, só recarregar normal
-      carregarMesas(busca);
+      carregarMesas;
     }
   };
   
@@ -627,13 +676,13 @@ useEffect(() => {
   return () => {
     window.removeEventListener('comanda-atualizada' as any, handleComandaAtualizada);
   };
-}, [busca, carregarMesas]);
+}, [carregarMesas]);
 
   
   useEffect(() => {
     const handleFocus = () => {
       if (caixaStatus === 'aberto') {
-        carregarMesas(busca);
+        carregarMesas;
       }
     };
     
@@ -642,7 +691,7 @@ useEffect(() => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [busca, caixaStatus]);
+  }, [caixaStatus]);
 
   
   useEffect(() => {
@@ -656,7 +705,7 @@ useEffect(() => {
       ));
       
       setTimeout(() => {
-        carregarMesas(busca);
+        carregarMesas;
       }, 500);
     };
 
@@ -672,7 +721,7 @@ useEffect(() => {
   
   // 2. Forçar recarregar do banco
   setTimeout(() => {
-    carregarMesas(busca);
+    carregarMesas;
     console.log('🔄 Forçando recarregamento do banco');
   }, 100);
   
@@ -779,20 +828,16 @@ window.addEventListener('comanda-fechada' as any, (event: CustomEvent) => {
     }
   };
 
-  const formatarTituloMesa = (mesa: Mesa) => {
-    if (!configSistema) return mesa.nome;
-    
-    switch(configSistema.presetComanda) {
-      case 'ficha':
-        return `Ficha #${mesa.numero}`;
-      case 'pedido':
-        return `Pedido #${mesa.numero}`;
-      case 'mesa':
-      case 'comanda':
-      default:
-        return mesa.nome;
-    }
-  };
+ const formatarTituloMesa = (mesa: Mesa) => {
+  // Se o configSistema não carregou ou o preset não existe, usa um padrão
+  const prefixo = configSistema?.presetComanda === 'ficha' ? 'Ficha' :
+                 configSistema?.presetComanda === 'pedido' ? 'Pedido' :
+                  configSistema?.presetComanda === 'comanda' ? 'Comanda' :
+                 configSistema?.presetComanda === 'mesa' ? 'Mesa' : 'Comanda';
+  
+  // 🔥 Se o mesa.nome estiver vazio, ele usa o número para não ficar '00'
+  return mesa.nome || `${prefixo} ${mesa.numero}`;
+};
 
   // ========== RENDERIZAÇÃO ==========
 
@@ -845,6 +890,25 @@ window.addEventListener('comanda-fechada' as any, (event: CustomEvent) => {
           </div>
         </div>
 
+            <div className="fixed bottom-4 left-4 z-50">
+  <button
+    onClick={async () => {
+      console.log('🔍 DEBUG: Verificando estado atual...');
+      console.log('📊 Mesas no estado:', mesas);
+      
+      // Testar endpoint
+      const response = await fetch('/api/comandas');
+      const data = await response.json();
+      console.log('📋 Comandas na API:', data);
+      
+      alert(`Mesas no dashboard: ${mesas.length}\nComandas na API: ${data.data?.length || 0}`);
+    }}
+    className="bg-purple-600 text-white px-3 py-2 rounded-lg shadow-lg text-sm"
+  >
+    🐛 Debug
+  </button>
+</div>
+
         <div className="max-w-2xl mx-auto mt-16">
           <div className="text-center mb-12">
             <div className="inline-block p-6 bg-gray-100 rounded-2xl mb-6">
@@ -855,7 +919,42 @@ window.addEventListener('comanda-fechada' as any, (event: CustomEvent) => {
               Para acessar as comandas, é necessário abrir o caixa primeiro.
             </p>
           </div>
-
+            {/* Adicione este botão na seção de cabeçalho, perto dos outros botões */}
+<button
+  onClick={async () => {
+    if (window.confirm('Limpar mesas que não tem comanda ativa?')) {
+      try {
+        // Buscar comandas abertas
+        const response = await fetch('/api/comandas?status=aberta');
+        const data = await response.json();
+        
+        if (data.success) {
+          const comandasAbertas = data.data || [];
+          const mesasComComanda = comandasAbertas.map((c: any) => 
+            c.numeroMesa || c.mesaId
+          );
+          
+          // Filtrar mesas que não tem comanda
+          setMesas(prev => prev.filter(mesa => 
+            mesasComComanda.some((num: string) => 
+              num === mesa.numero || 
+              num === mesa.numero.toString().padStart(2, '0') ||
+              num === mesa._id
+            )
+          ));
+          
+          alert(`Limpeza feita! ${mesas.length} → ${mesas.length} mesas`);
+        }
+      } catch (error) {
+        console.error('Erro na limpeza:', error);
+      }
+    }
+  }}
+  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+  title="Limpar mesas sem comanda"
+>
+  🧹 Limpar
+</button>
           {temPermissaoCaixa ? (
             <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
               <div className="text-center">
