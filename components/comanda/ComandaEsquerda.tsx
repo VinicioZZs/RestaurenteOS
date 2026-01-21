@@ -11,6 +11,9 @@ interface ItemComanda {
   precoUnitario: number;
   observacao: string;
   isNew?: boolean;
+  // 🔥 ADICIONE ESTAS DUAS LINHAS ABAIXO:
+  nome?: string;          
+  produtoNome?: string;   
   produto: {
     nome: string;
     categoria: string;
@@ -156,7 +159,10 @@ export default function ComandaEsquerda({
         <div className="p-3 border-b">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-bold text-gray-800">{mesa?.nome}</h2>
+              <h2 className="text-lg font-bold text-gray-800">
+                  {/* Chame a função obterTituloPreset que passaremos via Props ou crie ela aqui */}
+                  {mesa?.nome}
+                </h2>
               <p className="text-xs text-gray-500">
                 {todosItens.length} itens • R$ {totalComanda.toFixed(2)}
                 {modificado && (
@@ -212,9 +218,9 @@ export default function ComandaEsquerda({
                               >
                                 ✕
                               </button>
-                              <h3 className="font-medium text-gray-900 text-sm truncate" title={item.produto?.nome || 'Produto não encontrado'}>
-                              {item.produto?.nome || 'Produto não encontrado'}
-                            </h3>
+                              <h3 className="font-medium text-gray-900 text-sm truncate" title={item.produto?.nome || item.nome || item.produtoNome || 'Produto'}>
+                                  {item.produto?.nome || item.nome || item.produtoNome || 'Produto'}
+                                </h3>
                               {isNaoSalvo && (
                                 <span className="text-xs bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded flex-shrink-0">
                                   NOVO
@@ -362,19 +368,21 @@ export default function ComandaEsquerda({
       className="py-3.5 border-2 border-amber-500 bg-amber-50 text-amber-700 font-bold rounded-xl hover:bg-amber-100 text-base flex items-center justify-center gap-2 shadow-sm"
       disabled={todosItens.length === 0}
     >
-      <span className="text-xl">🗑️</span>
-      <span>Limpar Comanda</span>
-    </button>
+      <span>🗑️</span>
+    {/* 🔥 Muda dinamicamente: "Limpar Ficha", "Limpar Mesa", etc */}
+    <span>Limpar {mesa?.nome.split(' ')[0]}</span> 
+  </button>
     
     {/* Botão APAGAR MAIOR */}
     <button
       onClick={() => setModalApagarMesa(true)}
       className="py-3.5 border-2 border-red-500 bg-red-50 text-red-700 font-bold rounded-xl hover:bg-red-100 text-base flex items-center justify-center gap-2 shadow-sm"
     >
-      <span className="text-xl">❌</span>
-      <span>Apagar Mesa</span>
-    </button>
-  </div>
+      <span>❌</span>
+    {/* 🔥 Muda dinamicamente: "Apagar Ficha", "Apagar Mesa", etc */}
+    <span>Apagar {mesa?.nome.split(' ')[0]}</span>
+  </button>
+</div>
   
   {/* ✅ Botões secundários MAIORES */}
   <div className="flex gap-3 pt-2">

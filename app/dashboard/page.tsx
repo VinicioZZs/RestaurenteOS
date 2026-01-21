@@ -308,7 +308,7 @@ const obterTituloPreset = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         numero: numeroMesaNormalizado,
-        nome: `Mesa ${numeroMesaNormalizado}`
+        nome: `${obterTituloPreset()} ${numeroMesaNormalizado}`
       }),
     });
     
@@ -1149,7 +1149,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition w-full md:w-auto justify-center shadow-md hover:shadow-lg"
           >
             <Plus size={20} />
-            <span>Criar Nova Mesa</span>
+            <span>Criar {obterTituloPreset()}</span>
           </button>
         </div>
       </div>
@@ -1198,7 +1198,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
               <div className="bg-gray-200 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                 <span className="text-3xl">🍽️</span>
               </div>
-              <h3 className="text-xl font-bold text-gray-700 mb-2">Nenhuma mesa ativa</h3>
+              <h3 className="text-xl font-bold text-gray-700 mb-2">Nenhuma {obterTituloPreset()} ativa</h3>
               <p className="text-gray-600 mb-6">Crie sua primeira mesa!</p>
             </div>
           </div>
@@ -1213,15 +1213,15 @@ const formatarTituloMesa = (mesa: Mesa) => {
                 <AlertCircle className="h-8 w-8 text-yellow-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-800">Mesa não encontrada</h3>
-                <p className="text-gray-600 mt-1">Não existe uma mesa com o número/nome: <strong>{mesaParaCriar}</strong></p>
+                <h3 className="text-xl font-bold text-gray-800">{obterTituloPreset()} não encontrada</h3>
+                <p className="text-gray-600 mt-1">Não existe uma {obterTituloPreset()} com o número/nome: <strong>{mesaParaCriar}</strong></p>
               </div>
             </div>
-            
+
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <p className="text-gray-700">Deseja criar uma nova mesa com esse número?</p>
+              <p className="text-gray-700">Deseja criar uma nova {obterTituloPreset()} com esse número?</p>
               <div className="mt-2">
-                <p className="text-sm text-gray-600">Nome: <span className="font-medium">Mesa {mesaParaCriar.padStart(2, '0')}</span></p>
+                <p className="text-sm text-gray-600">Nome: <span className="font-medium">{obterTituloPreset()} {mesaParaCriar.padStart(2, '0')}</span></p>
                 <p className="text-sm text-gray-600">Número: <span className="font-medium">{mesaParaCriar}</span></p>
               </div>
             </div>
@@ -1256,8 +1256,8 @@ const formatarTituloMesa = (mesa: Mesa) => {
                 <AlertCircle className="h-8 w-8 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-800">Mesa já existe!</h3>
-                <p className="text-gray-600 mt-1">A mesa <strong>{mesaExistenteInfo.numero}</strong> já está cadastrada.</p>
+                <h3 className="text-xl font-bold text-gray-800">{obterTituloPreset()} já existe!</h3>
+                <p className="text-gray-600 mt-1">A {obterTituloPreset()} <strong>{mesaExistenteInfo.numero}</strong> já está cadastrada.</p>
               </div>
             </div>
             
@@ -1320,7 +1320,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Número da Mesa *
+                  Número da {obterTituloPreset()} *
                 </label>
                 <input
                   type="text"
@@ -1334,7 +1334,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome da Mesa (opcional)
+                  Nome da {obterTituloPreset()} (opcional)
                 </label>
                 <input
                   type="text"

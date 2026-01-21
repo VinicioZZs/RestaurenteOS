@@ -92,13 +92,14 @@ async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: Item
   
   try {
     const itensParaSalvar = itens.map(item => ({
-      produtoId: item.produtoId,
-      quantidade: item.quantidade,
-      precoUnitario: item.precoUnitario,
-      observacao: item.observacao,
-      nome: item.produto?.nome || 'Produto',
-      categoria: item.produto?.categoria || 'Geral'
-    }));
+  produtoId: item.produtoId,
+  quantidade: item.quantidade,
+  precoUnitario: item.precoUnitario,
+  observacao: item.observacao,
+  // 🔥 GARANTIA: Salva o nome real do produto no banco
+  nome: item.produto?.nome || item.produtoNome || 'Produto',
+  categoria: item.produto?.categoria || item.produtoCategoria || 'Geral'
+}));
     
     const numeroMesaParaEnviar = numeroMesa || mesaId;
     
@@ -246,52 +247,93 @@ export default function ComandaPage() {
   const [mostrarModalItensNaoSalvos, setMostrarModalItensNaoSalvos] = useState(false);
   const [salvandoParaFechar, setSalvandoParaFechar] = useState(false);
 
-  const obterTituloPreset = () => {
-  const preset = configSistema?.presetComanda || 'mesa';
-  const titulos: any = {
+ const obterTituloPreset = () => {
+  // Se ainda estiver carregando ou não achou a config, não retorna nada ou retorna um '...'
+  if (!configSistema) return '...'; 
+
+  const preset = configSistema.presetComanda || 'mesa';
+  const titulos: Record<string, string> = {
     comanda: 'Comanda',
     ficha: 'Ficha',
     mesa: 'Mesa',
     pedido: 'Pedido'
   };
+  
   return titulos[preset] || 'Mesa';
 };
 
-  const carregarDadosDaComanda = async () => {
+    const carregarDadosDaComanda = async () => {
   try {
-    // Usando mesaId (que é o params.id no seu código)
     const response = await fetch(`/api/comandas?mesaId=${mesaId}`);
     const resJson = await response.json();
 
     if (resJson.success && resJson.data) {
-      console.log("✅ Itens carregados do banco:", resJson.data.itens);
+      // 1. Atualizamos o cabeçalho original com o Preset configurado
+      // Isso faz o ComandaEsquerda ler "Ficha 01" ou "Pedido 01"
+      setMesa({
+        ...resJson.data,
+        nome: `${obterTituloPreset()} ${mesaId.padStart(2, '0')}`
+      });
+
+      // 2. Mapeamos os itens (seu código que já funciona)
+      const itensFormatados = resJson.data.itens.map((item: any) => ({
+        ...item,
+        id: item.id || Date.now() + Math.random(),
+        produto: item.produto || { 
+          nome: item.nome || item.produtoNome || "Produto",
+          preco: item.precoUnitario || 0 
+        }
+      }));
       
-      // Aqui está o segredo: colocar os itens do banco nos seus estados da tela
-      // No seu código os estados chamam itensSalvos e itensNaoSalvos
-      setItensSalvos(resJson.data.itens || []);
-      setItensNaoSalvos([]); // Novos itens começam vazios
+      setItensSalvos(itensFormatados);
+      setItensNaoSalvos([]);
       
-      if (resJson.data._id) {
-        setComandaId(resJson.data._id);
-      }
+      if (resJson.data._id) setComandaId(resJson.data._id);
     }
   } catch (error) {
     console.error("❌ Erro ao buscar dados da mesa:", error);
   }
 };
 
+  useEffect(() => {
   const carregarConfigs = async () => {
   try {
-    const response = await fetch('/api/configuracao/geral');
+    // 🔗 Usando a rota que o seu arquivo de configurações usa
+    const response = await fetch('/api/configuracoes'); 
     const data = await response.json();
-    if (data.success) {
-      setConfigSistema(data.data);
+    
+    if (data.success && data.data) {
+      setConfigSistema(data.data); // Agora ele vai achar o 'presetComanda'
     }
   } catch (error) {
-    console.error("Erro ao carregar preset:", error);
+    console.error("Erro ao carregar configurações:", error);
   }
 };
+
+  carregarConfigs();
+}, [mesaId]);
+
   // ========== USEFFECTS ==========
+
+    useEffect(() => {
+  if (configSistema && mesaId) {
+    const titulos: any = {
+      comanda: 'Comanda',
+      ficha: 'Ficha',
+      mesa: 'Mesa',
+      pedido: 'Pedido'
+    };
+    
+    const prefixo = titulos[configSistema.presetComanda] || 'Mesa';
+    const novoNome = `${prefixo} ${mesaId.padStart(2, '0')}`;
+    
+    // 🔥 Atualiza o estado da mesa para refletir no título e botões
+    setMesa((prev: any) => ({
+      ...prev,
+      nome: novoNome
+    }));
+  }
+}, [configSistema, mesaId]);
 
   useEffect(() => {
   if (mesaId) {
@@ -299,9 +341,6 @@ export default function ComandaPage() {
   }
 }, [mesaId]);
   
-useEffect(() => {
-  carregarConfigs();
-}, []);
 
   useEffect(() => {
     const verificarComandaExistente = async () => {
@@ -344,77 +383,46 @@ useEffect(() => {
 
   useEffect(() => {
     async function carregarComanda() {
-      setCarregando(true);
-      
-      try {
-        const produtosDB = await fetchProdutosReais();
-        setProdutosReais(produtosDB);
-        
-        const categoriasDB = await fetchCategoriasReais();
-        if (!categoriasDB.some((cat: any) => cat.id === 'todos')) {
-          categoriasDB.unshift({ id: 'todos', nome: 'Todos', icone: '📦' });
-        }
-        setCategoriasReais(categoriasDB);
-        
-        const response = await fetch(`/api/mesas/buscar-mesa?numero=${mesaId}`);
-        let mesaReal = null;
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data) {
-            mesaReal = data.data;
+  setCarregando(true);
+  try {
+    const produtosDB = await fetchProdutosReais();
+    setProdutosReais(produtosDB);
+    
+    // 🔥 FORÇA O NOME PADRONIZADO AQUI
+    const nomeComPreset = `${obterTituloPreset()} ${mesaId.padStart(2, '0')}`;
+    
+    const mesaFormatada = {
+      id: mesaId,
+      _id: mesaId,
+      numero: mesaId.padStart(2, '0'),
+      nome: nomeComPreset, // Título do topo
+      status: 'ocupada'
+    };
+    
+    setMesa(mesaFormatada);
+
+    const comandaDB = await fetchComanda(mesaId);
+    if (comandaDB) {
+      setComandaId(comandaDB._id);
+      const itensComProdutos = comandaDB.itens.map((item: any) => {
+        let produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
+        return {
+          ...item,
+          id: item.id || Date.now() + Math.random(),
+          produto: produtoEncontrado || {
+            nome: item.nome || item.produtoNome || "Produto",
+            preco: item.precoUnitario || 0
           }
-        }
-        
-        const mesa = mesaReal || {
-          id: mesaId,
-          _id: mesaId,
-          numero: mesaId.padStart(2, '0'),
-          nome: `Mesa ${mesaId.padStart(2, '0')}`,
-          status: 'ocupada',
-          capacidade: 4,
         };
-        
-        setMesa(mesa);
-        
-        const mesaIdParaBuscar = mesa._id || mesa.id || mesaId;
-        const comandaDB = await fetchComanda(mesaIdParaBuscar);
-        
-        if (comandaDB) {
-          setComandaId(comandaDB._id);
-          
-          const itensComProdutos = comandaDB.itens.map((item: any) => {
-            let produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
-            
-            if (!produtoEncontrado) {
-              produtoEncontrado = {
-                id: item.produtoId,
-                nome: item.nome || item.produtoNome || `Produto ${item.produtoId}`,
-                preco: item.precoUnitario || 0,
-                categoria: item.categoria || item.produtoCategoria || 'Sem categoria',
-                imagem: '/placeholder-product.jpg'
-              };
-            }
-            
-            return {
-              id: Date.now() + Math.random(),
-              produtoId: item.produtoId,
-              quantidade: item.quantidade,
-              precoUnitario: item.precoUnitario,
-              observacao: item.observacao || '',
-              produto: produtoEncontrado
-            };
-          });
-          
-          setItensSalvos(itensComProdutos);
-        }
-        
-      } catch (error) {
-        console.error('Erro ao carregar:', error);
-      } finally {
-        setCarregando(false);
-      }
+      });
+      setItensSalvos(itensComProdutos);
     }
+  } catch (error) {
+    console.error('Erro ao carregar:', error);
+  } finally {
+    setCarregando(false);
+  }
+}
     
     carregarComanda();
   }, [mesaId]);
