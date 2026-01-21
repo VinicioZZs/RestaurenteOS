@@ -77,8 +77,30 @@ export default function DashboardPage() {
 
   // ========== FUNÇÕES ORIGINAIS DO DASHBOARD ==========
 
+  const carregarConfigs = async () => {
+  try {
+    const response = await fetch('/api/configuracao/geral');
+    const data = await response.json();
+    if (data.success) {
+      setConfigSistema(data.data);
+    }
+  } catch (error) {
+    console.error("Erro ao carregar presets:", error);
+  }
+};
+
+const obterTituloPreset = () => {
+  const preset = configSistema?.presetComanda || 'mesa';
+  const titulos: any = {
+    comanda: 'Comanda',
+    ficha: 'Ficha',
+    mesa: 'Mesa',
+    pedido: 'Pedido'
+  };
+  return titulos[preset] || 'Mesa';
+};
+
   const carregarMesas = async () => {
-  console.log('🔄 Carregando comandas para o dashboard...');
   try {
     const response = await fetch('/api/comandas');
     const data = await response.json();
@@ -97,10 +119,8 @@ export default function DashboardPage() {
       }));
       
       setMesas(mesasFormatadas);
-      console.log(`✅ ${mesasFormatadas.length} mesas carregadas.`);
     }
   } catch (error) {
-    console.error('❌ Erro ao carregar mesas:', error);
   } finally {
     setCarregando(false);
   }
@@ -360,6 +380,10 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
+  carregarConfigs();
+}, []);
+
+  useEffect(() => {
   const carregarInicial = async () => {
     setCarregando(true);
     await carregarMesas();
@@ -438,7 +462,6 @@ export default function DashboardPage() {
     // Forçar recarregar do banco
     setTimeout(() => {
       carregarMesas;
-      console.log('🔄 Recarregando mesas do banco...');
     }, 500);
   };
   
@@ -643,7 +666,6 @@ useEffect(() => {
     
     // 🔥 SE action for 'update', apenas recarregar, NÃO remover
     if (action === 'update') {
-      console.log('🔄 Atualização normal da comanda, recarregando...');
       carregarMesas;
       return;
     }
@@ -828,15 +850,21 @@ window.addEventListener('comanda-fechada' as any, (event: CustomEvent) => {
     }
   };
 
- const formatarTituloMesa = (mesa: Mesa) => {
-  // Se o configSistema não carregou ou o preset não existe, usa um padrão
-  const prefixo = configSistema?.presetComanda === 'ficha' ? 'Ficha' :
-                 configSistema?.presetComanda === 'pedido' ? 'Pedido' :
-                  configSistema?.presetComanda === 'comanda' ? 'Comanda' :
-                 configSistema?.presetComanda === 'mesa' ? 'Mesa' : 'Comanda';
+const formatarTituloMesa = (mesa: Mesa) => {
+  // Pega o preset do banco ou usa 'Mesa' como padrão
+  const presetAtivo = configSistema?.presetComanda || 'mesa';
   
-  // 🔥 Se o mesa.nome estiver vazio, ele usa o número para não ficar '00'
-  return mesa.nome || `${prefixo} ${mesa.numero}`;
+  const titulos: Record<string, string> = {
+    comanda: 'Comanda',
+    ficha: 'Ficha',
+    mesa: 'Mesa',
+    pedido: 'Pedido'
+  };
+
+  const prefixo = titulos[presetAtivo] || 'Mesa';
+  
+  // Usa o número da mesa que já normalizamos (01, 13, etc)
+  return `${prefixo} ${mesa.numero}`;
 };
 
   // ========== RENDERIZAÇÃO ==========
@@ -1010,7 +1038,7 @@ window.addEventListener('comanda-fechada' as any, (event: CustomEvent) => {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando comandas...</p>
+          <p className="text-gray-600">Carregando {obterTituloPreset()}...</p>
         </div>
       </div>
     );

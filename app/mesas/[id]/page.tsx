@@ -246,6 +246,17 @@ export default function ComandaPage() {
   const [mostrarModalItensNaoSalvos, setMostrarModalItensNaoSalvos] = useState(false);
   const [salvandoParaFechar, setSalvandoParaFechar] = useState(false);
 
+  const obterTituloPreset = () => {
+  const preset = configSistema?.presetComanda || 'mesa';
+  const titulos: any = {
+    comanda: 'Comanda',
+    ficha: 'Ficha',
+    mesa: 'Mesa',
+    pedido: 'Pedido'
+  };
+  return titulos[preset] || 'Mesa';
+};
+
   const carregarDadosDaComanda = async () => {
   try {
     // Usando mesaId (que é o params.id no seu código)
@@ -269,6 +280,17 @@ export default function ComandaPage() {
   }
 };
 
+  const carregarConfigs = async () => {
+  try {
+    const response = await fetch('/api/configuracao/geral');
+    const data = await response.json();
+    if (data.success) {
+      setConfigSistema(data.data);
+    }
+  } catch (error) {
+    console.error("Erro ao carregar preset:", error);
+  }
+};
   // ========== USEFFECTS ==========
 
   useEffect(() => {
@@ -277,6 +299,10 @@ export default function ComandaPage() {
   }
 }, [mesaId]);
   
+useEffect(() => {
+  carregarConfigs();
+}, []);
+
   useEffect(() => {
     const verificarComandaExistente = async () => {
       if (!mesaId || carregando) return;
@@ -1114,7 +1140,7 @@ export default function ComandaPage() {
       <div className="flex items-center justify-center h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Carregando comanda da mesa {mesaId}...</p>
+          <p>Carregando {obterTituloPreset()} {mesaId}...</p>
         </div>
       </div>
     );
@@ -1209,7 +1235,7 @@ export default function ComandaPage() {
         <PagamentoModal
           mesa={{
             numero: mesa?.numero || mesaId,
-            nome: mesa?.nome || `Mesa ${mesaId}`
+            nome: mesa?.nome || `${obterTituloPreset()} ${mesaId}`
           }}
           itens={prepararItensParaPagamento()}
           total={totalComanda}
