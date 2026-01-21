@@ -1,52 +1,55 @@
+// app/page.tsx ou app/login/page.tsx
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { login } from '@/lib/auth';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
-  const [usuario, setUsuario] = useState('');
-  const [senha, setSenha] = useState('');
+  const [usuario, setUsuario] = useState('admin@restaurante.com');
+  const [senha, setSenha] = useState('123456');
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
     setCarregando(true);
     
-    if (!usuario || !senha) {
-      setErro('Preencha todos os campos');
-      setCarregando(false);
-      return;
-    }
-    
     try {
-      // Usar seu sistema de auth real
-      const result = await login(usuario, senha);
+      // 🔥 CHAMA DIRETAMENTE A API, não usa lib/auth
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: usuario, 
+          password: senha 
+        }),
+      });
       
-      if (result.user && result.token) {
-        // Salvar o token
-        localStorage.setItem('auth_token', result.token);
-        sessionStorage.setItem('auth_token', result.token);
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('✅ Login bem-sucedido:', data.user.name);
         
-        // Salvar dados do usuário separadamente (backup)
-        localStorage.setItem('usuario_nome', result.user.name);
-        localStorage.setItem('usuario_perfil', result.user.role);
-        localStorage.setItem('usuario_email', result.user.email);
+        // 🔥 Salva dados do usuário no localStorage
+        localStorage.setItem('usuario_nome', data.user.name);
+        localStorage.setItem('usuario_perfil', data.user.role);
+        localStorage.setItem('usuario_email', data.user.email);
         
-        console.log('✅ Login bem-sucedido:', result.user.name);
+        // 🔥 O COOKIE JÁ FOI SETADO PELA API
         
-        // Redirecionar para dashboard
-        router.push('/dashboard');
-        router.refresh(); // Forçar atualização
+        // Redireciona
+        window.location.href = callbackUrl; // 🔥 Usa window.location para recarregar
+        
       } else {
-        setErro('Usuário ou senha incorretos');
+        setErro(data.error || 'Usuário ou senha incorretos');
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      setErro('Erro ao fazer login');
+      setErro('Erro ao conectar com o servidor');
     } finally {
       setCarregando(false);
     }
@@ -60,14 +63,12 @@ export default function LoginPage() {
         </h1>
         <p className="text-center text-gray-300 mb-6">Sistema de Gestão</p>
         
-        {/* Mensagem de erro */}
         {erro && (
           <div className="mb-4 p-3 bg-red-500/20 border border-red-500/40 text-red-200 rounded-lg text-sm">
             ⚠️ {erro}
           </div>
         )}
         
-        {/* Informações de teste */}
         <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/40 text-blue-200 rounded-lg text-sm">
           <p className="font-medium mb-1">👨‍💻 Usuários para teste:</p>
           <div className="text-xs">
@@ -86,6 +87,7 @@ export default function LoginPage() {
               className="w-full p-3 rounded-lg bg-white/15 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
+              required
             />
           </div>
           
@@ -96,6 +98,7 @@ export default function LoginPage() {
               className="w-full p-3 rounded-lg bg-white/15 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
+              required
             />
           </div>
           
@@ -108,10 +111,8 @@ export default function LoginPage() {
           </button>
         </form>
         
-        {/* Botão de debug */}
         <button
           onClick={() => {
-            // Login rápido para debug
             setUsuario('admin@restaurante.com');
             setSenha('123456');
           }}
@@ -120,10 +121,18 @@ export default function LoginPage() {
           🧪 Preencher dados de teste
         </button>
         
-        {/* Debug info */}
-        <div className="mt-4 text-xs text-gray-400 text-center">
-          <p>Token salvo: {localStorage.getItem('auth_token') ? '✅' : '❌'}</p>
-        </div>
+        {/* Botão para testar auth */}
+        <button
+          onClick={async () => {
+            const res = await fetch('/api/test-auth');
+            const data = await res.json();
+            console.log('Teste Auth:', data);
+            alert(data.success ? '✅ Cookie OK!' : '❌ Sem cookie');
+          }}
+          className="mt-2 w-full py-2 text-sm bg-green-700 hover:bg-green-600 text-white rounded-lg transition"
+        >
+          🔒 Testar Autenticação
+        </button>
       </div>
     </div>
   );

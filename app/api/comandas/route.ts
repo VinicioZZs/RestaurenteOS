@@ -1,39 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MongoClient, ObjectId } from 'mongodb';
-
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const DB_NAME = 'restaurante';
+import { ObjectId } from 'mongodb';
+import { getDB } from '@/lib/mongodb';
 
 // BUSCAR COMANDAS (DASHBOARD)
 export async function GET(request: NextRequest) {
-  const client = new MongoClient(MONGODB_URI);
   try {
+    const db = await getDB();
+    if (!db) {
+      return NextResponse.json({ success: false, error: "Falha ao conectar ao banco de dados" }, { status: 500 });
+    }
+
     const { searchParams } = new URL(request.url);
     const mesaId = searchParams.get('mesaId');
-    await client.connect();
-    const db = client.db(DB_NAME);
 
     if (!mesaId) {
-  // 🔥 Adicionamos o .sort({ numeroMesa: 1 }) para ordenar de 01 a 99
-  const comandas = await db.collection('comandas')
-    .find({})
-    .sort({ numeroMesa: 1 }) 
-    .toArray();
-  
-  return NextResponse.json({
-    success: true,
-    data: comandas.map(c => ({
-      _id: c._id.toString(),
-      numero: c.numeroMesa || c.numero, 
-      nome: c.nomeMesa || `Mesa ${c.numeroMesa}`,
-      totalComanda: c.total || 0,
-      quantidadeItens: c.itens?.length || 0,
-      atualizadoEm: c.atualizadoEm || c.criadoEm
-    }))
-  });
-}
+      // 🔥 Ordenação de 01 a 99 garantida pelo singleton
+      const comandas = await db.collection('comandas')
+        .find({})
+        .sort({ numeroMesa: 1 }) 
+        .toArray();
+      
+      return NextResponse.json({
+        success: true,
+        data: comandas.map(c => ({
+          _id: c._id.toString(),
+          numero: c.numeroMesa || c.numero, 
+          nome: c.nomeMesa || `Mesa ${c.numeroMesa}`,
+          totalComanda: c.total || 0,
+          quantidadeItens: c.itens?.length || 0,
+          atualizadoEm: c.atualizadoEm || c.criadoEm
+        }))
+      });
+    }
 
-    // 🔥 FILTRO CORRIGIDO PARA TS:
+    // 🔥 FILTRO PARA TS USANDO A CONEXÃO COMPARTILHADA
     const filtro: any = {
       $or: [
         { numeroMesa: mesaId },
@@ -47,29 +47,28 @@ export async function GET(request: NextRequest) {
 
     const comanda = await db.collection('comandas').findOne(filtro);
 
-    // Retorna a comanda BRUTA para que os produtos apareçam (nome, preço, etc)
     return NextResponse.json({ success: true, data: comanda });
-  } finally {
-    await client.close();
+  } catch (error: any) {
+    console.error('❌ Erro no GET:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-// SALVAR ITENS (CORREÇÃO DO UNDEFINED)
+// SALVAR ITENS (CORREÇÃO DO POOL DE CONEXÕES)
 export async function POST(request: NextRequest) {
-  const client = new MongoClient(MONGODB_URI);
   try {
+    const db = await getDB();
+    if (!db) {
+      return NextResponse.json({ success: false, error: "Falha ao conectar ao banco de dados" }, { status: 500 });
+    }
+
     const body = await request.json();
-    
-    // 🔥 Pega o que vier: numeroMesa, mesaId ou numero
     const identificador = body.numeroMesa || body.mesaId || body.numero;
     
     if (!identificador) throw new Error("Número da mesa não identificado");
 
-    await client.connect();
-    const db = client.db(DB_NAME);
     const numeroFormatado = identificador.toString().padStart(2, '0');
 
-    // Atualiza a comanda. Se o campo no seu banco for 'numero', mude aqui.
     const resultado = await db.collection('comandas').updateOne(
       { 
         $or: [
@@ -95,7 +94,5 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Erro ao salvar:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  } finally {
-    await client.close();
   }
 }

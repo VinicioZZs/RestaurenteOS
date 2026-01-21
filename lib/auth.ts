@@ -1,4 +1,4 @@
-// lib/auth.ts - Verifique se está assim
+// lib/auth.ts - VERSÃO ATUALIZADA
 export interface User {
   id: number;
   email: string;
@@ -6,70 +6,77 @@ export interface User {
   role: 'admin' | 'garcom' | 'caixa';
 }
 
-const users: User[] = [
+const users = [
   { id: 1, email: 'admin@restaurante.com', name: 'Administrador', role: 'admin' },
   { id: 2, email: 'garcom@restaurante.com', name: 'João Garçom', role: 'garcom' },
   { id: 3, email: 'caixa@restaurante.com', name: 'Maria Caixa', role: 'caixa' },
 ];
 
-export async function login(email: string, password: string): Promise<{ user: User | null; token: string | null }> {
-  const user = users.find(u => u.email === email);
-  
-  if (user && password === '123456') {
-    const tokenData = { 
-      id: user.id, 
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      timestamp: Date.now()
-    };
-    const token = btoa(JSON.stringify(tokenData));
-    return { user, token };
+export async function login(email: string, password: string): Promise<{ user: User | null }> {
+  // 🔥 MUDEI: Agora chama a API real, não verificação local
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return { user: data.user };
+    }
+    
+    return { user: null };
+  } catch (error) {
+    console.error('Erro na API de login:', error);
+    return { user: null };
   }
-  
-  return { user: null, token: null };
 }
 
 export function logout(): void {
+  // Chama API de logout
+  fetch('/api/auth/logout', { method: 'POST' })
+    .catch(console.error);
+  
+  // Limpa frontend
   localStorage.removeItem('auth_token');
   sessionStorage.removeItem('auth_token');
   localStorage.removeItem('usuario_nome');
   localStorage.removeItem('usuario_perfil');
   localStorage.removeItem('usuario_email');
+  
+  // Redireciona
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
 }
 
 export function getCurrentUser(): User | null {
-  if (typeof window === 'undefined') return null;
-  
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
-  
-  if (token) {
-    try {
-      const decoded = JSON.parse(atob(token));
-      return users.find(u => u.id === decoded.id) || null;
-    } catch (error) {
-      console.error('Erro ao decodificar token:', error);
-      return null;
-    }
-  }
-  
-  // Fallback para dados separados
+  // Tenta pegar do localStorage (fallback)
   const nome = localStorage.getItem('usuario_nome');
   const role = localStorage.getItem('usuario_perfil') as User['role'];
   const email = localStorage.getItem('usuario_email');
   
   if (nome && role && email) {
-    return { id: Date.now(), name: nome, role, email };
+    return { 
+      id: Date.now(), 
+      name: nome, 
+      role, 
+      email 
+    };
   }
   
   return null;
 }
 
 export function isAuthenticated(): boolean {
-  return getCurrentUser() !== null;
+  // Verifica se tem token no cookie (isso o middleware verifica)
+  // Aqui só verificamos se temos dados no localStorage
+  return !!getCurrentUser();
 }
 
 export function hasRole(role: User['role']): boolean {
   const user = getCurrentUser();
   return user?.role === role || false;
-} 
+}
