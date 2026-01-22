@@ -1,4 +1,4 @@
-// app/mesas/[id]/page.tsx - VERSÃO COMPLETA CORRIGIDA
+// app/mesas/[id]/page.tsx - VERSÃO COMPLETA CORRIGIDA COM CATEGORIAS
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -92,14 +92,13 @@ async function salvarComandaNoDB(mesaId: string, numeroMesa: string, itens: Item
   
   try {
     const itensParaSalvar = itens.map(item => ({
-  produtoId: item.produtoId,
-  quantidade: item.quantidade,
-  precoUnitario: item.precoUnitario,
-  observacao: item.observacao,
-  // 🔥 GARANTIA: Salva o nome real do produto no banco
-  nome: item.produto?.nome || item.produtoNome || 'Produto',
-  categoria: item.produto?.categoria || item.produtoCategoria || 'Geral'
-}));
+      produtoId: item.produtoId,
+      quantidade: item.quantidade,
+      precoUnitario: item.precoUnitario,
+      observacao: item.observacao,
+      nome: item.produto?.nome || item.produtoNome || 'Produto',
+      categoria: item.produto?.categoria || item.produtoCategoria || 'Geral'
+    }));
     
     const numeroMesaParaEnviar = numeroMesa || mesaId;
     
@@ -190,30 +189,38 @@ async function fetchProdutosReais(): Promise<Produto[]> {
 async function fetchCategoriasReais() {
   try {
     const response = await fetch('/api/categorias?ativas=true');
-    if (!response.ok) throw new Error('Erro ao buscar categorias');
+    if (!response.ok) {
+      console.warn('⚠️ Erro ao buscar categorias da API');
+      return [];
+    }
     
     const data = await response.json();
     
-    if (data.success && data.data) {
-      return data.data.map((categoria: any) => ({
-        id: categoria._id.toString(),
-        nome: categoria.nome,
+    console.log('📊 Resposta da API categorias:', {
+      success: data.success,
+      quantidade: data.data?.length || 0
+    });
+    
+    if (data.success && data.data && Array.isArray(data.data)) {
+      // Mapear corretamente os dados
+      const categoriasMapeadas = data.data.map((categoria: any) => ({
+        id: categoria._id?.toString() || categoria.id || '',
+        nome: categoria.nome || 'Sem nome',
         descricao: categoria.descricao || '',
         icone: categoria.icone || '📦',
-        imagem: categoria.imagem,
-        usaImagem: categoria.usaImagem || false,
+        imagem: categoria.imagem || '',
+        usaImagem: Boolean(categoria.usaImagem),
         ordem: categoria.ordem || 999
-      }));
+      })).filter((cat: any) => cat.id); // Filtrar categorias sem ID
+      
+      console.log('✅ Categorias mapeadas:', categoriasMapeadas.length);
+      return categoriasMapeadas;
     }
+    
     return [];
   } catch (error) {
-    console.error('Erro ao buscar categorias:', error);
-    return [
-      { id: 'todos', nome: 'Todos', icone: '📦', usaImagem: false },
-      { id: 'bebidas', nome: 'Bebidas', icone: '🥤', usaImagem: false },
-      { id: 'lanches', nome: 'Lanches', icone: '🍔', usaImagem: false },
-      { id: 'acompanhamentos', nome: 'Acompanhamentos', icone: '🍟', usaImagem: false },
-    ];
+    console.error('❌ Erro ao buscar categorias:', error);
+    return [];
   }
 }
 
@@ -231,12 +238,12 @@ export default function ComandaPage() {
   const [itensNaoSalvos, setItensNaoSalvos] = useState<ItemComanda[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [totalPago, setTotalPago] = useState(0);
-  const [categoriaAtiva, setCategoriaAtiva] = useState('todos');
+  const [categoriaAtiva, setCategoriaAtiva] = useState('');
   const [busca, setBusca] = useState('');
   const [modificado, setModificado] = useState(false);
   const [comandaId, setComandaId] = useState<string>('');
   const [produtosReais, setProdutosReais] = useState<Produto[]>([]);
-  const [categoriasReais, setCategoriasReais] = useState([{ id: 'todos', nome: 'Todos', icone: '📦' }]);
+  const [categoriasReais, setCategoriasReais] = useState<any[]>([]);
   const [mostrarModalPagamento, setMostrarModalPagamento] = useState(false);
   const [mostrarModalAdicionais, setMostrarModalAdicionais] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
@@ -247,100 +254,134 @@ export default function ComandaPage() {
   const [mostrarModalItensNaoSalvos, setMostrarModalItensNaoSalvos] = useState(false);
   const [salvandoParaFechar, setSalvandoParaFechar] = useState(false);
 
- const obterTituloPreset = () => {
-  // Se ainda estiver carregando ou não achou a config, não retorna nada ou retorna um '...'
-  if (!configSistema) return '...'; 
-
-  const preset = configSistema.presetComanda || 'mesa';
-  const titulos: Record<string, string> = {
-    comanda: 'Comanda',
-    ficha: 'Ficha',
-    mesa: 'Mesa',
-    pedido: 'Pedido'
-  };
-  
-  return titulos[preset] || 'Mesa';
-};
-
-    const carregarDadosDaComanda = async () => {
-  try {
-    const response = await fetch(`/api/comandas?mesaId=${mesaId}`);
-    const resJson = await response.json();
-
-    if (resJson.success && resJson.data) {
-      // 1. Atualizamos o cabeçalho original com o Preset configurado
-      // Isso faz o ComandaEsquerda ler "Ficha 01" ou "Pedido 01"
-      setMesa({
-        ...resJson.data,
-        nome: `${obterTituloPreset()} ${mesaId.padStart(2, '0')}`
-      });
-
-      // 2. Mapeamos os itens (seu código que já funciona)
-      const itensFormatados = resJson.data.itens.map((item: any) => ({
-        ...item,
-        id: item.id || Date.now() + Math.random(),
-        produto: item.produto || { 
-          nome: item.nome || item.produtoNome || "Produto",
-          preco: item.precoUnitario || 0 
-        }
-      }));
-      
-      setItensSalvos(itensFormatados);
-      setItensNaoSalvos([]);
-      
-      if (resJson.data._id) setComandaId(resJson.data._id);
-    }
-  } catch (error) {
-    console.error("❌ Erro ao buscar dados da mesa:", error);
-  }
-};
-
-  useEffect(() => {
-  const carregarConfigs = async () => {
-  try {
-    // 🔗 Usando a rota que o seu arquivo de configurações usa
-    const response = await fetch('/api/configuracoes'); 
-    const data = await response.json();
+  const obterTituloPreset = () => {
+    if (!configSistema) return '...'; 
     
-    if (data.success && data.data) {
-      setConfigSistema(data.data); // Agora ele vai achar o 'presetComanda'
-    }
-  } catch (error) {
-    console.error("Erro ao carregar configurações:", error);
-  }
-};
-
-  carregarConfigs();
-}, [mesaId]);
-
-  // ========== USEFFECTS ==========
-
-    useEffect(() => {
-  if (configSistema && mesaId) {
-    const titulos: any = {
+    const preset = configSistema.presetComanda || 'mesa';
+    const titulos: Record<string, string> = {
       comanda: 'Comanda',
       ficha: 'Ficha',
       mesa: 'Mesa',
       pedido: 'Pedido'
     };
     
-    const prefixo = titulos[configSistema.presetComanda] || 'Mesa';
-    const novoNome = `${prefixo} ${mesaId.padStart(2, '0')}`;
+    return titulos[preset] || 'Mesa';
+  };
+
+  const carregarDadosDaComanda = async () => {
+    try {
+      const response = await fetch(`/api/comandas?mesaId=${mesaId}`);
+      const resJson = await response.json();
+      
+      if (resJson.success && resJson.data) {
+        setMesa({
+          ...resJson.data,
+          nome: `${obterTituloPreset()} ${mesaId.padStart(2, '0')}`
+        });
+        
+        const itensFormatados = resJson.data.itens.map((item: any) => ({
+          ...item,
+          id: item.id || Date.now() + Math.random(),
+          produto: item.produto || { 
+            nome: item.nome || item.produtoNome || "Produto",
+            preco: item.precoUnitario || 0 
+          }
+        }));
+        
+        setItensSalvos(itensFormatados);
+        setItensNaoSalvos([]);
+        
+        if (resJson.data._id) setComandaId(resJson.data._id);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao buscar dados da mesa:", error);
+    }
+  };
+
+  // ========== USEFFECTS ==========
+
+  // 🔥 USEEFFECT PARA CARREGAR CATEGORIAS (FALTAVA ESTE!)
+  useEffect(() => {
+    async function carregarCategorias() {
+      console.log('🔄 Carregando categorias...');
+      try {
+        const categoriasCarregadas = await fetchCategoriasReais();
+        console.log('✅ Categorias carregadas:', categoriasCarregadas.length);
+        
+        if (categoriasCarregadas.length > 0) {
+          // Ordenar por ordem (menor primeiro)
+          const categoriasOrdenadas = [...categoriasCarregadas].sort((a, b) => {
+            return (a.ordem || 999) - (b.ordem || 999);
+          });
+          
+          setCategoriasReais(categoriasOrdenadas);
+          
+          // AUTO-SELECIONA PRIMEIRA CATEGORIA REAL (não "todos")
+          const primeiraCategoriaReal = categoriasOrdenadas[0];
+          if (primeiraCategoriaReal && primeiraCategoriaReal.id) {
+            setCategoriaAtiva(primeiraCategoriaReal.id);
+            console.log('🎯 Primeira categoria selecionada:', primeiraCategoriaReal.nome);
+          }
+        } else {
+          console.warn('⚠️ Nenhuma categoria carregada, usando fallback');
+          const categoriasFallback = [
+            { id: 'bebidas', nome: 'Bebidas', icone: '🥤', usaImagem: false, ordem: 1 },
+            { id: 'lanches', nome: 'Lanches', icone: '🍔', usaImagem: false, ordem: 2 },
+            { id: 'acompanhamentos', nome: 'Acompanhamentos', icone: '🍟', usaImagem: false, ordem: 3 },
+            { id: 'sobremesas', nome: 'Sobremesas', icone: '🍰', usaImagem: false, ordem: 4 },
+          ];
+          setCategoriasReais(categoriasFallback);
+          setCategoriaAtiva('bebidas');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar categorias:', error);
+      }
+    }
     
-    // 🔥 Atualiza o estado da mesa para refletir no título e botões
-    setMesa((prev: any) => ({
-      ...prev,
-      nome: novoNome
-    }));
-  }
-}, [configSistema, mesaId]);
+    carregarCategorias();
+  }, []); // Executa apenas uma vez ao montar o componente
 
   useEffect(() => {
-  if (mesaId) {
-    carregarDadosDaComanda();
-  }
-}, [mesaId]);
-  
+    const carregarConfigs = async () => {
+      try {
+        const response = await fetch('/api/configuracoes'); 
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          setConfigSistema(data.data);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar configurações:", error);
+      }
+    };
+    
+    carregarConfigs();
+  }, [mesaId]);
+
+  useEffect(() => {
+    if (configSistema && mesaId) {
+      const titulos: any = {
+        comanda: 'Comanda',
+        ficha: 'Ficha',
+        mesa: 'Mesa',
+        pedido: 'Pedido'
+      };
+      
+      const prefixo = titulos[configSistema.presetComanda] || 'Mesa';
+      const novoNome = `${prefixo} ${mesaId.padStart(2, '0')}`;
+      
+      setMesa((prev: any) => ({
+        ...prev,
+        nome: novoNome
+      }));
+    }
+  }, [configSistema, mesaId]);
+
+  useEffect(() => {
+    if (mesaId) {
+      carregarDadosDaComanda();
+    }
+  }, [mesaId]);
 
   useEffect(() => {
     const verificarComandaExistente = async () => {
@@ -383,46 +424,45 @@ export default function ComandaPage() {
 
   useEffect(() => {
     async function carregarComanda() {
-  setCarregando(true);
-  try {
-    const produtosDB = await fetchProdutosReais();
-    setProdutosReais(produtosDB);
-    
-    // 🔥 FORÇA O NOME PADRONIZADO AQUI
-    const nomeComPreset = `${obterTituloPreset()} ${mesaId.padStart(2, '0')}`;
-    
-    const mesaFormatada = {
-      id: mesaId,
-      _id: mesaId,
-      numero: mesaId.padStart(2, '0'),
-      nome: nomeComPreset, // Título do topo
-      status: 'ocupada'
-    };
-    
-    setMesa(mesaFormatada);
-
-    const comandaDB = await fetchComanda(mesaId);
-    if (comandaDB) {
-      setComandaId(comandaDB._id);
-      const itensComProdutos = comandaDB.itens.map((item: any) => {
-        let produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
-        return {
-          ...item,
-          id: item.id || Date.now() + Math.random(),
-          produto: produtoEncontrado || {
-            nome: item.nome || item.produtoNome || "Produto",
-            preco: item.precoUnitario || 0
-          }
+      setCarregando(true);
+      try {
+        const produtosDB = await fetchProdutosReais();
+        setProdutosReais(produtosDB);
+        
+        const nomeComPreset = `${obterTituloPreset()} ${mesaId.padStart(2, '0')}`;
+        
+        const mesaFormatada = {
+          id: mesaId,
+          _id: mesaId,
+          numero: mesaId.padStart(2, '0'),
+          nome: nomeComPreset,
+          status: 'ocupada'
         };
-      });
-      setItensSalvos(itensComProdutos);
+        
+        setMesa(mesaFormatada);
+        
+        const comandaDB = await fetchComanda(mesaId);
+        if (comandaDB) {
+          setComandaId(comandaDB._id);
+          const itensComProdutos = comandaDB.itens.map((item: any) => {
+            let produtoEncontrado = produtosDB.find(p => p.id === item.produtoId);
+            return {
+              ...item,
+              id: item.id || Date.now() + Math.random(),
+              produto: produtoEncontrado || {
+                nome: item.nome || item.produtoNome || "Produto",
+                preco: item.precoUnitario || 0
+              }
+            };
+          });
+          setItensSalvos(itensComProdutos);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar:', error);
+      } finally {
+        setCarregando(false);
+      }
     }
-  } catch (error) {
-    console.error('Erro ao carregar:', error);
-  } finally {
-    setCarregando(false);
-  }
-}
     
     carregarComanda();
   }, [mesaId]);
@@ -457,13 +497,16 @@ export default function ComandaPage() {
   // Debug dos estados
   useEffect(() => {
     console.log('📊 DEBUG - Estados atuais:', {
+      categoriasReais: categoriasReais.length,
+      categoriaAtiva,
+      produtosReais: produtosReais.length,
       mostrarModalItensNaoSalvos,
       mostrarModalPagamento,
       itensNaoSalvos: itensNaoSalvos.length,
       modificado,
       salvandoParaFechar
     });
-  }, [mostrarModalItensNaoSalvos, mostrarModalPagamento, itensNaoSalvos, modificado, salvandoParaFechar]);
+  }, [categoriasReais, categoriaAtiva, produtosReais, mostrarModalItensNaoSalvos, mostrarModalPagamento, itensNaoSalvos, modificado, salvandoParaFechar]);
 
   // ========== FUNÇÕES AUXILIARES ==========
   
@@ -608,110 +651,108 @@ export default function ComandaPage() {
   };
 
   const salvarItens = async (retornarAoDashboard = false): Promise<boolean> => {
-  if (itensNaoSalvos.length === 0 && !modificado) {
-    console.log('📭 Nenhuma alteração para salvar');
-    if (retornarAoDashboard) {
-      // Se não tem alterações mas quer voltar, apenas volta
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 300);
-      return true;
-    }
-    return true;
-  }
-  
-  console.log('💾 Iniciando salvamento da comanda...');
-  
-  try {
-    const todosItensParaProcessar = [...itensSalvos, ...itensNaoSalvos];
-    
-    const itensAgrupados = new Map();
-    
-    todosItensParaProcessar.forEach(item => {
-      const chave = `${item.produtoId}-${item.observacao || 'sem-obs'}`;
-      
-      if (itensAgrupados.has(chave)) {
-        const existente = itensAgrupados.get(chave);
-        existente.quantidade += item.quantidade;
-      } else {
-        itensAgrupados.set(chave, {
-          ...item,
-          id: Date.now() + Math.random()
-        });
-      }
-    });
-    
-    const itensParaSalvar = Array.from(itensAgrupados.values());
-    const totalAgrupado = itensParaSalvar.reduce((sum, item) => 
-      sum + (item.precoUnitario * item.quantidade), 0
-    );
-    
-    const numeroMesaParaSalvar = mesa?.numero || mesaId;
-    
-    const resultado = await salvarComandaNoDB(
-      mesaId,
-      numeroMesaParaSalvar,
-      itensParaSalvar,
-      totalAgrupado
-    );
-    
-    if (resultado.success) {
-      console.log('✅ Comanda salva com sucesso');
-      
-      setItensSalvos(itensParaSalvar);
-      setItensNaoSalvos([]);
-      setModificado(false);
-      
-      if (resultado.data?._id) {
-        setComandaId(resultado.data._id);
-      }
-      
-      // Disparar evento para atualizar dashboard
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('comanda-atualizada', {
-          detail: { 
-            mesaId, 
-            numeroMesa: numeroMesaParaSalvar,
-            total: totalAgrupado,
-            quantidadeItens: itensParaSalvar.length,
-            action: 'update'
-          }
-        }));
-        
-        localStorage.setItem(`comanda_atualizada_${mesaId}`, 
-          JSON.stringify({
-            total: totalAgrupado,
-            quantidadeItens: itensParaSalvar.length,
-            timestamp: new Date().toISOString(),
-            action: 'update'
-          })
-        );
-      }
-      
-      // Se for para retornar ao dashboard, redireciona
+    if (itensNaoSalvos.length === 0 && !modificado) {
+      console.log('📭 Nenhuma alteração para salvar');
       if (retornarAoDashboard) {
         setTimeout(() => {
-          alert('✅ Comanda salva com sucesso! Voltando ao dashboard...');
           router.push('/dashboard');
-        }, 500);
-      } else {
-        alert('✅ Comanda salva com sucesso!');
+        }, 300);
+        return true;
       }
-      
       return true;
-      
-    } else {
-      // Tratamento de erro...
-      alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
-      return false;
     }
     
-  } catch (error) {
-    console.error('❌ Erro completo ao salvar itens:', error);
-    alert('Erro ao salvar itens: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
-    return false;
-  }
-};
+    console.log('💾 Iniciando salvamento da comanda...');
+    
+    try {
+      const todosItensParaProcessar = [...itensSalvos, ...itensNaoSalvos];
+      
+      const itensAgrupados = new Map();
+      
+      todosItensParaProcessar.forEach(item => {
+        const chave = `${item.produtoId}-${item.observacao || 'sem-obs'}`;
+        
+        if (itensAgrupados.has(chave)) {
+          const existente = itensAgrupados.get(chave);
+          existente.quantidade += item.quantidade;
+        } else {
+          itensAgrupados.set(chave, {
+            ...item,
+            id: Date.now() + Math.random()
+          });
+        }
+      });
+      
+      const itensParaSalvar = Array.from(itensAgrupados.values());
+      const totalAgrupado = itensParaSalvar.reduce((sum, item) => 
+        sum + (item.precoUnitario * item.quantidade), 0
+      );
+      
+      const numeroMesaParaSalvar = mesa?.numero || mesaId;
+      
+      const resultado = await salvarComandaNoDB(
+        mesaId,
+        numeroMesaParaSalvar,
+        itensParaSalvar,
+        totalAgrupado
+      );
+      
+      if (resultado.success) {
+        console.log('✅ Comanda salva com sucesso');
+        
+        setItensSalvos(itensParaSalvar);
+        setItensNaoSalvos([]);
+        setModificado(false);
+        
+        if (resultado.data?._id) {
+          setComandaId(resultado.data._id);
+        }
+        
+        // Disparar evento para atualizar dashboard
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('comanda-atualizada', {
+            detail: { 
+              mesaId, 
+              numeroMesa: numeroMesaParaSalvar,
+              total: totalAgrupado,
+              quantidadeItens: itensParaSalvar.length,
+              action: 'update'
+            }
+          }));
+          
+          localStorage.setItem(`comanda_atualizada_${mesaId}`, 
+            JSON.stringify({
+              total: totalAgrupado,
+              quantidadeItens: itensParaSalvar.length,
+              timestamp: new Date().toISOString(),
+              action: 'update'
+            })
+          );
+        }
+        
+        // Se for para retornar ao dashboard, redireciona
+        if (retornarAoDashboard) {
+          setTimeout(() => {
+            alert('✅ Comanda salva com sucesso! Voltando ao dashboard...');
+            router.push('/dashboard');
+          }, 500);
+        } else {
+          alert('✅ Comanda salva com sucesso!');
+        }
+        
+        return true;
+        
+      } else {
+        alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
+        return false;
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro completo ao salvar itens:', error);
+      alert('Erro ao salvar itens: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+      return false;
+    }
+  };
 
   const descartarAlteracoes = () => {
     if (!modificado && itensNaoSalvos.length === 0) return;
@@ -906,107 +947,98 @@ export default function ComandaPage() {
   };
 
   const handleConfirmarPagamento = async (pagamentoData: any) => {
-  console.log('✅ Pagamento confirmado, fechando comanda...', pagamentoData);
-  
-  try {
-    // SALVAR ITENS ANTES DE FECHAR (se houver não salvos)
-    if (modificado || itensNaoSalvos.length > 0) {
-      console.log('💾 Salvando itens antes de fechar...');
-      await salvarItens();
-    }
+    console.log('✅ Pagamento confirmado, fechando comanda...', pagamentoData);
     
-    const todosPagadoresPagos = pagamentoData.pagadores.every((p: any) => p.pago);
-    
-    // Se pagamento parcial, salvar mas não fechar comanda
-    if (!todosPagadoresPagos) {
-      console.log('🔄 Pagamento parcial, salvando estado...');
-      
-      // Aqui você pode salvar o estado do pagamento parcial
-      // Mas a comanda continua aberta
-      setTotalPago(
-        pagamentoData.pagadores
-          .filter((p: any) => p.pago)
-          .reduce((sum: number, p: any) => sum + p.total, 0)
-      );
-      
-      alert('✅ Pagamento parcial registrado! A comanda continua aberta.');
-      setMostrarModalPagamento(false);
-      return;
-    }
-    
-    // SE TODOS PAGARAM - FECHAR COMANDA COMPLETAMENTE
-    console.log('🔒 Fechando comanda totalmente...');
-    
-    const numeroMesaParaFechar = mesa?.numero || mesaId;
-    
-    // Usar o novo endpoint simplificado
-    const response = await fetch('/api/comandas/fechar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        comandaId: comandaId || pagamentoData.comandaId,
-        mesaId: mesa?._id || mesaId,
-        numeroMesa: numeroMesaParaFechar,
-        dados: pagamentoData
-      })
-    });
-    
-    const resultado = await response.json();
-    
-    if (resultado.success) {
-      console.log('✅ Comanda fechada com sucesso:', resultado);
-      
-      // DISPARAR EVENTOS PARA ATUALIZAR DASHBOARD
-      if (typeof window !== 'undefined') {
-        // Evento para dashboard atualizar em tempo real
-        window.dispatchEvent(new CustomEvent('comanda-fechada', {
-          detail: { 
-            mesaId: mesa?._id || mesaId,
-            numeroMesa: numeroMesaParaFechar,
-            comandaId: comandaId,
-            timestamp: new Date().toISOString()
-          }
-        }));
-        
-        // Também em localStorage como fallback
-        localStorage.setItem(`mesa_fechada_${mesaId}`, 
-          JSON.stringify({
-            mesaId: mesa?._id || mesaId,
-            numeroMesa: numeroMesaParaFechar,
-            comandaId: comandaId,
-            timestamp: new Date().toISOString(),
-            action: 'fechar'
-          })
-        );
+    try {
+      // SALVAR ITENS ANTES DE FECHAR (se houver não salvos)
+      if (modificado || itensNaoSalvos.length > 0) {
+        console.log('💾 Salvando itens antes de fechar...');
+        await salvarItens();
       }
       
-      // Mensagem de sucesso
-      alert(`✅ Comanda fechada com sucesso!\nTotal: R$ ${pagamentoData.total?.toFixed(2) || totalComanda.toFixed(2)}`);
+      const todosPagadoresPagos = pagamentoData.pagadores.every((p: any) => p.pago);
       
-      // Resetar estados locais
-      setItensSalvos([]);
-      setItensNaoSalvos([]);
-      setTotalPago(0);
-      setModificado(false);
-      setComandaId('');
+      // Se pagamento parcial, salvar mas não fechar comanda
+      if (!todosPagadoresPagos) {
+        console.log('🔄 Pagamento parcial, salvando estado...');
+        
+        setTotalPago(
+          pagamentoData.pagadores
+            .filter((p: any) => p.pago)
+            .reduce((sum: number, p: any) => sum + p.total, 0)
+        );
+        
+        alert('✅ Pagamento parcial registrado! A comanda continua aberta.');
+        setMostrarModalPagamento(false);
+        return;
+      }
       
-      // Fechar modal e redirecionar
-      setMostrarModalPagamento(false);
+      // SE TODOS PAGARAM - FECHAR COMANDA COMPLETAMENTE
+      console.log('🔒 Fechando comanda totalmente...');
       
-      // Redirecionar para dashboard após 1 segundo
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
+      const numeroMesaParaFechar = mesa?.numero || mesaId;
       
-    } else {
-      throw new Error(resultado.error || resultado.message || 'Erro ao fechar comanda');
+      const response = await fetch('/api/comandas/fechar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          comandaId: comandaId || pagamentoData.comandaId,
+          mesaId: mesa?._id || mesaId,
+          numeroMesa: numeroMesaParaFechar,
+          dados: pagamentoData
+        })
+      });
+      
+      const resultado = await response.json();
+      
+      if (resultado.success) {
+        console.log('✅ Comanda fechada com sucesso:', resultado);
+        
+        // DISPARAR EVENTOS PARA ATUALIZAR DASHBOARD
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('comanda-fechada', {
+            detail: { 
+              mesaId: mesa?._id || mesaId,
+              numeroMesa: numeroMesaParaFechar,
+              comandaId: comandaId,
+              timestamp: new Date().toISOString()
+            }
+          }));
+          
+          localStorage.setItem(`mesa_fechada_${mesaId}`, 
+            JSON.stringify({
+              mesaId: mesa?._id || mesaId,
+              numeroMesa: numeroMesaParaFechar,
+              comandaId: comandaId,
+              timestamp: new Date().toISOString(),
+              action: 'fechar'
+            })
+          );
+        }
+        
+        alert(`✅ Comanda fechada com sucesso!\nTotal: R$ ${pagamentoData.total?.toFixed(2) || totalComanda.toFixed(2)}`);
+        
+        setItensSalvos([]);
+        setItensNaoSalvos([]);
+        setTotalPago(0);
+        setModificado(false);
+        setComandaId('');
+        
+        setMostrarModalPagamento(false);
+        
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1000);
+        
+      } else {
+        throw new Error(resultado.error || resultado.message || 'Erro ao fechar comanda');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao fechar comanda:', error);
+      alert(`❌ Erro ao fechar comanda: ${error.message}`);
     }
-    
-  } catch (error: any) {
-    console.error('❌ Erro ao fechar comanda:', error);
-    alert(`❌ Erro ao fechar comanda: ${error.message}`);
-  }
-};
+  };
 
   const handleSalvarParcial = (data: any) => {
     console.log('Pagamento parcial salvo:', data);
@@ -1113,11 +1145,24 @@ export default function ComandaPage() {
   };
 
   const produtosFiltrados = produtosReais.filter(produto => {
-    const categoriaProduto = encontrarCategoriaPorNome(produto.categoria);
+    // Se não tem categorias carregadas ainda, não mostra nada
+    if (categoriasReais.length === 0) return false;
     
-    const categoriaProdutoId = categoriaProduto?.id || produto.categoria.toLowerCase().replace(/\s+/g, '-');
+    // Se categoria ativa for vazia ou não encontrada, mostrar todos
+    if (!categoriaAtiva || categoriaAtiva === '') {
+      return produto.nome.toLowerCase().includes(busca.toLowerCase());
+    }
     
-    const passaCategoria = categoriaAtiva === 'todos' || categoriaProdutoId === categoriaAtiva;
+    // Encontrar a categoria do produto
+    const categoriaProduto = categoriasReais.find(cat => 
+      cat.nome.toLowerCase() === produto.categoria?.toLowerCase()
+    );
+    
+    // Se não encontrou categoria para o produto, filtra pelo nome da categoria
+    const passaCategoria = !categoriaProduto 
+      ? produto.categoria?.toLowerCase().includes(busca.toLowerCase())
+      : categoriaProduto.id === categoriaAtiva;
+    
     const passaBusca = produto.nome.toLowerCase().includes(busca.toLowerCase());
     
     return passaCategoria && passaBusca;
@@ -1186,6 +1231,14 @@ export default function ComandaPage() {
         <div className="w-2/3 flex flex-col h-full">
           
           <div className="flex-1 overflow-hidden">
+            {/* ✅ COMPONENTE DE DEBUG TEMPORÁRIO */}
+            {categoriasReais.length === 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 p-3 m-4 rounded">
+                <p className="text-yellow-700 font-bold">⏳ Carregando categorias...</p>
+                <p className="text-yellow-600 text-sm">Aguardando dados da API</p>
+              </div>
+            )}
+            
             <CatalogoDireita
               produtos={produtosFiltrados}
               categorias={categoriasReais}
@@ -1226,7 +1279,7 @@ export default function ComandaPage() {
                     Descartar
                   </button>
                   <button
-                    onClick={() => salvarItens(true)}  // voltando ao dashboard xD I LIKE SEXO HAN HAN
+                    onClick={() => salvarItens(true)}
                     className="px-8 py-3 bg-white text-green-700 font-bold rounded-xl hover:bg-gray-100 shadow-lg text-base flex items-center gap-3"
                   >
                     <span className="text-xl">💾</span>
@@ -1296,6 +1349,10 @@ export default function ComandaPage() {
       <button
         onClick={() => {
           console.log('🔍 DEBUG - Estados:', {
+            categoriasReais: categoriasReais.length,
+            categoriaAtiva,
+            produtosReais: produtosReais.length,
+            produtosFiltrados: produtosFiltrados.length,
             mostrarModalItensNaoSalvos,
             itensNaoSalvos: itensNaoSalvos.length,
             modificado,
