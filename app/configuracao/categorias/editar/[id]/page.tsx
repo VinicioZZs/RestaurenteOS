@@ -177,6 +177,7 @@ export default function EditarCategoriaPage() {
       const data = await response.json();
 
       if (data.success) {
+        router.push('/configuracao/categorias');
         setSucesso('Categoria atualizada com sucesso!');
         setTimeout(() => carregarDados(), 1000);
       } else {

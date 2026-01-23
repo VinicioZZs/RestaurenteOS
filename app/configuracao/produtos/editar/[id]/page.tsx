@@ -376,6 +376,8 @@ export default function EditarProdutoPage() {
         setSucesso('Produto atualizado com sucesso!');
         // Recarregar dados para garantir consistência
         setTimeout(() => carregarDados(), 1000);
+        router.push('/configuracao/produtos');
+        router.refresh();
       } else {
         setErro(data.error || 'Erro ao atualizar produto');
       }

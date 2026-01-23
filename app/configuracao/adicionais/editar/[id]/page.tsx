@@ -157,6 +157,7 @@ if (!formData.gratuito && (!formData.preco || formData.preco <= 0)) {
       const data = await response.json();
 
       if (data.success) {
+        router.push('/configuracao/adicionais');
         setSucesso('Adicional atualizado com sucesso!');
         setTimeout(() => carregarDados(), 1000);
       } else {
@@ -424,7 +425,7 @@ if (!formData.gratuito && (!formData.preco || formData.preco <= 0)) {
                     Salvando...
                   </>
                 ) : (
-                  <>
+                  <>  
                     <Save className="h-5 w-5 mr-2" />
                     Salvar Alterações
                   </>
