@@ -1,26 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
   Package, 
   DollarSign, 
-  Calendar,
   Filter,
   Download,
   Printer,
   Users,
   AlertCircle
 } from 'lucide-react';
+import Link from 'next/link';
+
+// Seus componentes (ajuste os caminhos de importação se necessário)
 import FiltrosPeriodo from '@/components/FiltrosPeriodo';
 import GraficoVendas from '@/components/GraficoVendas';
 import TopProdutos from '@/components/TopProdutos';
 import MetricasResumo from '@/components/MetricasResumo';
 import RelatorioVendas from '@/components/RelatorioVendas';
 import GraficoCategorias from '@/components/GraficoCategorias';
-import Link from 'next/link';
 
+// Tipagem
 interface RelatorioData {
   totalVendas: number;
   totalComandas: number;
@@ -32,7 +34,7 @@ interface RelatorioData {
   comandasFechadas: any[];
 }
 
-export default function RelatoriosPage() {
+function RelatoriosContent() {
   const [periodo, setPeriodo] = useState('hoje');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -50,32 +52,17 @@ export default function RelatoriosPage() {
         url += `&dataInicio=${dataInicio}&dataFim=${dataFim}`;
       }
       
-      console.log('📡 Buscando relatórios:', url);
-      
       const response = await fetch(url);
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ Dados recebidos:', result.data);
         setDados(result.data);
       } else {
-        setErro(result.error || 'Erro ao carregar relatórios');
-        // Dados padrão vazios
-        setDados({
-          totalVendas: 0,
-          totalComandas: 0,
-          ticketMedio: 0,
-          produtosMaisVendidos: [],
-          categoriasMaisVendidas: [],
-          vendasPorPeriodo: [],
-          mesasMaisUtilizadas: [],
-          comandasFechadas: []
-        });
+        throw new Error(result.error || 'Erro desconhecido');
       }
     } catch (error: any) {
-      console.error('❌ Erro ao buscar relatórios:', error);
-      setErro('Erro de conexão com o servidor: ' + error.message);
-      setDados(null);
+      console.error('Erro:', error);
+      setErro(error.message);
     } finally {
       setCarregando(false);
     }
@@ -83,259 +70,175 @@ export default function RelatoriosPage() {
 
   useEffect(() => {
     buscarRelatorios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodo, dataInicio, dataFim]);
 
   const exportarCSV = () => {
     if (!dados) return;
-    
-    const headers = ['Data', 'Mesa', 'Total', 'Itens', 'Pagamentos'];
+    const headers = ['Data', 'Mesa', 'Total', 'Itens'];
     const rows = dados.comandasFechadas.map(comanda => [
       new Date(comanda.fechadoEm).toLocaleDateString('pt-BR'),
       comanda.numeroMesa,
       `R$ ${comanda.total.toFixed(2)}`,
-      comanda.itens.length,
-      comanda.pagamentos?.map((p: any) => p.forma).join(', ') || 'N/A'
+      comanda.itens?.length || 0
     ]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-    
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `relatorio-vendas-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `relatorio-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
-  const imprimirRelatorio = () => {
-    window.print();
-  };
-
-   if (carregando) {
+  if (carregando) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando relatórios...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p className="text-gray-600">Calculando estatísticas...</p>
       </div>
     );
   }
 
-  if (erro && !dados) {
+  if (erro) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 max-w-2xl mx-auto mt-8">
-          <div className="flex items-center gap-3 mb-4">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h2 className="text-xl font-bold text-gray-900">Erro ao Carregar Relatórios</h2>
-          </div>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-700">{erro}</p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={buscarRelatorios}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-            >
-              Tentar Novamente
-            </button>
-            <Link
-              href="/dashboard"
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Voltar ao Dashboard
-            </Link>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Erro ao carregar dados</h2>
+        <p className="text-red-600 bg-red-50 px-4 py-2 rounded mb-4">{erro}</p>
+        <button onClick={buscarRelatorios} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          Tentar Novamente
+        </button>
       </div>
     );
   }
-
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <BarChart3 className="text-blue-600" size={32} />
-              Relatórios
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Análise de vendas, produtos e desempenho do restaurante
-            </p>
-          </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={exportarCSV}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
-            >
-              <Download size={18} />
-              Exportar CSV
-            </button>
-            <button
-              onClick={imprimirRelatorio}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
-            >
-              <Printer size={18} />
-              Imprimir
-            </button>
-          </div>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 fade-in">
+      {/* Cabeçalho */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <BarChart3 className="text-blue-600" size={32} />
+            Relatórios Financeiros
+          </h1>
+          <p className="text-gray-500 mt-1">Visão geral do desempenho do seu negócio</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={exportarCSV} className="btn-secondary flex items-center gap-2 px-4 py-2 border rounded hover:bg-gray-50">
+            <Download size={18} /> Exportar
+          </button>
+          <button onClick={() => window.print()} className="btn-primary flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            <Printer size={18} /> Imprimir
+          </button>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter size={20} className="text-gray-500" />
-          <h2 className="font-semibold text-gray-800">Filtrar por Período</h2>
-        </div>
-        
-        <FiltrosPeriodo
-          periodo={periodo}
-          dataInicio={dataInicio}
-          dataFim={dataFim}
-          onPeriodoChange={setPeriodo}
-          onDataInicioChange={setDataInicio}
-          onDataFimChange={setDataFim}
-          onBuscar={buscarRelatorios}
-        />
+      <div className="bg-white p-4 rounded-xl shadow-sm mb-6">
+         <div className="flex items-center gap-2 mb-4 text-gray-700 font-medium">
+            <Filter size={20} /> Filtros de Período
+         </div>
+         <FiltrosPeriodo
+           periodo={periodo}
+           dataInicio={dataInicio}
+           dataFim={dataFim}
+           onPeriodoChange={setPeriodo}
+           onDataInicioChange={setDataInicio}
+           onDataFimChange={setDataFim}
+           onBuscar={buscarRelatorios}
+         />
       </div>
 
-      {/* Métricas Rápidas */}
+      {/* Cards de Resumo */}
       {dados && <MetricasResumo dados={dados} />}
 
-      {/* Tabs de Visualização */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex flex-wrap -mb-px">
+      {/* Navegação de Abas */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="flex gap-6 overflow-x-auto pb-1">
+          {[
+            { id: 'resumo', label: 'Visão Geral', icon: TrendingUp },
+            { id: 'produtos', label: 'Produtos', icon: Package },
+            { id: 'vendas', label: 'Histórico', icon: DollarSign },
+            { id: 'categorias', label: 'Categorias', icon: Users },
+          ].map((aba) => (
             <button
-              onClick={() => setVisaoAtiva('resumo')}
-              className={`mr-6 py-2 px-1 border-b-2 font-medium text-sm ${
-                visaoAtiva === 'resumo'
-                  ? 'border-blue-500 text-blue-600'
+              key={aba.id}
+              onClick={() => setVisaoAtiva(aba.id)}
+              className={`flex items-center gap-2 pb-3 px-1 border-b-2 font-medium transition-colors whitespace-nowrap ${
+                visaoAtiva === aba.id
+                  ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <TrendingUp size={18} className="inline mr-2" />
-              Visão Geral
+              <aba.icon size={18} />
+              {aba.label}
             </button>
-            <button
-              onClick={() => setVisaoAtiva('produtos')}
-              className={`mr-6 py-2 px-1 border-b-2 font-medium text-sm ${
-                visaoAtiva === 'produtos'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <Package size={18} className="inline mr-2" />
-              Produtos
-            </button>
-            <button
-              onClick={() => setVisaoAtiva('vendas')}
-              className={`mr-6 py-2 px-1 border-b-2 font-medium text-sm ${
-                visaoAtiva === 'vendas'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <DollarSign size={18} className="inline mr-2" />
-              Vendas Detalhadas
-            </button>
-            <button
-              onClick={() => setVisaoAtiva('categorias')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                visaoAtiva === 'categorias'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <Users size={18} className="inline mr-2" />
-              Categorias
-            </button>
-          </nav>
-        </div>
+          ))}
+        </nav>
       </div>
 
-      {/* Conteúdo das Tabs */}
-      {visaoAtiva === 'resumo' && dados && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <h3 className="font-semibold text-lg mb-4">Vendas por Período</h3>
-            <GraficoVendas dados={dados.vendasPorPeriodo} periodo={periodo} />
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <h3 className="font-semibold text-lg mb-4">Categorias Mais Vendidas</h3>
-            <GraficoCategorias dados={dados.categoriasMaisVendidas} />
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-sm p-4 lg:col-span-2">
-            <h3 className="font-semibold text-lg mb-4">Produtos Mais Vendidos</h3>
-            <TopProdutos produtos={dados.produtosMaisVendidos} />
-          </div>
-        </div>
-      )}
-
-      {visaoAtiva === 'produtos' && dados && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h3 className="font-semibold text-lg mb-4">Análise de Produtos</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-gray-700 mb-3">Top 10 Produtos por Quantidade</h4>
-              <TopProdutos produtos={dados.produtosMaisVendidos} />
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-700 mb-3">Distribuição por Categoria</h4>
-              <GraficoCategorias dados={dados.categoriasMaisVendidas} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {visaoAtiva === 'vendas' && dados && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h3 className="font-semibold text-lg mb-4">Vendas Detalhadas</h3>
-          <div className="mb-6">
-            <GraficoVendas dados={dados.vendasPorPeriodo} periodo={periodo} />
-          </div>
-          <RelatorioVendas comandas={dados.comandasFechadas} />
-        </div>
-      )}
-
-      {visaoAtiva === 'categorias' && dados && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h3 className="font-semibold text-lg mb-4">Análise por Categoria</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GraficoCategorias dados={dados.categoriasMaisVendidas} />
-            <div>
-              <h4 className="font-medium text-gray-700 mb-3">Categorias por Valor</h4>
-              <div className="space-y-3">
-                {dados.categoriasMaisVendidas.map((cat: any, index: number) => (
-                  <div key={index} className="border rounded-lg p-3">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{cat.nome}</span>
-                      <span className="text-green-600 font-bold">
-                        R$ {cat.total.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600 mt-1">
-                      <span>{cat.quantidade} unidades</span>
-                      <span>Média: R$ {(cat.total / cat.quantidade).toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
+      {/* Conteúdo das Abas */}
+      {dados && (
+        <div className="space-y-6">
+          {visaoAtiva === 'resumo' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-xl shadow-sm">
+                <h3 className="font-semibold text-lg mb-4">Vendas no Período</h3>
+                <GraficoVendas dados={dados.vendasPorPeriodo} periodo={periodo} />
+              </div>
+              <div className="bg-white p-6 rounded-xl shadow-sm">
+                <h3 className="font-semibold text-lg mb-4">Categorias Principais</h3>
+                <GraficoCategorias dados={dados.categoriasMaisVendidas} />
+              </div>
+              <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm">
+                <h3 className="font-semibold text-lg mb-4">Top Produtos</h3>
+                <TopProdutos produtos={dados.produtosMaisVendidos} />
               </div>
             </div>
-          </div>
+          )}
+
+          {visaoAtiva === 'produtos' && (
+            <div className="bg-white p-6 rounded-xl shadow-sm">
+               <h3 className="font-semibold text-lg mb-6">Detalhamento de Produtos</h3>
+               <TopProdutos produtos={dados.produtosMaisVendidos} />
+            </div>
+          )}
+
+          {visaoAtiva === 'vendas' && (
+            <div className="bg-white p-6 rounded-xl shadow-sm">
+              <h3 className="font-semibold text-lg mb-6">Registro de Comandas Fechadas</h3>
+              <RelatorioVendas comandas={dados.comandasFechadas} />
+            </div>
+          )}
+          
+          {visaoAtiva === 'categorias' && (
+             <div className="bg-white p-6 rounded-xl shadow-sm">
+                <h3 className="font-semibold text-lg mb-6">Desempenho por Categoria</h3>
+                <div className="h-80 w-full">
+                  <GraficoCategorias dados={dados.categoriasMaisVendidas} />
+                </div>
+             </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+// O componente exportado DEVE envolver o conteúdo em Suspense
+// Isso evita erros de hidratação no Next.js App Router
+export default function RelatoriosPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Iniciando sistema de relatórios...</p>
+        </div>
+      </div>
+    }>
+      <RelatoriosContent />
+    </Suspense>
   );
 }
