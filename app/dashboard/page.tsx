@@ -5,7 +5,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Plus, Clock, LogOut, Settings, AlertCircle, Lock, Unlock } from 'lucide-react'; 
-import { getCurrentUser, hasRole } from '@/lib/auth';
+import { getCurrentUser, hasRole } from '@/lib/auth'; 
+import { BarChart3 } from 'lucide-react';
+
+
 
 interface Mesa {
   _id: string;
@@ -1091,15 +1094,27 @@ const formatarTituloMesa = (mesa: Mesa) => {
               <Lock className="h-5 w-5" />
               <span className="hidden md:inline">Fechar Caixa</span>
             </button>
+
+            
           )}
+
+          <Link 
+          href="/relatorios"
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center gap-2"
+        >
+          <BarChart3 size={20} />
+          Gestão
+        </Link>
           
           <Link
             href="/configuracao/geral"
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Settings className="h-5 w-5" />
             <span className="hidden md:inline">Configurações</span>
           </Link>
+
+
 
           <button
             onClick={sair}

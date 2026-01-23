@@ -1,139 +1,110 @@
-// app/page.tsx ou app/login/page.tsx
+// app/page.tsx - DESIGN SERVYX COM LOGO AMPLIADA
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
+import { login } from '@/lib/auth';
 
 export default function LoginPage() {
-  const [usuario, setUsuario] = useState('admin@restaurante.com');
-  const [senha, setSenha] = useState('123456');
-  const [erro, setErro] = useState('');
-  const [carregando, setCarregando] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const expired = searchParams.get('expired');
+  
+  const [email, setEmail] = useState('admin@restaurante.com');
+  const [password, setPassword] = useState('123456');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(expired ? 'Sessão expirada. Faça login novamente.' : '');
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErro('');
-    setCarregando(true);
-    
+    setLoading(true);
+    setError('');
+
     try {
-      // 🔥 CHAMA DIRETAMENTE A API, não usa lib/auth
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: usuario, 
-          password: senha 
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log('✅ Login bem-sucedido:', data.user.name);
-        
-        // 🔥 Salva dados do usuário no localStorage
-        localStorage.setItem('usuario_nome', data.user.name);
-        localStorage.setItem('usuario_perfil', data.user.role);
-        localStorage.setItem('usuario_email', data.user.email);
-        
-        // 🔥 O COOKIE JÁ FOI SETADO PELA API
-        
-        // Redireciona
-        window.location.href = callbackUrl; // 🔥 Usa window.location para recarregar
-        
+      // Extraindo apenas 'user' para evitar erro de tipagem
+      const { user } = await login(email, password);
+
+      if (user) {
+        router.push(callbackUrl);
+        router.refresh(); 
       } else {
-        setErro(data.error || 'Usuário ou senha incorretos');
+        setError('E-mail ou senha incorretos.');
       }
-    } catch (error) {
-      console.error('Erro no login:', error);
-      setErro('Erro ao conectar com o servidor');
+    } catch (err) {
+      setError('Erro ao conectar com o servidor.');
     } finally {
-      setCarregando(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
-      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md border border-white/20 shadow-2xl">
-        <h1 className="text-3xl font-bold text-center text-white mb-2">
-          restaurante
-        </h1>
-        <p className="text-center text-gray-300 mb-6">Sistema de Gestão</p>
-        
-        {erro && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/40 text-red-200 rounded-lg text-sm">
-            ⚠️ {erro}
-          </div>
-        )}
-        
-        <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/40 text-blue-200 rounded-lg text-sm">
-          <p className="font-medium mb-1">👨‍💻 Usuários para teste:</p>
-          <div className="text-xs">
-            <p>• admin@restaurante.com (Admin)</p>
-            <p>• caixa@restaurante.com (Caixa)</p>
-            <p>• garcom@restaurante.com (Garçom)</p>
-            <p className="mt-1">🔑 Senha: <strong>123456</strong></p>
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#3b6db1] px-4 font-sans">
+      
+      {error && (
+        <div className="mb-6 max-w-md w-full bg-white/90 backdrop-blur-sm border-l-4 border-red-500 p-4 rounded-lg shadow-2xl">
+          <p className="text-sm text-red-700 font-bold text-center">{error}</p>
         </div>
-        
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <input
-              type="text"
-              placeholder="Email (ex: admin@restaurante.com)"
-              className="w-full p-3 rounded-lg bg-white/15 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              required
-            />
-          </div>
+      )}
+
+      <div className="max-w-md w-full bg-white p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+        <div className="text-center mb-10">
           
-          <div>
+          {/* CONTAINER DA LOGO - AJUSTADO PARA SER MAIOR */}
+          <div className="flex justify-center mb-6">
+            <div className="relative w-40 h-40"> {/* Aumentei de w-24 h-24 para w-40 h-40 */}
+              <Image 
+                src="/logo-servyx.png" 
+                alt="Servyx Logo"
+                fill
+                className="object-contain"
+                priority 
+              />
+            </div>
+          </div>
+
+          <h2 className="text-4xl font-black text-gray-800 tracking-tighter">Servyx</h2>
+          <p className="text-gray-400 font-semibold text-sm mt-1 uppercase tracking-widest">
+            Gestão Professional
+          </p>
+        </div>
+
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <input
+              type="email"
+              required
+              className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all text-gray-900 shadow-sm"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
             <input
               type="password"
-              placeholder="Senha"
-              className="w-full p-3 rounded-lg bg-white/15 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
               required
+              className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all text-gray-900 shadow-sm"
+              placeholder="Senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          
+
           <button
             type="submit"
-            disabled={carregando}
-            className={`w-full ${carregando ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-semibold py-3 rounded-lg transition duration-200 disabled:opacity-70`}
+            disabled={loading}
+            className="w-full py-4 mt-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-lg rounded-2xl shadow-xl transition-all transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-70"
           >
-            {carregando ? 'Entrando...' : 'Entrar'}
+            {loading ? 'Autenticando...' : 'Acessar Sistema'}
           </button>
         </form>
-        
-        <button
-          onClick={() => {
-            setUsuario('admin@restaurante.com');
-            setSenha('123456');
-          }}
-          className="mt-4 w-full py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition"
-        >
-          🧪 Preencher dados de teste
-        </button>
-        
-        {/* Botão para testar auth */}
-        <button
-          onClick={async () => {
-            const res = await fetch('/api/test-auth');
-            const data = await res.json();
-            console.log('Teste Auth:', data);
-            alert(data.success ? '✅ Cookie OK!' : '❌ Sem cookie');
-          }}
-          className="mt-2 w-full py-2 text-sm bg-green-700 hover:bg-green-600 text-white rounded-lg transition"
-        >
-          🔒 Testar Autenticação
-        </button>
       </div>
+      
+      <p className="mt-8 text-white/50 text-xs font-medium">
+        &copy; {new Date().getFullYear()} Servyx OS.
+      </p>
     </div>
   );
 }

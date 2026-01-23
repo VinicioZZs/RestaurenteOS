@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   LogOut,
-  User
+  User,
+  CreditCard // Ícone para caixa
 } from 'lucide-react';
 import { getCurrentUser, logout } from '@/lib/auth';
 
@@ -23,8 +24,9 @@ const menuItems = [
   { name: 'Mesas', href: '/dashboard', icon: <Table size={20} />, roles: ['admin', 'garcom'] },
   { name: 'Pedidos', href: '/pedidos', icon: <ShoppingCart size={20} />, roles: ['admin', 'garcom', 'caixa'] },
   { name: 'Cardápio', href: '/cardapio', icon: <Utensils size={20} />, roles: ['admin'] },
-  { name: 'Relatórios', href: '/relatorios', icon: <BarChart3 size={20} />, roles: ['admin', 'caixa'] },
-  { name: 'Configurações', href: '/configuracoes', icon: <Settings size={20} />, roles: ['admin'] },
+  { name: 'Relatórios', href: '/relatorios', icon: <BarChart3 size={20} />, roles: ['admin', 'caixa'] }, // ✅ ADICIONADO
+  { name: 'Configurações', href: '/configuracao', icon: <Settings size={20} />, roles: ['admin'] }, // ✅ CORRIGIDO: /configuracao (não /configuracoes)
+  { name: 'Caixa', href: '/caixa', icon: <CreditCard size={20} />, roles: ['admin', 'caixa'] }, // ✅ Adicionado se quiser caixa no menu
 ];
 
 export default function Sidebar() {
@@ -142,7 +144,7 @@ export default function Sidebar() {
               {filteredMenuItems.map((item) => (
                 <Link
                   key={item.name}
-                     href={item.href}
+                  href={item.href}
                   className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 text-gray-300"
                   onClick={() => setIsOpen(false)}
                 >

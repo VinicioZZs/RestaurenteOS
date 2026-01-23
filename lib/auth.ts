@@ -13,7 +13,6 @@ const users = [
 ];
 
 export async function login(email: string, password: string): Promise<{ user: User | null }> {
-  // 🔥 MUDEI: Agora chama a API real, não verificação local
   try {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -24,6 +23,10 @@ export async function login(email: string, password: string): Promise<{ user: Us
     const data = await response.json();
     
     if (data.success) {
+      // Salva dados básicos no storage para o frontend
+      localStorage.setItem('usuario_nome', data.user.name);
+      localStorage.setItem('usuario_perfil', data.user.role);
+      localStorage.setItem('usuario_email', data.user.email);
       return { user: data.user };
     }
     
