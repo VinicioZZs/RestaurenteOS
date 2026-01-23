@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { login } from '@/lib/auth';
 
-export default function LoginPage() {
+// 1. Componente interno que contém a lógica que depende de parâmetros da URL
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -23,7 +24,6 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Extraindo apenas 'user' para evitar erro de tipagem
       const { user } = await login(email, password);
 
       if (user) {
@@ -40,8 +40,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#3b6db1] px-4 font-sans">
-      
+    <>
       {error && (
         <div className="mb-6 max-w-md w-full bg-white/90 backdrop-blur-sm border-l-4 border-red-500 p-4 rounded-lg shadow-2xl">
           <p className="text-sm text-red-700 font-bold text-center">{error}</p>
@@ -50,10 +49,8 @@ export default function LoginPage() {
 
       <div className="max-w-md w-full bg-white p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
         <div className="text-center mb-10">
-          
-          {/* CONTAINER DA LOGO - AJUSTADO PARA SER MAIOR */}
           <div className="flex justify-center mb-6">
-            <div className="relative w-40 h-40"> {/* Aumentei de w-24 h-24 para w-40 h-40 */}
+            <div className="relative w-40 h-40">
               <Image 
                 src="/logo-servyx.png" 
                 alt="Servyx Logo"
@@ -100,6 +97,21 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
+    </>
+  );
+}
+
+// 2. Componente principal exportado que fornece o limite de Suspense
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#3b6db1] px-4 font-sans">
+      <Suspense fallback={
+        <div className="flex items-center justify-center p-10 bg-white rounded-3xl shadow-xl">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+        </div>
+      }>
+        <LoginContent />
+      </Suspense>
       
       <p className="mt-8 text-white/50 text-xs font-medium">
         &copy; {new Date().getFullYear()} Servyx OS.

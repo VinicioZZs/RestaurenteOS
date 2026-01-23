@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import ComandaFechada from '@/app/models/comanda_fechada';
 
-// IMPORTANTE: Esta é uma rota de API. Não use 'use client' ou componentes React aqui.
+// CORREÇÃO DO ERRO DE BUILD:
+// Força a rota a ser dinâmica, pois ela depende de searchParams (request.url)
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -44,7 +46,6 @@ export async function GET(request: Request) {
         break;
       case 'personalizado':
         if (dataInicio && dataFim) {
-          // Ajuste de fuso horário simples para garantir o dia inteiro
           const inicio = new Date(dataInicio);
           const fim = new Date(dataFim);
           fim.setHours(23, 59, 59, 999);
@@ -58,7 +59,6 @@ export async function GET(request: Request) {
       .sort({ fechadoEm: -1 })
       .lean();
 
-    // Se vazio, retorna estrutura zerada
     if (!comandasFechadas.length) {
       return NextResponse.json({
         success: true,
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // 4. Processamento dos Dados (Agregações)
+    // 4. Processamento dos Dados
     let totalVendas = 0;
     const produtosMap: any = {};
     const categoriasMap: any = {};
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       mesasMap[mesa].quantidade++;
       mesasMap[mesa].total += comanda.total || 0;
 
-      // Por Período (Gráfico)
+      // Por Período
       const data = new Date(comanda.fechadoEm);
       const chavePeriodo = periodo === 'hoje' 
         ? `${data.getHours().toString().padStart(2, '0')}:00`
@@ -102,13 +102,11 @@ export async function GET(request: Request) {
 
       // Itens
       comanda.itens?.forEach((item: any) => {
-        // Produto
         const pNome = item.nome || 'Desconhecido';
         if (!produtosMap[pNome]) produtosMap[pNome] = { nome: pNome, quantidade: 0, total: 0 };
         produtosMap[pNome].quantidade += item.quantidade || 1;
         produtosMap[pNome].total += (item.precoUnitario || 0) * (item.quantidade || 1);
 
-        // Categoria
         const cat = item.categoria || 'Outros';
         if (!categoriasMap[cat]) categoriasMap[cat] = { nome: cat, quantidade: 0, total: 0 };
         categoriasMap[cat].quantidade += item.quantidade || 1;
@@ -116,7 +114,6 @@ export async function GET(request: Request) {
       });
     });
 
-    // 5. Formatação Final
     return NextResponse.json({
       success: true,
       data: {
@@ -127,7 +124,7 @@ export async function GET(request: Request) {
         categoriasMaisVendidas: Object.values(categoriasMap).sort((a: any, b: any) => b.total - a.total),
         vendasPorPeriodo: Object.values(periodoMap),
         mesasMaisUtilizadas: Object.values(mesasMap).sort((a: any, b: any) => b.quantidade - a.quantidade).slice(0, 5),
-        comandasFechadas: comandasFechadas.slice(0, 50) // Limite de 50 para não pesar o front
+        comandasFechadas: comandasFechadas.slice(0, 50)
       }
     });
 
