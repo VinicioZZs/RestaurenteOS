@@ -17,7 +17,7 @@ const users = [
   { id: 3, email: 'caixa@restaurante.com', name: 'Maria Caixa', role: 'caixa' },
 ];
 
-export async function login(email: string, password: string): Promise<LoginResponse> {
+export async function login(email: string, password: string): Promise<{ user: User | null }> {
   try {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -28,10 +28,11 @@ export async function login(email: string, password: string): Promise<LoginRespo
     const data = await response.json();
     
     if (data.success) {
-      return { 
-        user: data.user,
-        token: data.token
-       }
+      // Salva dados básicos no storage para o frontend
+      localStorage.setItem('usuario_nome', data.user.name);
+      localStorage.setItem('usuario_perfil', data.user.role);
+      localStorage.setItem('usuario_email', data.user.email);
+      return { user: data.user };
     }
     
     return { user: null };
