@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // app/api/produtos/route.ts - VERSÃO OTIMIZADA
 import { NextRequest, NextResponse } from 'next/server';
 import { WithId, Document } from 'mongodb';

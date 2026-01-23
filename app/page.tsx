@@ -1,7 +1,6 @@
-// app/page.tsx - DESIGN SERVYX COM LOGO AMPLIADA
 'use client';
 
-import { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { login } from '@/lib/auth';

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // app/api/caixa/resumo/route.ts - Atualizado
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';

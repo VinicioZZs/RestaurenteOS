@@ -6,6 +6,11 @@ export interface User {
   role: 'admin' | 'garcom' | 'caixa';
 }
 
+interface LoginResponse {
+  user: User | null;
+  token?: string; 
+}
+
 const users = [
   { id: 1, email: 'admin@restaurante.com', name: 'Administrador', role: 'admin' },
   { id: 2, email: 'garcom@restaurante.com', name: 'João Garçom', role: 'garcom' },
@@ -43,14 +48,14 @@ export function logout(): void {
     .catch(console.error);
   
   // Limpa frontend
-  localStorage.removeItem('auth_token');
-  sessionStorage.removeItem('auth_token');
-  localStorage.removeItem('usuario_nome');
-  localStorage.removeItem('usuario_perfil');
-  localStorage.removeItem('usuario_email');
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
+    localStorage.removeItem('usuario_nome');
+    localStorage.removeItem('usuario_perfil');
+    localStorage.removeItem('usuario_email');
   
   // Redireciona
-  if (typeof window !== 'undefined') {
     window.location.href = '/login';
   }
 }

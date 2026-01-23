@@ -1,11 +1,10 @@
-// app/login/page.tsx - A ÚNICA PÁGINA DE LOGIN DO SERVYX
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { login } from '@/lib/auth'; // Importa sua lógica oficial
 
-export default function LoginPage() {
+function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -77,6 +76,21 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <Suspense fallback={
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Carregando formulário...</span>
+        </div>
+      }>
+        <LoginFormContent />
+      </Suspense>
     </div>
   );
 }

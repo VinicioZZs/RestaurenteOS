@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // /app/api/mesas/buscar/route.ts - VERSÃO UNIFICADA (SÓ COMANDAS)
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
