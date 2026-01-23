@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // app/api/configuracoes/route.ts - API COMPLETA (REVISADO)
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';

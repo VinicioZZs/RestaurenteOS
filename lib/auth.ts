@@ -6,14 +6,18 @@ export interface User {
   role: 'admin' | 'garcom' | 'caixa';
 }
 
+interface LoginResponse {
+  user: User | null;
+  token?: string; 
+}
+
 const users = [
   { id: 1, email: 'admin@restaurante.com', name: 'Administrador', role: 'admin' },
   { id: 2, email: 'garcom@restaurante.com', name: 'João Garçom', role: 'garcom' },
   { id: 3, email: 'caixa@restaurante.com', name: 'Maria Caixa', role: 'caixa' },
 ];
 
-export async function login(email: string, password: string): Promise<{ user: User | null }> {
-  // 🔥 MUDEI: Agora chama a API real, não verificação local
+export async function login(email: string, password: string): Promise<LoginResponse> {
   try {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -24,7 +28,10 @@ export async function login(email: string, password: string): Promise<{ user: Us
     const data = await response.json();
     
     if (data.success) {
-      return { user: data.user };
+      return { 
+        user: data.user,
+        token: data.token
+       }
     }
     
     return { user: null };
@@ -40,14 +47,14 @@ export function logout(): void {
     .catch(console.error);
   
   // Limpa frontend
-  localStorage.removeItem('auth_token');
-  sessionStorage.removeItem('auth_token');
-  localStorage.removeItem('usuario_nome');
-  localStorage.removeItem('usuario_perfil');
-  localStorage.removeItem('usuario_email');
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
+    localStorage.removeItem('usuario_nome');
+    localStorage.removeItem('usuario_perfil');
+    localStorage.removeItem('usuario_email');
   
   // Redireciona
-  if (typeof window !== 'undefined') {
     window.location.href = '/login';
   }
 }

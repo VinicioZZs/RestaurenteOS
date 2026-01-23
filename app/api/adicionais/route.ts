@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // app/api/adicionais/route.ts - ATUALIZADA COM FILTRO POR IDs
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, WithId, Document, ObjectId } from 'mongodb';
