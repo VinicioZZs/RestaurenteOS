@@ -1,128 +1,106 @@
-// app/api/auth/login/route.ts - VERSÃO DEBUGGADA
+// app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-
-// 🔥 USUÁRIOS CORRETOS (os mesmos do seu auth.ts)
-const users = [
-  { 
-    id: 1, 
-    email: 'admin@restaurante.com', 
-    name: 'Administrador', 
-    role: 'admin', 
-    password: '123456' 
-  },
-  { 
-    id: 2, 
-    email: 'garcom@restaurante.com', 
-    name: 'João Garçom', 
-    role: 'garcom', 
-    password: '123456' 
-  },
-  { 
-    id: 3, 
-    email: 'caixa@restaurante.com', 
-    name: 'Maria Caixa', 
-    role: 'caixa', 
-    password: '123456' 
-  },
-];
+import { MongoClient } from 'mongodb';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
   console.log('🔐 Login API chamada');
   
   try {
-    // 🔥 1. Pegar o body CORRETAMENTE
-    let body;
-    try {
-      body = await request.json();
-      console.log('📦 Body recebido:', body);
-    } catch (parseError) {
-      console.error('❌ Erro ao parsear JSON:', parseError);
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Formato inválido. Envie JSON.' 
-        },
-        { status: 400 }
-      );
-    }
-    
+    const body = await request.json();
     const { email, password } = body;
     
     if (!email || !password) {
-      console.log('⚠️ Email ou senha vazios:', { email, password });
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Email e senha são obrigatórios' 
-        },
+        { success: false, error: 'Email e senha são obrigatórios' },
         { status: 400 }
       );
     }
     
-    console.log('🔍 Procurando usuário:', email);
+    const client = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017');
+    await client.connect();
+    const db = client.db('restaurante');
     
-    // 🔥 2. Encontrar usuário (case sensitive)
-    const user = users.find(u => 
-      u.email.toLowerCase() === email.toLowerCase() && 
-      u.password === password
-    );
+    console.log('🔍 Buscando usuário:', email);
     
-    console.log('👤 Usuário encontrado?', user ? 'Sim' : 'Não');
+    // Buscar usuário (case insensitive)
+    const user = await db.collection('usuarios').findOne({
+      email: { $regex: new RegExp(`^${email}$`, 'i') },
+      ativo: true
+    });
     
     if (!user) {
-      console.log('❌ Credenciais inválidas para:', email);
+      console.log('❌ Usuário não encontrado ou inativo:', email);
+      await client.close();
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Email ou senha incorretos' 
-        },
+        { success: false, error: 'E-mail ou senha incorretos' },
         { status: 401 }
       );
     }
     
-    // 🔥 3. Criar token SIMPLES
+    console.log('✅ Usuário encontrado:', user.email);
+    
+    // Verificar senha com bcrypt
+    const senhaValida = await bcrypt.compare(password, user.senhaHash);
+    
+    if (!senhaValida) {
+      console.log('❌ Senha inválida para:', email);
+      await client.close();
+      return NextResponse.json(
+        { success: false, error: 'E-mail ou senha incorretos' },
+        { status: 401 }
+      );
+    }
+    
+    console.log('✅ Login bem-sucedido para:', user.nome);
+    
+    // Atualizar último login
+    await db.collection('usuarios').updateOne(
+      { _id: user._id },
+      { $set: { ultimoLogin: new Date().toISOString() } }
+    );
+    
+    // Criar token (remover senha hash dos dados)
+    const { senhaHash, ...userSemSenha } = user;
+    
     const tokenData = {
-      id: user.id,
+      id: user._id.toString(),
       email: user.email,
-      name: user.name,
+      nome: user.nome,
       role: user.role,
+      permissoes: user.permissoes || {},
       iat: Date.now(),
       exp: Date.now() + (24 * 60 * 60 * 1000) // 24h
     };
     
-    // 🔥 4. Converter para Base64 CORRETAMENTE
     const token = Buffer.from(JSON.stringify(tokenData)).toString('base64');
-    console.log('✅ Token gerado (primeiros 20 chars):', token.substring(0, 20));
     
-    // 🔥 5. Criar resposta
     const responseData = {
       success: true,
       user: {
-        id: user.id,
-        name: user.name,
+        id: user._id.toString(),
+        nome: user.nome,
         email: user.email,
-        role: user.role
+        role: user.role,
+        permissoes: user.permissoes || {}
       },
       message: 'Login realizado com sucesso'
     };
     
-    console.log('📤 Enviando resposta:', responseData);
-    
     const response = NextResponse.json(responseData);
     
-    // 🔥 6. Adicionar cookie
+    // Adicionar cookie
     response.cookies.set({
       name: 'auth_token',
       value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // 🔥 Mude para 'lax' ao invés de 'strict'
-      maxAge: 60 * 60 * 24, // 24h
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24,
       path: '/',
     });
     
-    console.log('🍪 Cookie configurado');
-    
+    await client.close();
     return response;
     
   } catch (error: any) {
@@ -131,7 +109,7 @@ export async function POST(request: NextRequest) {
       { 
         success: false, 
         error: 'Erro interno no servidor',
-        details: error.message 
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       },
       { status: 500 }
     );

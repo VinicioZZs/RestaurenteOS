@@ -11,7 +11,9 @@ import {
   Download,
   Printer,
   Users,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Loader2
 } from 'lucide-react';
 import FiltrosPeriodo from '@/components/FiltrosPeriodo';
 import GraficoVendas from '@/components/GraficoVendas';
@@ -32,14 +34,102 @@ interface RelatorioData {
   comandasFechadas: any[];
 }
 
+interface UsuarioLogado {
+  role: string;
+  permissoes: Record<string, boolean>;
+}
+
 export default function RelatoriosPage() {
   const [periodo, setPeriodo] = useState('hoje');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [carregando, setCarregando] = useState(true);
+  const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [dados, setDados] = useState<RelatorioData | null>(null);
   const [visaoAtiva, setVisaoAtiva] = useState('resumo');
+  
+  // ✅ NOVO: Estado para usuário logado
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+
+  // ✅ NOVO: Carregar usuário logado
+  useEffect(() => {
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
+  }, []);
+
+  // ✅ NOVO: Função de verificação de permissões
+  const temPermissao = (permissao: string): boolean => {
+    if (!usuarioLogado) return false;
+    
+    // Admin tem todas as permissões
+    if (usuarioLogado.role === 'admin') return true;
+    
+    // Verifica permissão específica
+    return usuarioLogado.permissoes[permissao] === true;
+  };
+
+  // ✅ NOVO: Verificar se pode visualizar relatórios
+  const podeVerRelatorios = temPermissao('canViewReports');
+
+  useEffect(() => {
+    if (usuarioLogado !== null && podeVerRelatorios) {
+      buscarRelatorios();
+    }
+  }, [periodo, dataInicio, dataFim, usuarioLogado, podeVerRelatorios]);
+
+  // ✅ NOVO: Tela de carregamento de permissões
+  if (carregandoPermissoes) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Carregando permissões...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Verificar se tem permissão para acessar relatórios
+  if (!podeVerRelatorios) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center mt-12">
+          <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-10 w-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Acesso Negado</h2>
+          <p className="text-gray-600 mb-6">
+            Você não tem permissão para visualizar relatórios.
+            {usuarioLogado && (
+              <span className="block mt-2 text-sm text-gray-500">
+                Função: {usuarioLogado.role.toUpperCase()}
+              </span>
+            )}
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
+            Voltar para Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const buscarRelatorios = async () => {
     setCarregando(true);
@@ -81,10 +171,6 @@ export default function RelatoriosPage() {
     }
   };
 
-  useEffect(() => {
-    buscarRelatorios();
-  }, [periodo, dataInicio, dataFim]);
-
   const exportarCSV = () => {
     if (!dados) return;
     
@@ -114,7 +200,42 @@ export default function RelatoriosPage() {
     window.print();
   };
 
-   if (carregando) {
+  // ✅ NOVO: Banner de permissões
+  const renderizarBannerPermissoes = () => {
+    return (
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start">
+          <BarChart3 className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">
+              Acesso a Relatórios
+            </h3>
+            <div className="mt-1 text-sm text-blue-700">
+              <p>
+                Você tem permissão para visualizar relatórios do sistema.
+              </p>
+              {usuarioLogado && (
+                <div className="flex items-center mt-2 space-x-2">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    usuarioLogado.role === 'admin' ? 'bg-red-100 text-red-800' :
+                    usuarioLogado.role === 'gerente' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {usuarioLogado.role.toUpperCase()}
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-800">
+                    Acesso Concedido
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (carregando && podeVerRelatorios) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -125,7 +246,7 @@ export default function RelatoriosPage() {
     );
   }
 
-  if (erro && !dados) {
+  if (erro && !dados && podeVerRelatorios) {
     return (
       <div className="min-h-screen bg-gray-50 p-4 md:p-6">
         <div className="bg-white rounded-xl shadow-sm p-6 max-w-2xl mx-auto mt-8">
@@ -155,7 +276,6 @@ export default function RelatoriosPage() {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       {/* Header */}
@@ -169,12 +289,24 @@ export default function RelatoriosPage() {
             <p className="text-gray-600 mt-1">
               Análise de vendas, produtos e desempenho do restaurante
             </p>
+            {usuarioLogado && (
+              <div className="flex items-center mt-2">
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  usuarioLogado.role === 'admin' ? 'bg-red-100 text-red-800' :
+                  usuarioLogado.role === 'gerente' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {usuarioLogado.role.toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
           
           <div className="flex gap-2">
             <button
               onClick={exportarCSV}
               className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
+              title="Exportar dados para CSV"
             >
               <Download size={18} />
               Exportar CSV
@@ -182,6 +314,7 @@ export default function RelatoriosPage() {
             <button
               onClick={imprimirRelatorio}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
+              title="Imprimir relatório"
             >
               <Printer size={18} />
               Imprimir
@@ -189,6 +322,9 @@ export default function RelatoriosPage() {
           </div>
         </div>
       </div>
+
+      {/* ✅ NOVO: Banner de permissões */}
+      {renderizarBannerPermissoes()}
 
       {/* Filtros */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">

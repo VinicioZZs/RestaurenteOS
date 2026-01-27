@@ -1,4 +1,4 @@
-// app/configuracao/produtos/page.tsx - VERSÃO CORRIGIDA E MELHORADA
+// app/configuracao/produtos/page.tsx - COM PERMISSÃO
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,7 +15,8 @@ import {
   Tag,
   RefreshCw,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  AlertCircle
 } from 'lucide-react';
 
 interface Produto {
@@ -28,6 +29,17 @@ interface Produto {
   ativo: boolean;
   adicionais: string[];
   criadoEm: string;
+}
+
+interface UsuarioLogado {
+  _id: string;
+  email: string;
+  nome: string;
+  role: string;
+  permissoes: {
+    canManageProducts?: boolean;
+    [key: string]: boolean | undefined;
+  };
 }
 
 type OrdenacaoCampo = 'nome' | 'preco' | 'categoria' | 'criadoEm';
@@ -46,11 +58,50 @@ export default function ProdutosPage() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(10);
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
+  
+  // ✅ NOVO: Estado para usuário logado
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+  const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
+
+  // ✅ NOVO: Carregar usuário logado
+  useEffect(() => {
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
+  }, []);
+
+  // ✅ NOVO: Função de verificação de permissões
+  const temPermissao = (permissao: string): boolean => {
+    if (!usuarioLogado) return false;
+    
+    // Admin tem todas as permissões
+    if (usuarioLogado.role === 'admin') return true;
+    
+    // Verifica permissão específica
+    return usuarioLogado.permissoes[permissao] === true;
+  };
+
+  // ✅ NOVO: Verificar se tem permissão para gerenciar produtos
+  const podeGerenciarProdutos = temPermissao('canManageProducts');
 
   // Carregar dados quando filtros mudarem
   useEffect(() => {
-    carregarDados();
-  }, [filtroCategoria, mostrarInativos, filtroStatus]);
+    if (usuarioLogado !== null) { // Esperar até o usuário ser carregado
+      carregarDados();
+    }
+  }, [filtroCategoria, mostrarInativos, filtroStatus, usuarioLogado]);
 
   const carregarDados = async () => {
     try {
@@ -64,7 +115,7 @@ export default function ProdutosPage() {
       if (filtroStatus !== 'todos') query.append('status', filtroStatus);
       
       const responseProdutos = await fetch(`/api/produtos?${query}`, {
-        cache: 'no-store' // Evitar cache para dados sempre atualizados
+        cache: 'no-store'
       });
       
       if (!responseProdutos.ok) {
@@ -103,6 +154,46 @@ export default function ProdutosPage() {
     return new Date(data).toLocaleDateString('pt-BR');
   };
 
+  // ✅ NOVO: Tela de carregamento de permissões
+  if (carregandoPermissoes) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+          <span className="text-gray-600">Carregando permissões...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Verificar se tem permissão para acessar esta página
+  if (!podeGerenciarProdutos) {
+    return (
+      <div className="p-6">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+          <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <Package className="h-10 w-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Acesso Negado</h2>
+          <p className="text-gray-600 mb-6">
+            Você não tem permissão para gerenciar produtos.
+            {usuarioLogado && (
+              <span className="block mt-2 text-sm text-gray-500">
+                Função: {usuarioLogado.role.toUpperCase()}
+              </span>
+            )}
+          </p>
+          <Link
+            href="/configuracao"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
+            Voltar para Configurações
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Filtrar produtos
   const produtosFiltrados = produtos.filter(produto => {
     const buscaMatch = 
@@ -122,7 +213,6 @@ export default function ProdutosPage() {
     let valorA: any = a[ordenacao];
     let valorB: any = b[ordenacao];
     
-    // Tratamento especial para datas
     if (ordenacao === 'criadoEm') {
       valorA = new Date(valorA).getTime();
       valorB = new Date(valorB).getTime();
@@ -148,6 +238,11 @@ export default function ProdutosPage() {
   const totalPaginas = Math.ceil(produtosOrdenados.length / itensPorPagina);
 
   const toggleAtivo = async (produto: Produto) => {
+    if (!podeGerenciarProdutos) {
+      alert('Você não tem permissão para alterar o status de produtos!');
+      return;
+    }
+    
     const acao = produto.ativo ? 'desativar' : 'ativar';
     
     if (!confirm(`Deseja ${acao} o produto "${produto.nome}"?`)) {
@@ -174,6 +269,11 @@ export default function ProdutosPage() {
   };
 
   const excluirProduto = async (id: string, nome: string) => {
+    if (!podeGerenciarProdutos) {
+      alert('Você não tem permissão para excluir produtos!');
+      return;
+    }
+    
     if (!confirm(`Tem certeza que deseja excluir permanentemente o produto "${nome}"? Esta ação não pode ser desfeita.`)) {
       return;
     }
@@ -185,7 +285,6 @@ export default function ProdutosPage() {
       
       if (response.ok) {
         carregarDados();
-        // Resetar para primeira página após exclusão
         setPaginaAtual(1);
       } else {
         const data = await response.json();
@@ -214,7 +313,76 @@ export default function ProdutosPage() {
     setPaginaAtual(1);
   };
 
-  // Componente para imagem do produto com fallback
+  // ✅ NOVO: Componente para botões de ação com permissão
+  const renderizarAcoesProduto = (produto: Produto) => {
+    if (!podeGerenciarProdutos) {
+      return (
+        <div className="px-6 py-4 text-center">
+          <span className="text-xs text-gray-400 italic">
+            Sem permissão
+          </span>
+        </div>
+      );
+    }
+    
+    return (
+      <td className="px-6 py-4">
+        <div className="flex items-center space-x-2">
+          <Link
+            href={`/configuracao/produtos/editar/${produto._id}`}
+            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+            title="Editar"
+            aria-label={`Editar ${produto.nome}`}
+          >
+            <Edit className="h-5 w-5" />
+          </Link>
+          <button
+            onClick={() => excluirProduto(produto._id, produto.nome)}
+            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+            title="Excluir"
+            aria-label={`Excluir ${produto.nome}`}
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
+        </div>
+      </td>
+    );
+  };
+
+  // ✅ NOVO: Componente para botão de status com permissão
+  const renderizarStatusProduto = (produto: Produto) => {
+    if (!podeGerenciarProdutos) {
+      return (
+        <td className="px-6 py-4">
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium cursor-default ${
+            produto.ativo
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+          }`}>
+            {produto.ativo ? 'Ativo' : 'Inativo'}
+          </span>
+        </td>
+      );
+    }
+    
+    return (
+      <td className="px-6 py-4">
+        <button
+          onClick={() => toggleAtivo(produto)}
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium cursor-pointer ${
+            produto.ativo
+              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+              : 'bg-red-100 text-red-800 hover:bg-red-200'
+          }`}
+          aria-label={produto.ativo ? "Desativar produto" : "Ativar produto"}
+        >
+          {produto.ativo ? 'Ativo' : 'Inativo'}
+        </button>
+      </td>
+    );
+  };
+
+  // Componente para imagem do produto
   const ProdutoImagem = ({ src, alt }: { src: string; alt: string }) => {
     const [erro, setErro] = useState(false);
     
@@ -236,6 +404,35 @@ export default function ProdutosPage() {
     );
   };
 
+  // ✅ NOVO: Banner de permissões
+  const renderizarBannerPermissoes = () => {
+    if (usuarioLogado?.role === 'admin') return null;
+    
+    return (
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start">
+          <AlertCircle className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">
+              Permissões de Produto Ativas
+            </h3>
+            <div className="mt-2 text-sm text-blue-700">
+              <p>
+                Você está acessando a gestão de produtos com permissão completa.
+                {!podeGerenciarProdutos && ' (Apenas visualização)'}
+              </p>
+              {usuarioLogado && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Função: {usuarioLogado.role.toUpperCase()}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -243,7 +440,25 @@ export default function ProdutosPage() {
         <div>
           <div className="flex items-center mb-2">
             <Package className="h-8 w-8 text-blue-600 mr-3" />
-            <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
+              {usuarioLogado && (
+                <div className="flex items-center mt-1">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    usuarioLogado.role === 'admin' ? 'bg-red-100 text-red-800' :
+                    usuarioLogado.role === 'gerente' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {usuarioLogado.role.toUpperCase()}
+                  </span>
+                  {!podeGerenciarProdutos && (
+                    <span className="ml-2 text-xs text-yellow-600">
+                      (Apenas visualização)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <p className="text-gray-600">
             Gerencie o cardápio do restaurante
@@ -266,15 +481,22 @@ export default function ProdutosPage() {
             <RefreshCw className={`h-5 w-5 mr-2 ${carregando ? 'animate-spin' : ''}`} />
             Atualizar
           </button>
-          <Link
-            href="/configuracao/produtos/novo"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Novo Produto
-          </Link>
+          
+          {/* ✅ NOVO: Botão "Novo Produto" só aparece se tiver permissão */}
+          {podeGerenciarProdutos && (
+            <Link
+              href="/configuracao/produtos/novo"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Novo Produto
+            </Link>
+          )}
         </div>
       </div>
+
+      {/* ✅ NOVO: Banner de permissões */}
+      {renderizarBannerPermissoes()}
 
       {/* Filtros e Busca */}
       <div className="bg-gray-50 rounded-xl p-4 mb-6">
@@ -287,7 +509,7 @@ export default function ProdutosPage() {
                 value={busca}
                 onChange={(e) => {
                   setBusca(e.target.value);
-                  setPaginaAtual(1); // Resetar para primeira página ao buscar
+                  setPaginaAtual(1);
                 }}
                 placeholder="Buscar produtos por nome, descrição ou categoria..."
                 aria-label="Buscar produtos"
@@ -462,6 +684,15 @@ export default function ProdutosPage() {
                           : 'Comece adicionando seu primeiro produto'
                         }
                       </p>
+                      {podeGerenciarProdutos && (
+                        <Link
+                          href="/configuracao/produtos/novo"
+                          className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                        >
+                          <Plus className="h-5 w-5 mr-2" />
+                          Criar Primeiro Produto
+                        </Link>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -493,19 +724,10 @@ export default function ProdutosPage() {
                         {formatarMoeda(produto.preco)}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => toggleAtivo(produto)}
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium cursor-pointer ${
-                          produto.ativo
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
-                        }`}
-                        aria-label={produto.ativo ? "Desativar produto" : "Ativar produto"}
-                      >
-                        {produto.ativo ? 'Ativo' : 'Inativo'}
-                      </button>
-                    </td>
+                    
+                    {/* ✅ NOVO: Status com permissão */}
+                    {renderizarStatusProduto(produto)}
+                    
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {produto.adicionais && produto.adicionais.length > 0 ? (
@@ -524,26 +746,9 @@ export default function ProdutosPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <Link
-                          href={`/configuracao/produtos/editar/${produto._id}`}
-                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
-                          title="Editar"
-                          aria-label={`Editar ${produto.nome}`}
-                        >
-                          <Edit className="h-5 w-5" />
-                        </Link>
-                        <button
-                          onClick={() => excluirProduto(produto._id, produto.nome)}
-                          className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                          title="Excluir"
-                          aria-label={`Excluir ${produto.nome}`}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
+                    
+                    {/* ✅ NOVO: Ações com permissão */}
+                    {renderizarAcoesProduto(produto)}
                   </tr>
                 ))
               )}

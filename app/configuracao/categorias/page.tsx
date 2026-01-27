@@ -1,4 +1,4 @@
-// app/configuracao/categorias/page.tsx - VERSÃO COMPLETA COM IMAGEM/ÍCONE HÍBRIDO
+// app/configuracao/categorias/page.tsx - VERSÃO COMPLETA COM PERMISSÕES
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,7 +14,9 @@ import {
   ArrowUpDown,
   Filter,
   Image as ImageIcon,
-  Palette
+  Palette,
+  Lock,
+  Loader2
 } from 'lucide-react';
 
 interface Categoria {
@@ -29,41 +31,90 @@ interface Categoria {
   criadoEm: string;
 }
 
+interface UsuarioLogado {
+  role: string;
+  permissoes: Record<string, boolean>;
+}
+
 export default function CategoriasPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
   const [busca, setBusca] = useState('');
   const [mostrarInativas, setMostrarInativas] = useState(false);
   const [ordenacao, setOrdenacao] = useState<'nome' | 'ordem'>('ordem');
   const [direcao, setDirecao] = useState<'asc' | 'desc'>('asc');
+  
+  // ✅ NOVO: Estado para usuário logado
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+
+  // ✅ NOVO: Carregar usuário logado
+  useEffect(() => {
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
+  }, []);
 
   useEffect(() => {
-    carregarCategorias();
-  }, [mostrarInativas]);
+    if (usuarioLogado !== null) {
+      carregarCategorias();
+    }
+  }, [mostrarInativas, usuarioLogado]);
+
+  // ✅ NOVO: Função de verificação de permissões
+  const temPermissao = (permissao: string): boolean => {
+    if (!usuarioLogado) return false;
+    
+    // Admin tem todas as permissões
+    if (usuarioLogado.role === 'admin') return true;
+    
+    // Verifica permissão específica
+    return usuarioLogado.permissoes[permissao] === true;
+  };
+
+  // ✅ NOVO: Verificar se pode gerenciar categorias
+  const podeGerenciarCategorias = temPermissao('canManageCategories');
 
   const carregarCategorias = async () => {
-  try {
-    setCarregando(true);
-    const query = new URLSearchParams();
-    if (!mostrarInativas) query.append('ativas', 'true');
-    
-    const response = await fetch(`/api/categorias?${query}`);
-    const data = await response.json();
-    
-    // APENAS ESTE LOG PARA VER O QUE VEM DA API
-    console.log('DEBUG: Primeira categoria:', data.data[0]);
-    
-    if (data.success) {
-      setCategorias(data.data);
+    try {
+      setCarregando(true);
+      const query = new URLSearchParams();
+      if (!mostrarInativas) query.append('ativas', 'true');
+      
+      const response = await fetch(`/api/categorias?${query}`);
+      const data = await response.json();
+      
+      console.log('DEBUG: Primeira categoria:', data.data[0]);
+      
+      if (data.success) {
+        setCategorias(data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    } finally {
+      setCarregando(false);
     }
-  } catch (error) {
-    console.error('Erro ao carregar categorias:', error);
-  } finally {
-    setCarregando(false);
-  }
-};
+  };
 
   const toggleAtivo = async (categoria: Categoria) => {
+    // ✅ NOVO: Verificar permissão
+    if (!podeGerenciarCategorias) {
+      alert('Você não tem permissão para gerenciar categorias!');
+      return;
+    }
+
     try {
       const response = await fetch(`/api/categorias/${categoria._id}`, {
         method: 'PUT',
@@ -80,6 +131,12 @@ export default function CategoriasPage() {
   };
 
   const excluirCategoria = async (id: string, nome: string) => {
+    // ✅ NOVO: Verificar permissão
+    if (!podeGerenciarCategorias) {
+      alert('Você não tem permissão para excluir categorias!');
+      return;
+    }
+
     if (!confirm(`Tem certeza que deseja excluir a categoria "${nome}"?`)) {
       return;
     }
@@ -100,6 +157,88 @@ export default function CategoriasPage() {
       console.error('Erro ao excluir categoria:', error);
       alert('Erro ao excluir categoria');
     }
+  };
+
+  // ✅ NOVO: Tela de carregamento de permissões
+  if (carregandoPermissoes) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 text-blue-600 animate-spin mr-3" />
+          <span className="text-gray-600">Carregando permissões...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Verificar se tem permissão para ver categorias
+  const podeVerCategorias = temPermissao('canViewCategories') || podeGerenciarCategorias;
+
+  if (!podeVerCategorias) {
+    return (
+      <div className="p-6">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+          <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-10 w-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Acesso Negado</h2>
+          <p className="text-gray-600 mb-6">
+            Você não tem permissão para visualizar categorias.
+            {usuarioLogado && (
+              <span className="block mt-2 text-sm text-gray-500">
+                Função: {usuarioLogado.role.toUpperCase()}
+              </span>
+            )}
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
+            Voltar para Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Banner de permissões
+  const renderizarBannerPermissoes = () => {
+    return (
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start">
+          <Tag className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">
+              Gerenciamento de Categorias
+            </h3>
+            <div className="mt-1 text-sm text-blue-700">
+              <p>
+                {podeGerenciarCategorias 
+                  ? 'Você tem permissão completa para gerenciar categorias.' 
+                  : 'Você tem permissão apenas para visualizar categorias.'
+                }
+              </p>
+              {usuarioLogado && (
+                <div className="flex items-center mt-2 space-x-2">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    usuarioLogado.role === 'admin' ? 'bg-red-100 text-red-800' :
+                    usuarioLogado.role === 'gerente' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {usuarioLogado.role.toUpperCase()}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    podeGerenciarCategorias ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {podeGerenciarCategorias ? 'Permissão Total' : 'Somente Visualização'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const categoriasOrdenadas = [...categorias].sort((a, b) => {
@@ -126,34 +265,32 @@ export default function CategoriasPage() {
     }
   };
 
-  // 🔹 PARTE 4 - Componente para imagem/ícone da categoria
- const CategoriaImagem = ({ categoria }: { categoria: Categoria }) => {
-  console.log('DEBUG Componente:', {
-    nome: categoria.nome,
-    usaImagem: categoria.usaImagem,
-    temImagem: !!categoria.imagem
-  });
-  
-  // Se usaImagem é true E tem imagem, mostra imagem
-  if (categoria.usaImagem === true && categoria.imagem) {
+  // Componente para imagem/ícone da categoria
+  const CategoriaImagem = ({ categoria }: { categoria: Categoria }) => {
+    console.log('DEBUG Componente:', {
+      nome: categoria.nome,
+      usaImagem: categoria.usaImagem,
+      temImagem: !!categoria.imagem
+    });
+    
+    if (categoria.usaImagem === true && categoria.imagem) {
+      return (
+        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+          <img 
+            src={categoria.imagem} 
+            alt={categoria.nome}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      );
+    }
+    
     return (
-      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-        <img 
-          src={categoria.imagem} 
-          alt={categoria.nome}
-          className="w-full h-full object-cover"
-        />
+      <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+        <div className="text-3xl">{categoria.icone || '📦'}</div>
       </div>
     );
-  }
-  
-  // Senão, mostra ícone
-  return (
-    <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-      <div className="text-3xl">{categoria.icone || '📦'}</div>
-    </div>
-  );
-};
+  };
 
   return (
     <div className="p-6">
@@ -168,16 +305,34 @@ export default function CategoriasPage() {
             Organize produtos por categorias
           </p>
         </div>
-        <div className="mt-4 lg:mt-0">
-          <Link
-            href="/configuracao/categorias/novo"
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Nova Categoria
-          </Link>
+        
+        <div className="flex items-center mt-4 lg:mt-0 space-x-3">
+          {/* ✅ NOVO: Badge de função */}
+          {usuarioLogado && (
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+              usuarioLogado.role === 'admin' ? 'bg-red-100 text-red-800' :
+              usuarioLogado.role === 'gerente' ? 'bg-blue-100 text-blue-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {usuarioLogado.role.toUpperCase()}
+            </span>
+          )}
+          
+          {/* ✅ NOVO: Botão condicional baseado em permissão */}
+          {podeGerenciarCategorias && (
+            <Link
+              href="/configuracao/categorias/novo"
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Nova Categoria
+            </Link>
+          )}
         </div>
       </div>
+
+      {/* ✅ NOVO: Banner de permissões */}
+      {renderizarBannerPermissoes()}
 
       {/* Filtros */}
       <div className="bg-gray-50 rounded-xl p-4 mb-6">
@@ -230,7 +385,7 @@ export default function CategoriasPage() {
         </div>
       </div>
 
-      {/* 🔹 PARTE 6 - Stats Atualizados */}
+      {/* Stats Atualizados */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border p-4">
           <div className="text-sm text-gray-600">Total de Categorias</div>
@@ -268,13 +423,15 @@ export default function CategoriasPage() {
           <p className="text-gray-600 mb-6">
             {busca ? 'Tente outra busca' : 'Comece criando sua primeira categoria'}
           </p>
-          <Link
-            href="/configuracao/categorias/novo"
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Criar Primeira Categoria
-          </Link>
+          {podeGerenciarCategorias && (
+            <Link
+              href="/configuracao/categorias/novo"
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Criar Primeira Categoria
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -285,7 +442,6 @@ export default function CategoriasPage() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center">
-                  {/* 🔹 PARTE 4 - Usando o componente CategoriaImagem */}
                   <CategoriaImagem categoria={categoria} />
                   <div className="ml-3">
                     <h3 className="font-bold text-gray-900">{categoria.nome}</h3>
@@ -311,33 +467,41 @@ export default function CategoriasPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-1">
-                  <Link
-                    href={`/configuracao/categorias/editar/${categoria._id}`}
-                    className="p-1 text-green-600 hover:text-green-800"
-                    title="Editar"
-                  >
-                    <Edit className="h-5 w-5" />
-                  </Link>
-                  <button
-                    onClick={() => toggleAtivo(categoria)}
-                    className="p-1 text-gray-600 hover:text-gray-800"
-                    title={categoria.ativo ? 'Desativar' : 'Ativar'}
-                  >
-                    {categoria.ativo ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => excluirCategoria(categoria._id, categoria.nome)}
-                    className="p-1 text-red-600 hover:text-red-800"
-                    title="Excluir"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-                </div>
+                
+                {/* ✅ NOVO: Botões condicionais baseados em permissão */}
+                {podeGerenciarCategorias ? (
+                  <div className="flex items-center space-x-1">
+                    <Link
+                      href={`/configuracao/categorias/editar/${categoria._id}`}
+                      className="p-1 text-green-600 hover:text-green-800"
+                      title="Editar"
+                    >
+                      <Edit className="h-5 w-5" />
+                    </Link>
+                    <button
+                      onClick={() => toggleAtivo(categoria)}
+                      className="p-1 text-gray-600 hover:text-gray-800"
+                      title={categoria.ativo ? 'Desativar' : 'Ativar'}
+                    >
+                      {categoria.ativo ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => excluirCategoria(categoria._id, categoria.nome)}
+                      className="p-1 text-red-600 hover:text-red-800"
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500 italic">
+                    Somente visualização
+                  </div>
+                )}
               </div>
               
               {categoria.descricao && (

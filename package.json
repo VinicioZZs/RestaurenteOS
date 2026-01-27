@@ -1,7 +1,7 @@
 {
   "name": "servyx",
   "version": "1.0.0",
-  "main": "electron-main.js", 
+  "main": "electron-main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -14,7 +14,7 @@
     "productName": "Servyx",
     "win": {
       "target": "nsis",
-      "icon": "public/favicon.ico" 
+      "icon": "public/favicon.ico"
     },
     "files": [
       "**/*",
@@ -26,11 +26,16 @@
       {
         "from": "bin/mongodb/",
         "to": "bin/mongodb/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ]
-  },"dependencies": {
+  },
+  "dependencies": {
     "@tailwindcss/forms": "^0.5.11",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "cookie": "^1.1.1",
     "dotenv": "^17.2.3",
     "electron-serve": "^3.0.0",

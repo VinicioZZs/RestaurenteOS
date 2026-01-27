@@ -1,5 +1,4 @@
- 
-// app/configuracao/adicionais/page.tsx - PÁGINA PRINCIPAL
+// app/configuracao/adicionais/page.tsx - COM PERMISSÕES
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,7 +13,9 @@ import {
   Filter,
   RefreshCw,
   Tag,
-  DollarSign
+  DollarSign,
+  Lock,
+  Loader2
 } from 'lucide-react';
 
 interface Adicional {
@@ -23,23 +24,67 @@ interface Adicional {
   descricao?: string;
   preco: number;
   categoria: string;
-  gratuito: boolean; // ← NOVO CAMPO
+  gratuito: boolean;
   ativo: boolean;
   criadoEm: string;
+}
+
+interface UsuarioLogado {
+  role: string;
+  permissoes: Record<string, boolean>;
 }
 
 export default function AdicionaisPage() {
   const [adicionais, setAdicionais] = useState<Adicional[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
   const [busca, setBusca] = useState('');
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
   const [categorias, setCategorias] = useState<string[]>([]);
+  
+  // ✅ NOVO: Estado para usuário logado
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+
+  // ✅ NOVO: Carregar usuário logado
+  useEffect(() => {
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
+  }, []);
 
   useEffect(() => {
-    carregarAdicionais();
-  }, [mostrarInativos]);
+    if (usuarioLogado !== null) {
+      carregarAdicionais();
+    }
+  }, [mostrarInativos, usuarioLogado]);
+
+  // ✅ NOVO: Função de verificação de permissões
+  const temPermissao = (permissao: string): boolean => {
+    if (!usuarioLogado) return false;
+    
+    // Admin tem todas as permissões
+    if (usuarioLogado.role === 'admin') return true;
+    
+    // Verifica permissão específica
+    return usuarioLogado.permissoes[permissao] === true;
+  };
+
+  // ✅ NOVO: Verificar se pode gerenciar adicionais
+  const podeGerenciarAdicionais = temPermissao('canManageAdicionais');
 
   const carregarAdicionais = async () => {
     try {
@@ -74,6 +119,48 @@ export default function AdicionaisPage() {
     }
   };
 
+  // ✅ NOVO: Tela de carregamento de permissões
+  if (carregandoPermissoes) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 text-purple-600 animate-spin mr-3" />
+          <span className="text-gray-600">Carregando permissões...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Verificar se tem permissão para ver adicionais
+  const podeVerAdicionais = temPermissao('canViewAdicionais') || podeGerenciarAdicionais;
+
+  if (!podeVerAdicionais) {
+    return (
+      <div className="p-6">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+          <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-10 w-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Acesso Negado</h2>
+          <p className="text-gray-600 mb-6">
+            Você não tem permissão para visualizar adicionais.
+            {usuarioLogado && (
+              <span className="block mt-2 text-sm text-gray-500">
+                Função: {usuarioLogado.role.toUpperCase()}
+              </span>
+            )}
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
+            Voltar para Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const formatarMoeda = (valor: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -86,6 +173,12 @@ export default function AdicionaisPage() {
   };
 
   const toggleAtivo = async (adicional: Adicional) => {
+    // ✅ NOVO: Verificar permissão
+    if (!podeGerenciarAdicionais) {
+      alert('Você não tem permissão para gerenciar adicionais!');
+      return;
+    }
+
     const acao = adicional.ativo ? 'desativar' : 'ativar';
     
     if (!confirm(`Deseja ${acao} o adicional "${adicional.nome}"?`)) {
@@ -112,6 +205,12 @@ export default function AdicionaisPage() {
   };
 
   const excluirAdicional = async (id: string, nome: string) => {
+    // ✅ NOVO: Verificar permissão
+    if (!podeGerenciarAdicionais) {
+      alert('Você não tem permissão para excluir adicionais!');
+      return;
+    }
+
     if (!confirm(`Tem certeza que deseja excluir o adicional "${nome}"?`)) {
       return;
     }
@@ -152,6 +251,46 @@ export default function AdicionaisPage() {
     setMostrarInativos(false);
   };
 
+  // ✅ NOVO: Banner de permissões
+  const renderizarBannerPermissoes = () => {
+    return (
+      <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+        <div className="flex items-start">
+          <Plus className="h-5 w-5 text-purple-600 mr-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-purple-800">
+              Gerenciamento de Adicionais
+            </h3>
+            <div className="mt-1 text-sm text-purple-700">
+              <p>
+                {podeGerenciarAdicionais 
+                  ? 'Você tem permissão completa para gerenciar adicionais.' 
+                  : 'Você tem permissão apenas para visualizar adicionais.'
+                }
+              </p>
+              {usuarioLogado && (
+                <div className="flex items-center mt-2 space-x-2">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    usuarioLogado.role === 'admin' ? 'bg-red-100 text-red-800' :
+                    usuarioLogado.role === 'gerente' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {usuarioLogado.role.toUpperCase()}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    podeGerenciarAdicionais ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {podeGerenciarAdicionais ? 'Permissão Total' : 'Somente Visualização'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -166,6 +305,17 @@ export default function AdicionaisPage() {
           </p>
         </div>
         <div className="mt-4 lg:mt-0 flex items-center space-x-3">
+          {/* ✅ NOVO: Badge de função */}
+          {usuarioLogado && (
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+              usuarioLogado.role === 'admin' ? 'bg-red-100 text-red-800' :
+              usuarioLogado.role === 'gerente' ? 'bg-blue-100 text-blue-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {usuarioLogado.role.toUpperCase()}
+            </span>
+          )}
+          
           <button
             onClick={limparFiltros}
             className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
@@ -182,15 +332,22 @@ export default function AdicionaisPage() {
             <RefreshCw className={`h-5 w-5 mr-2 ${carregando ? 'animate-spin' : ''}`} />
             Atualizar
           </button>
-          <Link
-            href="/configuracao/adicionais/novo"
-            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Novo Adicional
-          </Link>
+          
+          {/* ✅ NOVO: Botão condicional baseado em permissão */}
+          {podeGerenciarAdicionais && (
+            <Link
+              href="/configuracao/adicionais/novo"
+              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Novo Adicional
+            </Link>
+          )}
         </div>
       </div>
+
+      {/* ✅ NOVO: Banner de permissões */}
+      {renderizarBannerPermissoes()}
 
       {/* Filtros e Busca */}
       <div className="bg-gray-50 rounded-xl p-4 mb-6">
@@ -248,32 +405,31 @@ export default function AdicionaisPage() {
         )}
       </div>
 
-      {/* Stats - adicione um novo card */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border p-4">
-            <div className="text-sm text-gray-600">Total de Adicionais</div>
-            <div className="text-2xl font-bold mt-1">{adicionais.length}</div>
+          <div className="text-sm text-gray-600">Total de Adicionais</div>
+          <div className="text-2xl font-bold mt-1">{adicionais.length}</div>
         </div>
         <div className="bg-white rounded-xl border p-4">
-            <div className="text-sm text-gray-600">Adicionais Ativos</div>
-            <div className="text-2xl font-bold mt-1 text-green-600">
+          <div className="text-sm text-gray-600">Adicionais Ativos</div>
+          <div className="text-2xl font-bold mt-1 text-green-600">
             {adicionais.filter(a => a.ativo).length}
-            </div>
+          </div>
         </div>
         <div className="bg-white rounded-xl border p-4">
-            <div className="text-sm text-gray-600">Gratuitos</div>
-            <div className="text-2xl font-bold mt-1 text-blue-600">
+          <div className="text-sm text-gray-600">Gratuitos</div>
+          <div className="text-2xl font-bold mt-1 text-blue-600">
             {adicionais.filter(a => a.gratuito).length}
-            </div>
+          </div>
         </div>
         <div className="bg-white rounded-xl border p-4">
-            <div className="text-sm text-gray-600">Com Preço</div>
-            <div className="text-2xl font-bold mt-1 text-purple-600">
+          <div className="text-sm text-gray-600">Com Preço</div>
+          <div className="text-2xl font-bold mt-1 text-purple-600">
             {adicionais.filter(a => !a.gratuito).length}
-            </div>
+          </div>
         </div>
-        </div>
-
+      </div>
 
       {/* Tabela de Adicionais */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -322,6 +478,15 @@ export default function AdicionaisPage() {
                           : 'Comece adicionando seu primeiro adicional'
                         }
                       </p>
+                      {podeGerenciarAdicionais && !busca && filtroCategoria === 'todas' && !mostrarInativos && (
+                        <Link
+                          href="/configuracao/adicionais/novo"
+                          className="mt-4 inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
+                        >
+                          <Plus className="h-5 w-5 mr-2" />
+                          Adicionar Primeiro Adicional
+                        </Link>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -329,19 +494,19 @@ export default function AdicionaisPage() {
                 adicionaisFiltrados.map((adicional) => (
                   <tr key={adicional._id} className={`hover:bg-gray-50 ${!adicional.ativo ? 'opacity-70 bg-gray-50' : ''}`}>
                     <td className="px-6 py-4">
-                    <div>
+                      <div>
                         {/* NOME COM BADGE DE GRATUITO */}
                         <div className="font-medium text-gray-900 flex items-center">
-                        {adicional.nome}
-                        {adicional.gratuito && (
+                          {adicional.nome}
+                          {adicional.gratuito && (
                             <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full font-semibold">
-                            Gratuito
+                              Gratuito
                             </span>
-                        )}
+                          )}
                         </div>
                         
                         <div className="text-sm text-gray-500 truncate max-w-xs">
-                        {adicional.descricao || 'Sem descrição'}
+                          {adicional.descricao || 'Sem descrição'}
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
                           Criado em {formatarData(adicional.criadoEm)}
@@ -355,47 +520,65 @@ export default function AdicionaisPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                    <div className="font-bold text-gray-900">
+                      <div className="font-bold text-gray-900">
                         {adicional.gratuito ? (
-                        <span className="text-green-600">GRATUITO</span>
+                          <span className="text-green-600">GRATUITO</span>
                         ) : (
-                        formatarMoeda(adicional.preco)
+                          formatarMoeda(adicional.preco)
                         )}
-                    </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => toggleAtivo(adicional)}
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium cursor-pointer ${
+                      {/* ✅ NOVO: Botão condicional baseado em permissão */}
+                      {podeGerenciarAdicionais ? (
+                        <button
+                          onClick={() => toggleAtivo(adicional)}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium cursor-pointer ${
+                            adicional.ativo
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-red-100 text-red-800 hover:bg-red-200'
+                          }`}
+                          aria-label={adicional.ativo ? "Desativar adicional" : "Ativar adicional"}
+                        >
+                          {adicional.ativo ? 'Ativo' : 'Inativo'}
+                        </button>
+                      ) : (
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                           adicional.ativo
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
-                        }`}
-                        aria-label={adicional.ativo ? "Desativar adicional" : "Ativar adicional"}
-                      >
-                        {adicional.ativo ? 'Ativo' : 'Inativo'}
-                      </button>
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {adicional.ativo ? 'Ativo' : 'Inativo'}
+                        </span>
+                      )}
                     </td>
                     
                     <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <Link
-                          href={`/configuracao/adicionais/editar/${adicional._id}`}
-                          className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded"
-                          title="Editar"
-                          aria-label={`Editar ${adicional.nome}`}
-                        >
-                          <Edit className="h-5 w-5" />
-                        </Link>
-                        <button
-                          onClick={() => excluirAdicional(adicional._id, adicional.nome)}
-                          className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                          title="Excluir"
-                          aria-label={`Excluir ${adicional.nome}`}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
+                      {/* ✅ NOVO: Botões condicionais baseados em permissão */}
+                      {podeGerenciarAdicionais ? (
+                        <div className="flex items-center space-x-2">
+                          <Link
+                            href={`/configuracao/adicionais/editar/${adicional._id}`}
+                            className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded"
+                            title="Editar"
+                            aria-label={`Editar ${adicional.nome}`}
+                          >
+                            <Edit className="h-5 w-5" />
+                          </Link>
+                          <button
+                            onClick={() => excluirAdicional(adicional._id, adicional.nome)}
+                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                            title="Excluir"
+                            aria-label={`Excluir ${adicional.nome}`}
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500 italic">
+                          Somente visualização
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -410,6 +593,7 @@ export default function AdicionaisPage() {
         Mostrando {adicionaisFiltrados.length} de {adicionais.length} adicionais
         {busca && ` • Resultados para: "${busca}"`}
         {filtroCategoria !== 'todas' && ` • Categoria: ${filtroCategoria}`}
+        {!podeGerenciarAdicionais && ` • Modo de visualização`}
       </div>
     </div>
   );

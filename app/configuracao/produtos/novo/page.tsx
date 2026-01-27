@@ -1,10 +1,9 @@
-// app/configuracao/produtos/novo/page.tsx
+// app/configuracao/produtos/novo/page.tsx - COM PERMISSÃO
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { 
   Package, 
   Save, 
@@ -18,7 +17,8 @@ import {
   Box,
   Hash,
   Percent,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 
 interface Categoria {
@@ -31,6 +31,17 @@ interface Adicional {
   _id: string;
   nome: string;
   preco: number;
+}
+
+interface UsuarioLogado {
+  _id: string;
+  email: string;
+  nome: string;
+  role: string;
+  permissoes: {
+    canManageProducts?: boolean;
+    [key: string]: boolean | undefined;
+  };
 }
 
 const unidadesMedida = [
@@ -55,43 +66,64 @@ export default function NovoProdutoPage() {
   const [imagemPreview, setImagemPreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   
+  // ✅ NOVO: Estado para usuário logado
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+  const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
+
   const [formData, setFormData] = useState({
-    // Informações básicas
     nome: '',
     codigo: '',
     descricao: '',
     categoria: '',
-    
-    // Preços
     precoVenda: '',
     precoCusto: '',
-    
-    // Estoque
     estoqueAtual: '0',
     estoqueMinimo: '0',
     controlarEstoque: false,
-    
-    // Unidade e medidas
     unidadeMedida: 'unidade',
     peso: '',
     volume: '',
-    
-    // Imagem
     imagem: '',
-    
-    // Adicionais
     adicionaisSelecionados: [] as string[],
-    
-    // Tags
     tags: '',
-    
-    // Status
     ativo: true
   });
 
+  // ✅ NOVO: Carregar usuário logado
   useEffect(() => {
-    carregarDados();
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
   }, []);
+
+  useEffect(() => {
+    if (usuarioLogado !== null) {
+      carregarDados();
+    }
+  }, [usuarioLogado]);
+
+  // ✅ NOVO: Função de verificação de permissões
+  const temPermissao = (permissao: string): boolean => {
+    if (!usuarioLogado) return false;
+    
+    // Admin tem todas as permissões
+    if (usuarioLogado.role === 'admin') return true;
+    
+    // Verifica permissão específica
+    return usuarioLogado.permissoes[permissao] === true;
+  };
 
   const carregarDados = async () => {
     try {
@@ -137,13 +169,12 @@ export default function NovoProdutoPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validação básica
     if (!file.type.startsWith('image/')) {
       setErro('Por favor, selecione uma imagem válida');
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB
+    if (file.size > 5 * 1024 * 1024) {
       setErro('A imagem deve ter menos de 5MB');
       return;
     }
@@ -151,8 +182,6 @@ export default function NovoProdutoPage() {
     setUploading(true);
     
     try {
-      // Em produção, você faria upload para um serviço como Cloudinary, AWS S3, etc.
-      // Aqui vamos usar uma URL base64 temporária para demonstração
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
@@ -180,16 +209,21 @@ export default function NovoProdutoPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ✅ NOVO: Verificar permissão antes de enviar
+    if (!temPermissao('canManageProducts')) {
+      setErro('Você não tem permissão para criar produtos!');
+      return;
+    }
+    
     setErro('');
     setEnviando(true);
 
-     // DEBUG: Veja o que está sendo enviado
-  console.log('Dados sendo enviados:', {
-    ...formData,
-    precoVenda: parseFloat(formData.precoVenda),
-    precoCusto: formData.precoCusto ? parseFloat(formData.precoCusto) : undefined,
-  });
-
+    console.log('Dados sendo enviados:', {
+      ...formData,
+      precoVenda: parseFloat(formData.precoVenda),
+      precoCusto: formData.precoCusto ? parseFloat(formData.precoCusto) : undefined,
+    });
 
     // Validações
     if (!formData.nome.trim()) {
@@ -254,8 +288,75 @@ export default function NovoProdutoPage() {
     }
   };
 
+  // ✅ NOVO: Tela de carregamento de permissões
+  if (carregandoPermissoes) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+          <span className="text-gray-600">Carregando permissões...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Verificar se tem permissão para criar produtos
+  if (!temPermissao('canManageProducts')) {
+    return (
+      <div className="p-6">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+          <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-10 w-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Acesso Negado</h2>
+          <p className="text-gray-600 mb-6">
+            Você não tem permissão para criar novos produtos.
+            {usuarioLogado && (
+              <span className="block mt-2 text-sm text-gray-500">
+                Função: {usuarioLogado.role.toUpperCase()}
+              </span>
+            )}
+          </p>
+          <Link
+            href="/configuracao/produtos"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Voltar para Produtos
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const margem = calcularMargem();
   const margemCor = margem >= 50 ? 'text-green-600' : margem >= 30 ? 'text-yellow-600' : 'text-red-600';
+
+  // ✅ NOVO: Banner de permissões
+  const renderizarBannerPermissoes = () => {
+    return (
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start">
+          <AlertCircle className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">
+              Criando Novo Produto
+            </h3>
+            <div className="mt-1 text-sm text-blue-700">
+              <p>
+                Você tem permissão completa para criar novos produtos no sistema.
+              </p>
+              {usuarioLogado && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Função: {usuarioLogado.role.toUpperCase()}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="p-6">
@@ -275,7 +376,12 @@ export default function NovoProdutoPage() {
         </div>
       </div>
 
+      {/* ✅ NOVO: Banner de permissões */}
+      {renderizarBannerPermissoes()}
+
       <form onSubmit={handleSubmit} className="space-y-8">
+        {/* ... (restante do formulário permanece igual) ... */}
+        
         {/* Card 1: Informações Básicas */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center mb-6">

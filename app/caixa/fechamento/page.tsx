@@ -1,9 +1,9 @@
-// app/caixa/fechamento/page.tsx - VERSÃO COM CONTADOR DE NOTAS
+// app/caixa/fechamento/page.tsx - VERSÃO COM CONTADOR DE NOTAS E PERMISSÃO
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Wallet, ArrowLeft, AlertCircle, Calculator, TrendingUp, TrendingDown, CheckCircle, Plus, Minus } from 'lucide-react';
+import { Wallet, ArrowLeft, AlertCircle, Calculator, Lock, TrendingUp, TrendingDown, CheckCircle, Plus, Minus } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 
 // Tipos das notas/moedas
@@ -21,6 +21,7 @@ export default function FechamentoCaixaPage() {
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [erro, setErro] = useState('');
   const [usuario, setUsuario] = useState('');
+  const [temPermissao, setTemPermissao] = useState(false);
   const [modoContagem, setModoContagem] = useState<'manual' | 'contador'>('manual');
   
   // Dados do caixa atual
@@ -52,6 +53,14 @@ export default function FechamentoCaixaPage() {
     carregarCaixaAtual();
     const user = getCurrentUser();
     setUsuario(user?.name || 'Operador');
+    
+    // Verificar permissão do usuário
+    if (user?.permissions?.includes('canProcessPayment')) {
+      setTemPermissao(true);
+    } else {
+      setErro('Você não tem permissão para fechar o caixa. Apenas usuários com permissão de processamento de pagamento podem realizar esta ação.');
+      setCarregandoDados(false);
+    }
   }, []);
 
   // Calcular total automaticamente
@@ -106,6 +115,7 @@ export default function FechamentoCaixaPage() {
 
   // Funções para o contador
   const incrementarContador = (valor: number) => {
+    if (!temPermissao) return;
     setContador(prev => ({
       ...prev,
       [valor]: (prev[valor] || 0) + 1
@@ -113,20 +123,25 @@ export default function FechamentoCaixaPage() {
   };
 
   const decrementarContador = (valor: number) => {
-    if (contador[valor] > 0) {
-      setContador(prev => ({
-        ...prev,
-        [valor]: prev[valor] - 1
-      }));
-    }
+    if (!temPermissao || contador[valor] <= 0) return;
+    setContador(prev => ({
+      ...prev,
+      [valor]: prev[valor] - 1
+    }));
   };
 
   const resetarContador = () => {
+    if (!temPermissao) return;
     const reset = denominações.reduce((acc, den) => ({ ...acc, [den.valor]: 0 }), {});
     setContador(reset);
   };
 
   const handleFecharCaixa = async () => {
+    if (!temPermissao) {
+      setErro('Você não tem permissão para fechar o caixa.');
+      return;
+    }
+
     if (!valorFinal || parseFloat(valorFinal) < 0) {
       setErro('Informe um valor final válido');
       return;
@@ -199,16 +214,19 @@ export default function FechamentoCaixaPage() {
     );
   }
 
-  if (erro && !caixaAtual) {
+  // Tela de erro (sem permissão ou sem caixa aberto)
+  if (erro && (!caixaAtual || !temPermissao)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
         <div className="max-w-md w-full">
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <div className="text-center">
               <div className="inline-block p-4 bg-red-100 rounded-full mb-4">
-                <AlertCircle className="h-12 w-12 text-red-600" />
+                {!temPermissao ? <Lock className="h-12 w-12 text-red-600" /> : <AlertCircle className="h-12 w-12 text-red-600" />}
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-3">Erro</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-3">
+                {!temPermissao ? 'Acesso Negado' : 'Erro'}
+              </h2>
               <p className="text-gray-600 mb-6">{erro}</p>
               <button
                 onClick={() => router.push('/caixa')}
@@ -246,6 +264,14 @@ export default function FechamentoCaixaPage() {
                 Aberto em: {caixaAtual?.abertura ? formatarData(caixaAtual.abertura.data) : '---'}
               </p>
             </div>
+            
+            {/* Indicador de Permissão */}
+            {temPermissao && (
+              <div className="ml-auto flex items-center gap-2 bg-green-100 text-green-800 px-3 py-2 rounded-full">
+                <CheckCircle className="h-5 w-5" />
+                <span className="text-sm font-medium">Permissão: canProcessPayment</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -253,22 +279,40 @@ export default function FechamentoCaixaPage() {
         <div className="mb-6">
           <div className="flex gap-4 mb-4">
             <button
-              onClick={() => setModoContagem('manual')}
-              className={`flex-1 py-3 rounded-xl font-medium ${modoContagem === 'manual' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              onClick={() => temPermissao && setModoContagem('manual')}
+              className={`flex-1 py-3 rounded-xl font-medium ${!temPermissao 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : modoContagem === 'manual' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              disabled={!temPermissao}
             >
               Digitar Valor
             </button>
             <button
-              onClick={() => setModoContagem('contador')}
-              className={`flex-1 py-3 rounded-xl font-medium ${modoContagem === 'contador' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              onClick={() => temPermissao && setModoContagem('contador')}
+              className={`flex-1 py-3 rounded-xl font-medium ${!temPermissao 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : modoContagem === 'contador' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              disabled={!temPermissao}
             >
               Contar Notas/Moedas
             </button>
           </div>
+          
+          {!temPermissao && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+              <div className="flex items-center">
+                <Lock className="h-5 w-5 text-yellow-600 mr-3" />
+                <span className="text-yellow-800">
+                  <strong>Apenas usuários com permissão "canProcessPayment" podem fechar o caixa.</strong>
+                  Entre em contato com o administrador do sistema.
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Grid de informações */}
@@ -339,10 +383,15 @@ export default function FechamentoCaixaPage() {
                       step="0.01"
                       min="0"
                       value={valorFinal}
-                      onChange={(e) => setValorFinal(e.target.value)}
-                      className="w-full pl-14 pr-4 py-4 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-2xl font-bold"
+                      onChange={(e) => temPermissao && setValorFinal(e.target.value)}
+                      className={`w-full pl-14 pr-4 py-4 border rounded-xl focus:ring-2 text-2xl font-bold ${
+                        !temPermissao 
+                          ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed' 
+                          : 'bg-gray-50 border-gray-300 focus:ring-blue-500'
+                      }`}
                       placeholder="0,00"
-                      autoFocus
+                      autoFocus={temPermissao}
+                      disabled={!temPermissao}
                     />
                   </div>
                   <p className="text-sm text-gray-500 mt-2">
@@ -355,7 +404,9 @@ export default function FechamentoCaixaPage() {
                 {/* Contador de notas/moedas */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {denominações.map((den) => (
-                    <div key={den.valor} className="bg-gray-50 rounded-lg p-4 border">
+                    <div key={den.valor} className={`bg-gray-50 rounded-lg p-4 border ${
+                      !temPermissao ? 'opacity-50' : ''
+                    }`}>
                       <div className="flex justify-between items-center mb-2">
                         <span className="font-medium text-gray-800">{den.label}</span>
                         <span className={`px-2 py-1 text-xs rounded-full ${
@@ -366,42 +417,58 @@ export default function FechamentoCaixaPage() {
                       </div>
                       
                       <div className="flex items-center justify-between">
-  <button
-    onClick={() => decrementarContador(den.valor)}
-    className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
-    type="button"
-  >
-    <Minus className="h-4 w-4" />
-  </button>
-  
-  <div className="text-center flex flex-col items-center">
-    {/* Input para digitar quantidade */}
-    <input
-      type="number"
-      min="0"
-      value={contador[den.valor] || 0}
-      onChange={(e) => {
-        const novaQuantidade = parseInt(e.target.value) || 0;
-        setContador(prev => ({
-          ...prev,
-          [den.valor]: Math.max(0, novaQuantidade) // Não permite negativo
-        }));
-      }}
-      className="w-16 text-center text-2xl font-bold text-gray-800 bg-transparent border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
-    />
-    <div className="text-sm text-gray-500 mt-1">
-      {formatarMoeda(den.valor * (contador[den.valor] || 0))}
-    </div>
-  </div>
-  
-  <button
-    onClick={() => incrementarContador(den.valor)}
-    className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition-colors"
-    type="button"
-  >
-    <Plus className="h-4 w-4" />
-  </button>
-</div>
+                        <button
+                          onClick={() => decrementarContador(den.valor)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                            !temPermissao 
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                              : 'bg-red-100 text-red-600 hover:bg-red-200'
+                          }`}
+                          type="button"
+                          disabled={!temPermissao}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        
+                        <div className="text-center flex flex-col items-center">
+                          {/* Input para digitar quantidade */}
+                          <input
+                            type="number"
+                            min="0"
+                            value={contador[den.valor] || 0}
+                            onChange={(e) => {
+                              if (!temPermissao) return;
+                              const novaQuantidade = parseInt(e.target.value) || 0;
+                              setContador(prev => ({
+                                ...prev,
+                                [den.valor]: Math.max(0, novaQuantidade) // Não permite negativo
+                              }));
+                            }}
+                            className={`w-16 text-center text-2xl font-bold border-b-2 focus:outline-none ${
+                              !temPermissao
+                                ? 'text-gray-400 bg-transparent border-gray-300 cursor-not-allowed'
+                                : 'text-gray-800 bg-transparent border-gray-300 focus:border-blue-500'
+                            }`}
+                            disabled={!temPermissao}
+                          />
+                          <div className="text-sm text-gray-500 mt-1">
+                            {formatarMoeda(den.valor * (contador[den.valor] || 0))}
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => incrementarContador(den.valor)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                            !temPermissao 
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                              : 'bg-green-100 text-green-600 hover:bg-green-200'
+                          }`}
+                          type="button"
+                          disabled={!temPermissao}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -434,13 +501,23 @@ export default function FechamentoCaixaPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={resetarContador}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+                      className={`px-4 py-2 rounded-lg text-sm ${
+                        !temPermissao
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                      disabled={!temPermissao}
                     >
                       Zerar Contador
                     </button>
                     <button
-                      onClick={() => setModoContagem('manual')}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+                      onClick={() => temPermissao && setModoContagem('manual')}
+                      className={`px-4 py-2 rounded-lg text-sm ${
+                        !temPermissao
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                      disabled={!temPermissao}
                     >
                       Digitar Valor Manualmente
                     </button>
@@ -457,10 +534,15 @@ export default function FechamentoCaixaPage() {
                 </label>
                 <textarea
                   value={observacao}
-                  onChange={(e) => setObservacao(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => temPermissao && setObservacao(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-lg ${
+                    !temPermissao
+                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : 'border-gray-300 focus:ring-2 focus:ring-blue-500'
+                  }`}
                   rows={3}
                   placeholder="Observações sobre o fechamento..."
+                  disabled={!temPermissao}
                 />
               </div>
               
@@ -547,8 +629,12 @@ export default function FechamentoCaixaPage() {
           </button>
           <button
             onClick={handleFecharCaixa}
-            disabled={carregando || !valorFinal}
-            className="flex-1 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={carregando || !valorFinal || !temPermissao}
+            className={`flex-1 py-3 text-white rounded-xl font-medium ${
+              !temPermissao
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-700'
+            }`}
           >
             {carregando ? 'Fechando Caixa...' : 'Confirmar Fechamento'}
           </button>
@@ -563,6 +649,11 @@ export default function FechamentoCaixaPage() {
                 <strong>Atenção:</strong> Após o fechamento, o caixa será bloqueado e não poderá receber novas vendas até ser reaberto.
                 Certifique-se de contar o dinheiro cuidadosamente antes de confirmar.
               </p>
+              {!temPermissao && (
+                <p className="text-sm text-red-600 mt-2">
+                  <strong>⚠️ Permissão necessária:</strong> Apenas usuários com a permissão "canProcessPayment" podem fechar o caixa.
+                </p>
+              )}
             </div>
           </div>
         </div>

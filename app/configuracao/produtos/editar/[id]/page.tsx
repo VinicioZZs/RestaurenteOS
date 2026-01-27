@@ -1,4 +1,4 @@
-// app/configuracao/produtos/editar/[id]/page.tsx - VERSÃO CORRIGIDA
+// app/configuracao/produtos/editar/[id]/page.tsx - VERSÃO CORRIGIDA COM PERMISSÕES
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -19,7 +19,8 @@ import {
   Percent,
   AlertCircle,
   Trash2,
-  Loader2
+  Loader2,
+  Lock
 } from 'lucide-react';
 
 interface Categoria {
@@ -54,6 +55,11 @@ interface ProdutoData {
   tags: string[];
 }
 
+interface UsuarioLogado {
+  role: string;
+  permissoes: Record<string, boolean>;
+}
+
 const unidadesMedida = [
   'unidade',
   'kg',
@@ -83,6 +89,10 @@ export default function EditarProdutoPage() {
   const [imagemPreview, setImagemPreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   
+  // ✅ NOVO: Estado para usuário logado
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+  const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
+
   const [formData, setFormData] = useState<ProdutoData>({
     _id: '',
     nome: '',
@@ -103,11 +113,44 @@ export default function EditarProdutoPage() {
     tags: []
   });
 
+  // ✅ NOVO: Carregar usuário logado
   useEffect(() => {
-    if (produtoId) {
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
+  }, []);
+
+  useEffect(() => {
+    if (produtoId && usuarioLogado !== null) {
       carregarDados();
     }
-  }, [produtoId]);
+  }, [produtoId, usuarioLogado]);
+
+  // ✅ NOVO: Função de verificação de permissões
+  const temPermissao = (permissao: string): boolean => {
+    if (!usuarioLogado) return false;
+    
+    // Admin tem todas as permissões
+    if (usuarioLogado.role === 'admin') return true;
+    
+    // Verifica permissão específica
+    return usuarioLogado.permissoes[permissao] === true;
+  };
+
+  // ✅ NOVO: Verificar se pode gerenciar produtos
+  const podeGerenciarProdutos = temPermissao('canManageProducts');
 
   const carregarDados = async () => {
     try {
@@ -202,8 +245,81 @@ export default function EditarProdutoPage() {
     }
   };
 
+  // ✅ NOVO: Tela de carregamento de permissões
+  if (carregandoPermissoes) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 text-blue-600 animate-spin mr-3" />
+          <span className="text-gray-600">Carregando permissões...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Verificar se tem permissão para editar produtos
+  if (!podeGerenciarProdutos) {
+    return (
+      <div className="p-6">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+          <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-10 w-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Acesso Negado</h2>
+          <p className="text-gray-600 mb-6">
+            Você não tem permissão para editar produtos.
+            {usuarioLogado && (
+              <span className="block mt-2 text-sm text-gray-500">
+                Função: {usuarioLogado.role.toUpperCase()}
+              </span>
+            )}
+          </p>
+          <Link
+            href="/configuracao/produtos"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Voltar para Produtos
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NOVO: Banner de permissões
+  const renderizarBannerPermissoes = () => {
+    return (
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start">
+          <AlertCircle className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">
+              Editando Produto: {formData.nome || 'Carregando...'}
+            </h3>
+            <div className="mt-1 text-sm text-blue-700">
+              <p>
+                Você tem permissão completa para editar produtos no sistema.
+              </p>
+              {usuarioLogado && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Função: {usuarioLogado.role.toUpperCase()}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    
+    // ✅ NOVO: Verificar permissão antes de alterar
+    if (!podeGerenciarProdutos) {
+      alert('Você não tem permissão para editar produtos!');
+      return;
+    }
     
     if (type === 'checkbox') {
       setFormData(prev => ({
@@ -224,6 +340,12 @@ export default function EditarProdutoPage() {
   };
 
   const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ✅ NOVO: Verificar permissão antes de alterar
+    if (!podeGerenciarProdutos) {
+      alert('Você não tem permissão para editar produtos!');
+      return;
+    }
+    
     const tagsString = e.target.value;
     const tagsArray = tagsString
       .split(',')
@@ -237,6 +359,12 @@ export default function EditarProdutoPage() {
   };
 
   const handleAdicionalToggle = (adicionalId: string) => {
+    // ✅ NOVO: Verificar permissão antes de alterar
+    if (!podeGerenciarProdutos) {
+      alert('Você não tem permissão para editar produtos!');
+      return;
+    }
+    
     setFormData(prev => {
       const adicionaisAtualizados = prev.adicionais.includes(adicionalId)
         ? prev.adicionais.filter(id => id !== adicionalId)
@@ -250,6 +378,12 @@ export default function EditarProdutoPage() {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ✅ NOVO: Verificar permissão antes de fazer upload
+    if (!podeGerenciarProdutos) {
+      alert('Você não tem permissão para editar produtos!');
+      return;
+    }
+    
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -293,6 +427,13 @@ export default function EditarProdutoPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ✅ NOVO: Verificar permissão antes de enviar
+    if (!podeGerenciarProdutos) {
+      setErro('Você não tem permissão para editar produtos!');
+      return;
+    }
+    
     setErro('');
     setSucesso('');
     setEnviando(true);
@@ -390,6 +531,12 @@ export default function EditarProdutoPage() {
   };
 
   const handleExcluir = async () => {
+    // ✅ NOVO: Verificar permissão antes de excluir
+    if (!podeGerenciarProdutos) {
+      alert('Você não tem permissão para excluir produtos!');
+      return;
+    }
+    
     if (!confirm('Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.')) {
       return;
     }
@@ -446,24 +593,40 @@ export default function EditarProdutoPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Editar Produto</h1>
             <p className="text-gray-600">Editando: {formData.nome || 'Carregando...'}</p>
+            {usuarioLogado && (
+              <div className="flex items-center mt-1">
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  usuarioLogado.role === 'admin' ? 'bg-red-100 text-red-800' :
+                  usuarioLogado.role === 'gerente' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {usuarioLogado.role.toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         
         <div className="flex items-center space-x-3">
-          <button
-            onClick={handleExcluir}
-            disabled={excluindo}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 flex items-center"
-          >
-            {excluindo ? (
-              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-            ) : (
-              <Trash2 className="h-5 w-5 mr-2" />
-            )}
-            Excluir
-          </button>
+          {podeGerenciarProdutos && (
+            <button
+              onClick={handleExcluir}
+              disabled={excluindo}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 flex items-center"
+            >
+              {excluindo ? (
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-5 w-5 mr-2" />
+              )}
+              Excluir
+            </button>
+          )}
         </div>
       </div>
+
+      {/* ✅ NOVO: Banner de permissões */}
+      {renderizarBannerPermissoes()}
 
       {/* Mensagens de status */}
       {sucesso && (

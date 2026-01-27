@@ -1,9 +1,9 @@
-// components/pagamento/PagamentoModal.tsx - VERSÃO COMPLETA CORRIGIDA
+// components/pagamento/PagamentoModal.tsx - COM PERMISSÕES
 'use client';
 
 import { useState, useEffect } from 'react';
 
-// Interfaces
+// Interfaces (mantidas iguais)
 interface ProdutoInfo {
   nome: string;
   categoria: string;
@@ -42,6 +42,19 @@ interface Pagador {
   valorPago?: number;
   troco?: number;
   dataPagamento?: string;
+}
+
+interface UsuarioLogado {
+  _id: string;
+  email: string;
+  nome: string;
+  role: string;
+  permissoes: {
+    canGiveDiscount?: boolean;
+    canCancelPayment?: boolean;
+    canProcessPayment?: boolean;
+    [key: string]: boolean | undefined;
+  };
 }
 
 interface PagamentoModalProps {
@@ -112,6 +125,10 @@ export default function PagamentoModal({
   const [novoNome, setNovoNome] = useState('');
   const [modoParcial, setModoParcial] = useState(false);
   const [carregando, setCarregando] = useState(false);
+  
+  // ✅ NOVO: Estado para usuário logado e permissões
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+  const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
 
   // Quantidades disponíveis por item
   const [quantidadesDisponiveis, setQuantidadesDisponiveis] = useState<Record<number, number>>(() => {
@@ -121,6 +138,93 @@ export default function PagamentoModal({
     });
     return inicial;
   });
+
+  // ✅ NOVO: Carregar usuário logado
+  useEffect(() => {
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
+  }, []);
+
+  // ✅ NOVO: Funções de verificação de permissões
+  const temPermissao = (permissao: string): boolean => {
+    if (!usuarioLogado) return false;
+    
+    // Admin tem todas as permissões
+    if (usuarioLogado.role === 'admin') return true;
+    
+    // Verifica permissão específica
+    return usuarioLogado.permissoes[permissao] === true;
+  };
+
+  // ✅ NOVO: Função para cancelar pagamento
+  const handleCancelarPagamento = (pagadorId: string) => {
+    if (!temPermissao('canCancelPayment')) {
+      alert('Você não tem permissão para cancelar pagamentos!');
+      return;
+    }
+    
+    const pagador = pagadores.find(p => p.id === pagadorId);
+    if (!pagador) return;
+    
+    if (confirm(`Cancelar pagamento de ${pagador.nome}?`)) {
+      setPagadores(prev => prev.map(p => 
+        p.id === pagadorId ? { 
+          ...p, 
+          pago: false,
+          dataPagamento: undefined,
+          valorPago: 0,
+          troco: 0
+        } : p
+      ));
+      alert('Pagamento cancelado!');
+    }
+  };
+
+  // ✅ NOVO: Função para processar pagamento (marcar como pago)
+  const handleProcessarPagamento = (pagadorId: string) => {
+    if (!temPermissao('canProcessPayment')) {
+      alert('Você não tem permissão para processar pagamentos!');
+      return;
+    }
+    
+    const pagador = pagadores.find(p => p.id === pagadorId);
+    if (!pagador) return;
+    
+    if (!pagador.formaPagamento) {
+      alert('É necessário definir uma forma de pagamento antes de processar!');
+      return;
+    }
+    
+    const totalPagador = calcularTotalPagador(pagador);
+    
+    // Verificar se precisa valor pago (para dinheiro)
+    const forma = formasPagamento.find(f => f.id === pagador.formaPagamento);
+    if (forma?.aceitaTroco && (!pagador.valorPago || pagador.valorPago < totalPagador)) {
+      alert('Para pagamento em dinheiro, é necessário informar o valor pago!');
+      return;
+    }
+    
+    setPagadores(prev => prev.map(p => 
+      p.id === pagadorId ? { 
+        ...p, 
+        pago: true,
+        dataPagamento: new Date().toISOString()
+      } : p
+    ));
+  };
 
   // Carregar dados salvos anteriormente
   useEffect(() => {
@@ -375,6 +479,12 @@ export default function PagamentoModal({
   };
 
   const abrirModalDescontoAcrescimo = (pagadorId: string, tipo: 'desconto' | 'acrescimo') => {
+    // ✅ NOVO: Verificar permissão para dar desconto
+    if (tipo === 'desconto' && !temPermissao('canGiveDiscount')) {
+      alert('Você não tem permissão para dar descontos!');
+      return;
+    }
+    
     const pagador = pagadores.find(p => p.id === pagadorId);
     if (!pagador) return;
     
@@ -422,26 +532,16 @@ export default function PagamentoModal({
   };
 
   const alternarStatusPagamento = (pagadorId: string) => {
-    setPagadores(prevPagadores => {
-      return prevPagadores.map(p => {
-        if (p.id === pagadorId) {
-          const novoStatus = !p.pago;
-          
-          if (novoStatus && !p.formaPagamento) {
-            alert('É necessário definir uma forma de pagamento antes de marcar como pago!');
-            return p;
-          }
-          
-          return { 
-            ...p, 
-            pago: novoStatus,
-            dataPagamento: novoStatus ? new Date().toISOString() : undefined,
-            ...(novoStatus ? {} : { valorPago: 0, troco: 0 })
-          };
-        }
-        return p;
-      });
-    });
+    const pagador = pagadores.find(p => p.id === pagadorId);
+    if (!pagador) return;
+    
+    if (pagador.pago) {
+      // Desmarcar como pago (cancelar pagamento)
+      handleCancelarPagamento(pagadorId);
+    } else {
+      // Marcar como pago (processar pagamento)
+      handleProcessarPagamento(pagadorId);
+    }
   };
 
   const atualizarValorPago = (pagadorId: string, valor: string) => {
@@ -823,7 +923,81 @@ export default function PagamentoModal({
     }
   };
 
+  // ✅ NOVO: Renderizar botão de desconto com permissão
+  const renderizarBotaoDesconto = (pagadorId: string) => {
+    if (!temPermissao('canGiveDiscount')) {
+      return (
+        <button
+          disabled
+          className="py-1 text-xs border border-gray-300 bg-gray-100 text-gray-400 rounded cursor-not-allowed"
+          title="Sem permissão para dar desconto"
+        >
+          Desconto
+        </button>
+      );
+    }
+    
+    return (
+      <button
+        onClick={() => abrirModalDescontoAcrescimo(pagadorId, 'desconto')}
+        className="py-1 text-xs border border-red-200 bg-red-50 text-red-600 rounded hover:bg-red-100"
+      >
+        Desconto
+      </button>
+    );
+  };
+
+  // ✅ NOVO: Renderizar botão de cancelar pagamento com permissão
+  const renderizarBotaoCancelarPagamento = (pagadorId: string, pagador: Pagador) => {
+    if (!pagador.pago || !temPermissao('canCancelPayment')) {
+      return null;
+    }
+    
+    return (
+      <button
+        onClick={() => handleCancelarPagamento(pagadorId)}
+        className="mt-1 text-xs text-red-600 hover:text-red-800 underline"
+        title="Cancelar pagamento"
+      >
+        Cancelar pagamento
+      </button>
+    );
+  };
+
+  // ✅ NOVO: Indicador de permissões no header
+  const renderizarIndicadorPermissoes = () => {
+    if (!usuarioLogado || carregandoPermissoes) return null;
+    
+    const permissoesAtivas = [
+      temPermissao('canGiveDiscount') && '💰 Descontos',
+      temPermissao('canCancelPayment') && '❌ Cancelar Pagamentos',
+      temPermissao('canProcessPayment') && '✅ Processar Pagamentos',
+    ].filter(Boolean);
+    
+    if (permissoesAtivas.length === 0) return null;
+    
+    return (
+      <div className="text-xs text-gray-600 mt-1">
+        Permissões: {permissoesAtivas.join(', ')}
+      </div>
+    );
+  };
+
   // ========== RENDER ==========
+  
+  if (carregandoPermissoes) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl p-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Carregando permissões...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-7xl h-[85vh] flex flex-col">
@@ -878,6 +1052,8 @@ export default function PagamentoModal({
                   </>
                 )}
               </div>
+              {/* ✅ NOVO: Indicador de permissões */}
+              {renderizarIndicadorPermissoes()}
             </div>
             <div className="flex items-center gap-2">
               {modoParcial && (
@@ -1182,12 +1358,9 @@ export default function PagamentoModal({
                     
                     {!pagador.pago && (
                       <div className="grid grid-cols-2 gap-1 mb-2">
-                        <button
-                          onClick={() => abrirModalDescontoAcrescimo(pagador.id, 'desconto')}
-                          className="py-1 text-xs border border-red-200 bg-red-50 text-red-600 rounded hover:bg-red-100"
-                        >
-                          Desconto
-                        </button>
+                        {/* ✅ NOVO: Botão de desconto com permissão */}
+                        {renderizarBotaoDesconto(pagador.id)}
+                        
                         <button
                           onClick={() => abrirModalDescontoAcrescimo(pagador.id, 'acrescimo')}
                           className="py-1 text-xs border border-orange-200 bg-orange-50 text-orange-600 rounded hover:bg-orange-100"
@@ -1287,7 +1460,7 @@ export default function PagamentoModal({
                             : 'bg-green-100 text-green-700 hover:bg-green-200'
                         }`}
                       >
-                        {pagador.pago ? 'Não Pago' : 'Marcar Pago'}
+                        {pagador.pago ? 'Cancelar Pagamento' : 'Processar Pagamento'}
                       </button>
                       
                       {pagadores.length > 1 && !pagador.pago && (
@@ -1299,6 +1472,9 @@ export default function PagamentoModal({
                         </button>
                       )}
                     </div>
+                    
+                    {/* ✅ NOVO: Botão para cancelar pagamento (se já estiver pago) */}
+                    {renderizarBotaoCancelarPagamento(pagador.id, pagador)}
                   </div>
                 );
               })}
@@ -1425,10 +1601,16 @@ export default function PagamentoModal({
                 </button>
               </div>
               
+              {/* ✅ NOVO: Botão finalizar com verificação de permissão */}
               <button
                 onClick={handleFinalizarPagamento}
-                className="w-full py-2.5 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
-                disabled={pagadores.filter(p => !p.pago).some(p => !p.formaPagamento) || carregando}
+                className={`w-full py-2.5 rounded-lg font-bold hover:bg-green-600 disabled:cursor-not-allowed text-sm ${
+                  temPermissao('canProcessPayment')
+                    ? 'bg-green-500 text-white hover:bg-green-600'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                disabled={!temPermissao('canProcessPayment') || pagadores.filter(p => !p.pago).some(p => !p.formaPagamento) || carregando}
+                title={!temPermissao('canProcessPayment') ? 'Sem permissão para processar pagamentos' : ''}
               >
                 ✅ Finalizar Pagamento Total
               </button>
@@ -1442,7 +1624,20 @@ export default function PagamentoModal({
               </button>
             </div>
             
-            {/* Aviso informativo */}
+            {/* ✅ NOVO: Aviso de permissões limitadas */}
+            {usuarioLogado && (!temPermissao('canGiveDiscount') || !temPermissao('canCancelPayment') || !temPermissao('canProcessPayment')) && (
+              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="text-xs text-yellow-800">
+                  <div className="font-medium">⚠️ Permissões Limitadas</div>
+                  <p className="mt-0.5">
+                    {!temPermissao('canGiveDiscount') && '• Não pode dar descontos\n'}
+                    {!temPermissao('canCancelPayment') && '• Não pode cancelar pagamentos\n'}
+                    {!temPermissao('canProcessPayment') && '• Não pode finalizar pagamentos'}
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {!onAtualizarComanda && (
               <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="text-xs text-yellow-800">

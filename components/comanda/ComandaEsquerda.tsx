@@ -1,7 +1,7 @@
-// components/comanda/ComandaEsquerda.tsx - COM BOTÕES SEPARADOS
+// components/comanda/ComandaEsquerda.tsx - COM PERMISSÕES
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ConfirmarRemocaoModal from './ConfirmarRemocaoModal';
 
 interface ItemComanda {
@@ -11,12 +11,28 @@ interface ItemComanda {
   precoUnitario: number;
   observacao: string;
   isNew?: boolean;
-  // 🔥 ADICIONE ESTAS DUAS LINHAS ABAIXO:
   nome?: string;          
   produtoNome?: string;   
   produto: {
     nome: string;
     categoria: string;
+  };
+}
+
+interface UsuarioLogado {
+  _id: string;
+  email: string;
+  nome: string;
+  role: string;
+  permissoes: {
+    canRemoveItem?: boolean;
+    canClearComanda?: boolean;
+    canDeleteComanda?: boolean;
+    canCloseComanda?: boolean;
+    canGiveDiscount?: boolean;
+    canCancelPayment?: boolean;
+    canProcessPayment?: boolean;
+    [key: string]: boolean | undefined;
   };
 }
 
@@ -34,14 +50,15 @@ interface ComandaEsquerdaProps {
   onSalvarItens: () => void;
   onDescartarAlteracoes: () => void;
   onLimparComanda: () => void;
-  onApagarMesa: () => void; // ✅ NOVO
+  onApagarMesa: () => void;
   onImprimirPrevia: () => void;
   onFecharConta: () => void;
   onVoltarDashboard: () => void;
   comandaId: string;
   onMostrarModalPagamento?: () => void;
   onEditarAdicionais?: (itemId: number, produtoId: string, produto: any, observacao: string) => void;
-
+  // NOVO: Função para dar desconto
+  onDarDesconto?: () => void;
 }
 
 export default function ComandaEsquerda({
@@ -58,13 +75,14 @@ export default function ComandaEsquerda({
   onSalvarItens,
   onDescartarAlteracoes,
   onLimparComanda,
-  onApagarMesa, // ✅ NOVO
+  onApagarMesa,
   onImprimirPrevia,
   onFecharConta,
   onVoltarDashboard,
   onEditarAdicionais,
   comandaId,
-  onMostrarModalPagamento
+  onMostrarModalPagamento,
+  onDarDesconto
 }: ComandaEsquerdaProps) {
   const [editandoObservacao, setEditandoObservacao] = useState<number | null>(null);
   const [novaObservacao, setNovaObservacao] = useState('');
@@ -87,10 +105,44 @@ export default function ComandaEsquerda({
     precoUnitario: 0
   });
 
-  // ✅ NOVO: Estado para modal de confirmação de apagar mesa
+  // ✅ Estado para modal de confirmação de apagar mesa
   const [modalApagarMesa, setModalApagarMesa] = useState(false);
+  
+  // ✅ NOVO: Estado para o usuário logado e permissões
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+  const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
 
   const todosItens = [...itensSalvos, ...itensNaoSalvos];
+
+  // ✅ NOVO: Carregar usuário logado
+  useEffect(() => {
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
+  }, []);
+
+  // ✅ NOVO: Funções de verificação de permissões
+  const temPermissao = (permissao: string): boolean => {
+    if (!usuarioLogado) return false;
+    
+    // Admin tem todas as permissões
+    if (usuarioLogado.role === 'admin') return true;
+    
+    // Verifica permissão específica
+    return usuarioLogado.permissoes[permissao] === true;
+  };
 
   const iniciarEdicaoObservacao = (itemId: number, observacaoAtual: string, tipo: 'salvo' | 'naoSalvo') => {
     setEditandoObservacao(itemId);
@@ -106,8 +158,13 @@ export default function ComandaEsquerda({
     }
   };
 
-  // Abrir modal de remoção
+  // Abrir modal de remoção (com verificação de permissão)
   const abrirModalRemocao = (itemId: number, tipo: 'salvo' | 'naoSalvo', produtoNome: string, quantidadeAtual: number, precoUnitario: number) => {
+    if (!temPermissao('canRemoveItem')) {
+      alert('Você não tem permissão para remover itens!');
+      return;
+    }
+    
     setModalRemocao({
       isOpen: true,
       itemId,
@@ -146,11 +203,96 @@ export default function ComandaEsquerda({
     });
   };
 
-  // ✅ NOVO: Função para confirmar apagar mesa
+  // ✅ Função para confirmar apagar mesa (com verificação)
   const confirmarApagarMesa = () => {
+    if (!temPermissao('canDeleteComanda')) {
+      alert('Você não tem permissão para apagar mesas!');
+      setModalApagarMesa(false);
+      return;
+    }
+    
     onApagarMesa();
     setModalApagarMesa(false);
   };
+
+  // ✅ Função para limpar comanda (com verificação)
+  const handleLimparComanda = () => {
+    if (!temPermissao('canClearComanda')) {
+      alert('Você não tem permissão para limpar comandas!');
+      return;
+    }
+    
+    if (window.confirm(`Tem certeza que deseja limpar a ${mesa?.nome}? Todos os itens serão removidos.`)) {
+      onLimparComanda();
+    }
+  };
+
+  // ✅ Função para fechar conta (com verificação)
+  const handleFecharConta = () => {
+    if (!temPermissao('canCloseComanda')) {
+      alert('Você não tem permissão para fechar contas!');
+      return;
+    }
+    
+    onFecharConta();
+  };
+
+  // ✅ Função para dar desconto (se disponível)
+  const handleDarDesconto = () => {
+    if (!temPermissao('canGiveDiscount')) {
+      alert('Você não tem permissão para dar descontos!');
+      return;
+    }
+    
+    if (onDarDesconto) {
+      onDarDesconto();
+    } else {
+      alert('Funcionalidade de desconto não implementada ainda.');
+    }
+  };
+
+  // ✅ Renderização condicional baseada em permissões
+  const renderizarBotaoRemover = (item: any, isNaoSalvo: boolean) => {
+    if (!temPermissao('canRemoveItem')) {
+      return (
+        <span 
+          className="text-gray-400 text-sm flex-shrink-0 cursor-not-allowed"
+          title="Sem permissão para remover"
+        >
+          ✕
+        </span>
+      );
+    }
+    
+    return (
+      <button 
+        onClick={() => abrirModalRemocao(
+          item.id, 
+          isNaoSalvo ? 'naoSalvo' : 'salvo',
+          item.produto.nome,
+          item.quantidade,
+          item.precoUnitario
+        )}
+        className="text-red-500 hover:text-red-700 text-sm flex-shrink-0"
+        title="Remover item"
+      >
+        ✕
+      </button>
+    );
+  };
+
+  if (carregandoPermissoes) {
+    return (
+      <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-600">Carregando permissões...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -160,9 +302,8 @@ export default function ComandaEsquerda({
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-lg font-bold text-gray-800">
-                  {/* Chame a função obterTituloPreset que passaremos via Props ou crie ela aqui */}
-                  {mesa?.nome}
-                </h2>
+                {mesa?.nome}
+              </h2>
               <p className="text-xs text-gray-500">
                 {todosItens.length} itens • R$ {totalComanda.toFixed(2)}
                 {modificado && (
@@ -170,12 +311,16 @@ export default function ComandaEsquerda({
                     ✏️ Não salvo
                   </span>
                 )}
+                {/* ✅ Mostrar permissões ativas */}
+                {usuarioLogado && (
+                  <span className="ml-2 text-xs text-purple-600">
+                    {usuarioLogado.role.toUpperCase()}
+                  </span>
+                )}
               </p>
             </div>
           </div>
         </div>
-
-        
 
         {/* LISTA DE ITENS COM SCROLL */}
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -205,22 +350,11 @@ export default function ComandaEsquerda({
                           {/* NOME DO PRODUTO COM TRUNCATE */}
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-1 flex-1 min-w-0">
-                              <button 
-                                onClick={() => abrirModalRemocao(
-                                  item.id, 
-                                  isNaoSalvo ? 'naoSalvo' : 'salvo',
-                                  item.produto.nome,
-                                  item.quantidade,
-                                  item.precoUnitario
-                                )}
-                                className="text-red-500 hover:text-red-700 text-sm flex-shrink-0"
-                                title="Remover item"
-                              >
-                                ✕
-                              </button>
+                              {/* ✅ Botão remover com permissão */}
+                              {renderizarBotaoRemover(item, isNaoSalvo)}
                               <h3 className="font-medium text-gray-900 text-sm truncate" title={item.produto?.nome || item.nome || item.produtoNome || 'Produto'}>
-                                  {item.produto?.nome || item.nome || item.produtoNome || 'Produto'}
-                                </h3>
+                                {item.produto?.nome || item.nome || item.produtoNome || 'Produto'}
+                              </h3>
                               {isNaoSalvo && (
                                 <span className="text-xs bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded flex-shrink-0">
                                   NOVO
@@ -243,43 +377,40 @@ export default function ComandaEsquerda({
                             </div>
                           </div>
                           
-                          
                           {/* Observação */}
                           {item.observacao ? (
-  <div className="mt-1 text-xs text-gray-600 flex items-start justify-between">
-    <div className="flex items-start flex-1">
-      <span className="mr-1">📝</span>
-      <span className="truncate" title={item.observacao}>{item.observacao}</span>
-    </div>
-    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-      <button
-        onClick={() => {
-          // ✅ NOVO: Primeiro adicionar o prop na interface
-          // e depois implementar a função
-          if (onEditarAdicionais) {
-            onEditarAdicionais(
-              item.id, 
-              item.produtoId, 
-              item.produto, 
-              item.observacao
-            );
-          }
-        }}
-        className="text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200"
-        title="Editar adicionais"
-      >
-        ✏️ Editar
-      </button>
-      <button
-        onClick={() => iniciarEdicaoObservacao(item.id, item.observacao, isNaoSalvo ? 'naoSalvo' : 'salvo')}
-        className="text-xs text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded border border-blue-200"
-        title="Editar observação"
-      >
-        📝
-      </button>
-    </div>
-  </div>
-) : editandoObservacao === item.id ? (
+                            <div className="mt-1 text-xs text-gray-600 flex items-start justify-between">
+                              <div className="flex items-start flex-1">
+                                <span className="mr-1">📝</span>
+                                <span className="truncate" title={item.observacao}>{item.observacao}</span>
+                              </div>
+                              <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                                <button
+                                  onClick={() => {
+                                    if (onEditarAdicionais) {
+                                      onEditarAdicionais(
+                                        item.id, 
+                                        item.produtoId, 
+                                        item.produto, 
+                                        item.observacao
+                                      );
+                                    }
+                                  }}
+                                  className="text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200"
+                                  title="Editar adicionais"
+                                >
+                                  ✏️ Editar
+                                </button>
+                                <button
+                                  onClick={() => iniciarEdicaoObservacao(item.id, item.observacao, isNaoSalvo ? 'naoSalvo' : 'salvo')}
+                                  className="text-xs text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded border border-blue-200"
+                                  title="Editar observação"
+                                >
+                                  📝
+                                </button>
+                              </div>
+                            </div>
+                          ) : editandoObservacao === item.id ? (
                             <div className="mt-1">
                               <input
                                 type="text"
@@ -322,86 +453,131 @@ export default function ComandaEsquerda({
           </div>
         </div>
 
-        {/* Totais - AUMENTEI TEXTO */}
-<div className="p-4 border-t bg-gradient-to-r from-gray-50 to-gray-100 flex-shrink-0">
-  <div className="space-y-3">
-    {/* ✅ Total maior */}
-    <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-      <div>
-        <span className="font-bold text-gray-900 text-lg">Total:</span>
-        <p className="text-sm text-gray-600 mt-1">Valor da comanda</p>
-      </div>
-      <span className="text-2xl font-bold text-blue-600">R$ {totalComanda.toFixed(2)}</span>
-    </div>
-    
-    {/* ✅ Restante maior */}
-    <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-      <div>
-        <span className="font-bold text-gray-900 text-lg">Restante:</span>
-        <p className="text-sm text-gray-600 mt-1">A pagar</p>
-      </div>
-      <span className={`text-2xl font-bold ${
-        restantePagar > 0 ? 'text-red-600' : 'text-green-600'
-      }`}>
-        R$ {restantePagar.toFixed(2)}
-      </span>
-    </div>
-  </div>
-</div>
+        {/* Totais */}
+        <div className="p-4 border-t bg-gradient-to-r from-gray-50 to-gray-100 flex-shrink-0">
+          <div className="space-y-3">
+            {/* Total maior */}
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <div>
+                <span className="font-bold text-gray-900 text-lg">Total:</span>
+                <p className="text-sm text-gray-600 mt-1">Valor da comanda</p>
+              </div>
+              <span className="text-2xl font-bold text-blue-600">R$ {totalComanda.toFixed(2)}</span>
+            </div>
+            
+            {/* Restante maior */}
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <div>
+                <span className="font-bold text-gray-900 text-lg">Restante:</span>
+                <p className="text-sm text-gray-600 mt-1">A pagar</p>
+              </div>
+              <span className={`text-2xl font-bold ${
+                restantePagar > 0 ? 'text-red-600' : 'text-green-600'
+              }`}>
+                R$ {restantePagar.toFixed(2)}
+              </span>
+            </div>
+            
+            {/* ✅ Botão para dar desconto (se tiver permissão) */}
+            {temPermissao('canGiveDiscount') && (
+              <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <div>
+                  <span className="font-bold text-gray-900 text-lg">Desconto</span>
+                  <p className="text-sm text-gray-600 mt-1">Aplicar desconto na comanda</p>
+                </div>
+                <button
+                  onClick={handleDarDesconto}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-lg hover:from-green-600 hover:to-green-700"
+                >
+                  💰 Dar Desconto
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
-{/* Botões de Ação - AGORA MAIORES */}
-<div className="p-4 border-t bg-white space-y-3 flex-shrink-0">
-  {/* ✅ Botão FECHAR CONTA MAIOR */}
-  <button
-  onClick={onFecharConta}  // ← APENAS onFecharConta
-  className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-lg shadow-lg"
-  disabled={todosItens.length === 0}
->
-  💳 FECHAR CONTA
-</button>
-  
-  {/* ✅ Grid com botões MAIORES */}
-  <div className="grid grid-cols-2 gap-3">
-    {/* Botão LIMPAR MAIOR */}
-    <button
-      onClick={onLimparComanda}
-      className="py-3.5 border-2 border-amber-500 bg-amber-50 text-amber-700 font-bold rounded-xl hover:bg-amber-100 text-base flex items-center justify-center gap-2 shadow-sm"
-      disabled={todosItens.length === 0}
-    >
-      <span>🗑️</span>
-    {/* 🔥 Muda dinamicamente: "Limpar Ficha", "Limpar Mesa", etc */}
-    <span>Limpar {mesa?.nome.split(' ')[0]}</span> 
-  </button>
-    
-    {/* Botão APAGAR MAIOR */}
-    <button
-      onClick={() => setModalApagarMesa(true)}
-      className="py-3.5 border-2 border-red-500 bg-red-50 text-red-700 font-bold rounded-xl hover:bg-red-100 text-base flex items-center justify-center gap-2 shadow-sm"
-    >
-      <span>❌</span>
-    {/* 🔥 Muda dinamicamente: "Apagar Ficha", "Apagar Mesa", etc */}
-    <span>Apagar {mesa?.nome.split(' ')[0]}</span>
-  </button>
-</div>
-  
-  {/* ✅ Botões secundários MAIORES */}
-  <div className="flex gap-3 pt-2">
-    <button
-      onClick={onImprimirPrevia}
-      className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2"
-    >
-      <span>🖨️</span>
-      <span>Imprimir</span>
-    </button>
-    <button
-      onClick={onVoltarDashboard}
-      className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2"
-    >
-      <span>←</span>
-      <span>Voltar</span>
-    </button>
-  </div>
-</div>
+        {/* Botões de Ação */}
+        <div className="p-4 border-t bg-white space-y-3 flex-shrink-0">
+          {/* Botão FECHAR CONTA (com permissão) */}
+          <button
+            onClick={handleFecharConta}
+            className={`w-full py-4 font-bold rounded-xl text-lg shadow-lg ${
+              temPermissao('canCloseComanda')
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            disabled={todosItens.length === 0 || !temPermissao('canCloseComanda')}
+          >
+            💳 FECHAR CONTA
+          </button>
+          
+          {/* Grid com botões */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Botão LIMPAR (com permissão) */}
+            <button
+              onClick={handleLimparComanda}
+              className={`py-3.5 border-2 rounded-xl text-base flex items-center justify-center gap-2 shadow-sm ${
+                temPermissao('canClearComanda')
+                  ? 'border-amber-500 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+              disabled={todosItens.length === 0 || !temPermissao('canClearComanda')}
+            >
+              <span>🗑️</span>
+              <span>Limpar {mesa?.nome.split(' ')[0]}</span> 
+            </button>
+            
+            {/* Botão APAGAR (com permissão) */}
+            <button
+              onClick={() => {
+                if (!temPermissao('canDeleteComanda')) {
+                  alert('Você não tem permissão para apagar mesas!');
+                  return;
+                }
+                setModalApagarMesa(true);
+              }}
+              className={`py-3.5 border-2 rounded-xl text-base flex items-center justify-center gap-2 shadow-sm ${
+                temPermissao('canDeleteComanda')
+                  ? 'border-red-500 bg-red-50 text-red-700 hover:bg-red-100'
+                  : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+              disabled={!temPermissao('canDeleteComanda')}
+            >
+              <span>❌</span>
+              <span>Apagar {mesa?.nome.split(' ')[0]}</span>
+            </button>
+          </div>
+          
+          {/* Botões secundários */}
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onImprimirPrevia}
+              className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2"
+            >
+              <span>🖨️</span>
+              <span>Imprimir</span>
+            </button>
+            <button
+              onClick={onVoltarDashboard}
+              className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2"
+            >
+              <span>←</span>
+              <span>Voltar</span>
+            </button>
+          </div>
+          
+          {/* ✅ Aviso de permissões */}
+          {usuarioLogado && !usuarioLogado.permissoes.canRemoveItem && 
+           !usuarioLogado.permissoes.canClearComanda && 
+           !usuarioLogado.permissoes.canDeleteComanda && 
+           !usuarioLogado.permissoes.canCloseComanda && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-xs text-yellow-700 text-center">
+                ⚠️ Você tem permissões limitadas para esta comanda
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal de Confirmação de Remoção de Item */}
@@ -414,7 +590,7 @@ export default function ComandaEsquerda({
         onConfirmar={handleConfirmarRemocao}
       />
 
-      {/* ✅ NOVO: Modal de Confirmação para Apagar Mesa */}
+      {/* Modal de Confirmação para Apagar Mesa */}
       {modalApagarMesa && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md">

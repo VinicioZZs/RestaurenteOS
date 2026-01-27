@@ -4,6 +4,8 @@ export interface User {
   email: string;
   name: string;
   role: 'admin' | 'garcom' | 'caixa';
+    permissions?: string[]; // Adicione esta linha
+
 }
 
 interface LoginResponse {
@@ -28,10 +30,8 @@ export async function login(email: string, password: string): Promise<{ user: Us
     const data = await response.json();
     
     if (data.success) {
-      // Salva dados básicos no storage para o frontend
-      localStorage.setItem('usuario_nome', data.user.name);
-      localStorage.setItem('usuario_perfil', data.user.role);
-      localStorage.setItem('usuario_email', data.user.email);
+      // ✅ SALVA O USUÁRIO COMPLETO COM PERMISSÕES
+      localStorage.setItem('user', JSON.stringify(data.user)); // ← MUDOU AQUI
       return { user: data.user };
     }
     
@@ -61,20 +61,15 @@ export function logout(): void {
 }
 
 export function getCurrentUser(): User | null {
-  // Tenta pegar do localStorage (fallback)
-  const nome = localStorage.getItem('usuario_nome');
-  const role = localStorage.getItem('usuario_perfil') as User['role'];
-  const email = localStorage.getItem('usuario_email');
-  
-  if (nome && role && email) {
-    return { 
-      id: Date.now(), 
-      name: nome, 
-      role, 
-      email 
-    };
+  // ✅ Pega o usuário completo do localStorage
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    try {
+      return JSON.parse(userStr);
+    } catch (e) {
+      console.error('Erro ao parsear usuário:', e);
+    }
   }
-  
   return null;
 }
 

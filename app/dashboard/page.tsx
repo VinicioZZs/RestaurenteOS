@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Search, Plus, Clock, LogOut, Settings, AlertCircle, Lock, Unlock } from 'lucide-react'; 
 import { getCurrentUser, hasRole } from '@/lib/auth'; 
 import { BarChart3 } from 'lucide-react';
+import { login } from '@/lib/auth'; // Já está importado
 
 
 
@@ -43,9 +44,18 @@ export default function DashboardPage() {
   const [caixaStatus, setCaixaStatus] = useState<'aberto' | 'fechado'>('fechado');
   const [carregandoCaixa, setCarregandoCaixa] = useState(true);
   const [temPermissaoCaixa, setTemPermissaoCaixa] = useState(false);
-  const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
 
   // ========== FUNÇÕES DO CAIXA ==========
+
+  const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setUsuarioLogado(JSON.parse(userStr));
+    }
+  }, []);
+
 
   const carregarStatusCaixa = async () => {
     try {
@@ -381,6 +391,7 @@ const obterTituloPreset = () => {
     carregarStatusCaixa();
     verificarPermissaoCaixa();
   }, [router]);
+
 
   useEffect(() => {
   carregarConfigs();
@@ -1067,7 +1078,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
               <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                 {configSistema.presetComanda === 'comanda' ? '📋 Comanda' :
                  configSistema.presetComanda === 'ficha' ? '📄 Ficha' :
-                 configSistema.presetComanda === 'mesa' ? '🪑 Mesa' :
+                 configSistema?.presetComanda === 'mesa' ? '🪑 Mesa' :
                  '📝 Pedido'}
               </span>
             )}
@@ -1078,14 +1089,14 @@ const formatarTituloMesa = (mesa: Mesa) => {
             configSistema?.presetComanda === 'mesa' ? 'mesas' : 'comandas'}
             {usuarioLogado && (
               <span className="ml-3 text-sm text-gray-500">
-                • Usuário: {usuarioLogado.name}
+                • Usuário: {usuarioLogado.name} ({usuarioLogado.role})
               </span>
             )}
           </p>
         </div>
         
         <div className="flex items-center gap-2">
-          {temPermissaoCaixa && (
+          {usuarioLogado?.permissoes?.canProcessPayment && (
             <button
               onClick={() => router.push('/caixa/fechamento')}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -1094,27 +1105,27 @@ const formatarTituloMesa = (mesa: Mesa) => {
               <Lock className="h-5 w-5" />
               <span className="hidden md:inline">Fechar Caixa</span>
             </button>
-
-            
           )}
 
-          <Link 
-          href="/relatorios"
-          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center gap-2"
-        >
-          <BarChart3 size={20} />
-          Gestão
-        </Link>
+          {usuarioLogado?.permissoes?.canViewReports && (
+            <Link 
+              href="/relatorios"
+              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center gap-2"
+            >
+              <BarChart3 size={20} />
+              Gestão
+            </Link>
+          )}
           
-          <Link
-            href="/configuracao/geral"
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Settings className="h-5 w-5" />
-            <span className="hidden md:inline">Configurações</span>
-          </Link>
-
-
+          {usuarioLogado?.permissoes?.canAccessSettings && (
+            <Link
+              href="/configuracao/geral"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Settings className="h-5 w-5" />
+              <span className="hidden md:inline">Configurações</span>
+            </Link>
+          )}
 
           <button
             onClick={sair}
@@ -1126,6 +1137,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
         </div>
       </div>
 
+      {/* SEÇÃO DE BUSCA - ADICIONE ISSO */}
       <div className="mb-8">
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="flex-1 w-full">
@@ -1159,13 +1171,15 @@ const formatarTituloMesa = (mesa: Mesa) => {
             </p>
           </div>
           
-          <button
-            onClick={() => setMostrarModalCriar(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition w-full md:w-auto justify-center shadow-md hover:shadow-lg"
-          >
-            <Plus size={20} />
-            <span>Criar {obterTituloPreset()}</span>
-          </button>
+          {usuarioLogado?.permissoes?.canOpenComanda && (
+            <button
+              onClick={() => setMostrarModalCriar(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition w-full md:w-auto justify-center shadow-md hover:shadow-lg"
+            >
+              <Plus size={20} />
+              <span>Criar {obterTituloPreset()}</span>
+            </button>
+          )}
         </div>
       </div>
 
