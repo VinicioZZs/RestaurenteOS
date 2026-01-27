@@ -26,40 +26,38 @@ export default function RelatoriosLayout({
   const [usuario, setUsuario] = useState<User | null>(null);
 
   useEffect(() => {
-  const verificarPermissoes = () => {
-    try {
-      const user = getCurrentUser();
-      setUsuario(user);
-      
-      if (!user) {
+    const verificarPermissoes = () => {
+      try {
+        const user = getCurrentUser();
+        setUsuario(user);
+        
+        if (!user) {
+          setTemAcessoRelatorios(false);
+          setCarregando(false);
+          return;
+        }
+        
+        // Verificar se tem acesso a relatórios
+        const temPermissaoRelatorios = 
+          // Permissões específicas (nova estrutura de objeto)
+          (user.permissions?.canViewReports || 
+           user.permissions?.canAccessSettings ||
+           // Por role (apenas admin tem acesso por padrão)
+           user.role === 'admin');
+           // Se quiser adicionar outras roles futuramente, faça aqui
+           // Exemplo: user.role === 'supervisor'
+        
+        setTemAcessoRelatorios(!!temPermissaoRelatorios);
+      } catch (error) {
+        console.error('Erro ao verificar permissões:', error);
         setTemAcessoRelatorios(false);
+      } finally {
         setCarregando(false);
-        return;
       }
-      
-      // Verificar se tem acesso a relatórios
-      const temPermissaoRelatorios = 
-        // Permissões específicas
-        (user.permissions?.includes('viewReports') || 
-         user.permissions?.includes('admin') ||
-         user.permissions?.includes('canViewReports') ||
-         user.permissions?.includes('manageReports') ||
-         // Por role (apenas admin tem acesso por padrão)
-         user.role === 'admin');
-         // Se quiser adicionar outras roles futuramente, faça aqui
-         // Exemplo: user.role === 'supervisor'
-      
-      setTemAcessoRelatorios(!!temPermissaoRelatorios);
-    } catch (error) {
-      console.error('Erro ao verificar permissões:', error);
-      setTemAcessoRelatorios(false);
-    } finally {
-      setCarregando(false);
-    }
-  };
+    };
 
-  verificarPermissoes();
-}, []);
+    verificarPermissoes();
+  }, []);
 
   // Função para verificar se é uma rota de configuração
   const isConfiguracaoRoute = () => {
@@ -69,6 +67,19 @@ export default function RelatoriosLayout({
   // Função para verificar se é uma rota de relatórios
   const isRelatoriosRoute = () => {
     return pathname === '/relatorios' || pathname.startsWith('/relatorios/');
+  };
+
+  // Função auxiliar para converter objeto de permissões em array para exibição
+  const getPermissionsArray = () => {
+    if (!usuario?.permissions) return [];
+    
+    const permissionsArray: string[] = [];
+    Object.entries(usuario.permissions).forEach(([key, value]) => {
+      if (value === true) {
+        permissionsArray.push(key);
+      }
+    });
+    return permissionsArray;
   };
 
   if (carregando) {
@@ -100,6 +111,8 @@ export default function RelatoriosLayout({
       </div>
     );
   }
+
+  const permissionsArray = getPermissionsArray();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -227,10 +240,10 @@ export default function RelatoriosLayout({
                 {temAcessoRelatorios ? 'Acesso total' : 'Acesso limitado'}
               </div>
             </div>
-            {usuario.permissions && usuario.permissions.length > 0 && (
+            {permissionsArray.length > 0 && (
               <div className="mt-2">
                 <div className="flex flex-wrap gap-1">
-                  {usuario.permissions.map((perm, index) => (
+                  {permissionsArray.slice(0, 3).map((perm, index) => (
                     <span 
                       key={index}
                       className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded"
@@ -238,6 +251,11 @@ export default function RelatoriosLayout({
                       {perm}
                     </span>
                   ))}
+                  {permissionsArray.length > 3 && (
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                      +{permissionsArray.length - 3}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -321,11 +339,11 @@ export default function RelatoriosLayout({
                   {temAcessoRelatorios ? 'Acesso total' : 'Acesso limitado'}
                 </div>
               </div>
-              {usuario.permissions && usuario.permissions.length > 0 && (
+              {permissionsArray.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs text-gray-500 mb-1">Permissões:</p>
                   <div className="flex flex-wrap gap-1">
-                    {usuario.permissions.slice(0, 3).map((perm, index) => (
+                    {permissionsArray.slice(0, 3).map((perm, index) => (
                       <span 
                         key={index}
                         className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded"
@@ -333,9 +351,9 @@ export default function RelatoriosLayout({
                         {perm}
                       </span>
                     ))}
-                    {usuario.permissions.length > 3 && (
+                    {permissionsArray.length > 3 && (
                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                        +{usuario.permissions.length - 3}
+                        +{permissionsArray.length - 3}
                       </span>
                     )}
                   </div>

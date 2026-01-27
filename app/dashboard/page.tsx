@@ -58,20 +58,27 @@ export default function DashboardPage() {
 
 
   const carregarStatusCaixa = async () => {
-    try {
-      setCarregandoCaixa(true);
-      const response = await fetch('/api/comandas?status=aberta');
-      const data = await response.json();
-      
-      if (data.success) {
-        setCaixaStatus(data.data.status);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar caixa:', error);
-    } finally {
-      setCarregandoCaixa(false);
+  try {
+    setCarregandoCaixa(true);
+    const response = await fetch('/api/caixa/status');
+    const data = await response.json();
+    
+    console.log('📊 Status do caixa:', data);
+    
+    if (data.success && data.data) {
+      // Verifica o status do caixa na resposta
+      setCaixaStatus(data.data.status || 'fechado');
+    } else {
+      // Se não conseguir obter status, assume fechado
+      setCaixaStatus('fechado');
     }
-  };
+  } catch (error) {
+    console.error('Erro ao carregar caixa:', error);
+    setCaixaStatus('fechado'); // Assume fechado em caso de erro
+  } finally {
+    setCarregandoCaixa(false);
+  }
+};
 
   const verificarPermissaoCaixa = () => {
     const user = getCurrentUser();
@@ -716,18 +723,15 @@ useEffect(() => {
 
   
   useEffect(() => {
-    const handleFocus = () => {
-      if (caixaStatus === 'aberto') {
-        carregarMesas;
-      }
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [caixaStatus]);
+  // Verificar status do caixa periodicamente
+  const interval = setInterval(() => {
+    if (caixaStatus === 'aberto') {
+      carregarStatusCaixa();
+    }
+  }, 30000); // A cada 30 segundos
+
+  return () => clearInterval(interval);
+}, [caixaStatus]);
 
   
   useEffect(() => {
@@ -921,7 +925,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
               <Settings className="h-5 w-5" />
               <span className="hidden md:inline">Configurações</span>
             </Link>
-
+            
             <button
               onClick={sair}
               className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
@@ -933,22 +937,6 @@ const formatarTituloMesa = (mesa: Mesa) => {
         </div>
 
             <div className="fixed bottom-4 left-4 z-50">
-  <button
-    onClick={async () => {
-      console.log('🔍 DEBUG: Verificando estado atual...');
-      console.log('📊 Mesas no estado:', mesas);
-      
-      // Testar endpoint
-      const response = await fetch('/api/comandas');
-      const data = await response.json();
-      console.log('📋 Comandas na API:', data);
-      
-      alert(`Mesas no dashboard: ${mesas.length}\nComandas na API: ${data.data?.length || 0}`);
-    }}
-    className="bg-purple-600 text-white px-3 py-2 rounded-lg shadow-lg text-sm"
-  >
-    🐛 Debug
-  </button>
 </div>
 
         <div className="max-w-2xl mx-auto mt-16">
@@ -961,42 +949,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
               Para acessar as comandas, é necessário abrir o caixa primeiro.
             </p>
           </div>
-            {/* Adicione este botão na seção de cabeçalho, perto dos outros botões */}
-<button
-  onClick={async () => {
-    if (window.confirm('Limpar mesas que não tem comanda ativa?')) {
-      try {
-        // Buscar comandas abertas
-        const response = await fetch('/api/comandas?status=aberta');
-        const data = await response.json();
-        
-        if (data.success) {
-          const comandasAbertas = data.data || [];
-          const mesasComComanda = comandasAbertas.map((c: any) => 
-            c.numeroMesa || c.mesaId
-          );
-          
-          // Filtrar mesas que não tem comanda
-          setMesas(prev => prev.filter(mesa => 
-            mesasComComanda.some((num: string) => 
-              num === mesa.numero || 
-              num === mesa.numero.toString().padStart(2, '0') ||
-              num === mesa._id
-            )
-          ));
-          
-          alert(`Limpeza feita! ${mesas.length} → ${mesas.length} mesas`);
-        }
-      } catch (error) {
-        console.error('Erro na limpeza:', error);
-      }
-    }
-  }}
-  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-  title="Limpar mesas sem comanda"
->
-  🧹 Limpar
-</button>
+
           {temPermissaoCaixa ? (
             <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
               <div className="text-center">
@@ -1065,10 +1018,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-              {configSistema?.presetComanda === 'ficha' ? 'Fichas Ativas' :
-               configSistema?.presetComanda === 'pedido' ? 'Pedidos em Aberto' :
-               configSistema?.presetComanda === 'mesa' ? 'Mesas Ocupadas' :
-               'Comandas do Restaurante'}
+              Dashboard
             </h1>
             <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center gap-1">
               <Unlock className="h-3 w-3" />
@@ -1084,7 +1034,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
             )}
           </div>
           <p className="text-gray-600 mt-1">
-            Banco de dados: MongoDB • {mesas.length} {configSistema?.presetComanda === 'ficha' ? 'fichas' :
+            {mesas.length} {configSistema?.presetComanda === 'ficha' ? 'fichas' :
             configSistema?.presetComanda === 'pedido' ? 'pedidos' :
             configSistema?.presetComanda === 'mesa' ? 'mesas' : 'comandas'}
             {usuarioLogado && (

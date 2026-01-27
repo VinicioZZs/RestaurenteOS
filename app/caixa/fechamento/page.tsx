@@ -1,9 +1,13 @@
-// app/caixa/fechamento/page.tsx - VERSÃO COM CONTADOR DE NOTAS E PERMISSÃO
+// app/caixa/fechamento/page.tsx - VERSÃO COM MODAIS DE CONFIRMAÇÃO
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Wallet, ArrowLeft, AlertCircle, Calculator, Lock, TrendingUp, TrendingDown, CheckCircle, Plus, Minus } from 'lucide-react';
+import { 
+  Wallet, ArrowLeft, AlertCircle, Calculator, Lock, 
+  TrendingUp, TrendingDown, CheckCircle, Plus, Minus,
+  AlertTriangle, XCircle
+} from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 
 // Tipos das notas/moedas
@@ -28,6 +32,31 @@ export default function FechamentoCaixaPage() {
   const [caixaAtual, setCaixaAtual] = useState<any>(null);
   const [resumoCalculado, setResumoCalculado] = useState<any>(null);
 
+  // Modais
+  const [modalConfirmacao, setModalConfirmacao] = useState<{
+    aberto: boolean;
+    valorFinal: number;
+    observacao: string;
+  }>({
+    aberto: false,
+    valorFinal: 0,
+    observacao: ''
+  });
+
+  const [resultadoFechamento, setResultadoFechamento] = useState<{
+    aberto: boolean;
+    sucesso: boolean;
+    diferenca: number;
+    status: string;
+    mensagem: string;
+  }>({
+    aberto: false,
+    sucesso: false,
+    diferenca: 0,
+    status: '',
+    mensagem: ''
+  });
+
   // Configuração das denominações
   const [denominações, setDenominações] = useState<Denominação[]>([
     { valor: 200, label: 'R$ 200', tipo: 'nota' },
@@ -36,7 +65,7 @@ export default function FechamentoCaixaPage() {
     { valor: 20, label: 'R$ 20', tipo: 'nota' },
     { valor: 10, label: 'R$ 10', tipo: 'nota' },
     { valor: 5, label: 'R$ 5', tipo: 'nota' },
-    { valor: 2, label: 'R$ 2', tipo: 'moeda' },
+    { valor: 2, label: 'R$ 2', tipo: 'nota' },
     { valor: 1, label: 'R$ 1', tipo: 'moeda' },
     { valor: 0.5, label: 'R$ 0,50', tipo: 'moeda' },
     { valor: 0.25, label: 'R$ 0,25', tipo: 'moeda' },
@@ -49,19 +78,84 @@ export default function FechamentoCaixaPage() {
     denominações.reduce((acc, den) => ({ ...acc, [den.valor]: 0 }), {})
   );
 
+  const getUserName = (user: any): string => {
+  if (!user) return 'Operador';
+  
+  // Tenta várias fontes de nome em ordem de prioridade
+  const nameSources = [
+    user.nome,              // Português
+    user.name,              // Inglês
+    user.username,          // username
+    user.displayName,       // displayName
+    user.email?.split('@')[0], // Parte do email antes do @
+    user.email,             // Email completo
+  ];
+  
+  // Encontra o primeiro nome válido
+  const validName = nameSources.find(name => 
+    name && typeof name === 'string' && name.trim() !== ''
+  );
+  
+  // Formata o nome (primeira letra maiúscula)
+  if (validName) {
+    const trimmed = validName.trim();
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  }
+  
+  return 'Operador';
+};
+
   useEffect(() => {
-    carregarCaixaAtual();
-    const user = getCurrentUser();
-    setUsuario(user?.name || 'Operador');
+  carregarCaixaAtual();
+  const user = getCurrentUser();
+  
+   // Obter nome do usuário
+  const userName = getUserName(user);
+  setUsuario(userName);
+  console.log('🔍 Nome do usuário:', userName);
+
+  if (user) {
+    // Verificar se existe a propriedade diretamente (ignorando TypeScript)
+    const userAny = user as any;
     
-    // Verificar permissão do usuário
-    if (user?.permissions?.includes('canProcessPayment')) {
-      setTemPermissao(true);
-    } else {
-      setErro('Você não tem permissão para fechar o caixa. Apenas usuários com permissão de processamento de pagamento podem realizar esta ação.');
-      setCarregandoDados(false);
-    }
-  }, []);
+    // OBTER NOME CORRETAMENTE (nome em português OU name em inglês)
+    const userName = userAny?.nome || userAny?.name || 'Operador';
+    setUsuario(userName);
+    
+    console.log('🔍 Nome do usuário encontrado:', userName);
+    console.log('🔍 Usuário completo:', userAny);
+  } else {
+    setUsuario('Operador');
+  }
+  
+  // VERIFICAÇÃO QUE FUNCIONA COM AMBAS AS ESTRUTURAS
+  // Primeiro converte para any para acessar propriedades dinamicamente
+  const userAny = user as any;
+  
+  // Tenta obter permissões de ambas as propriedades
+  const permissoes = userAny?.permissoes || userAny?.permissions;
+  console.log('Permissões encontradas:', permissoes);
+  
+  if (permissoes?.canProcessPayment) {
+    console.log('✅ TEM permissão canProcessPayment!');
+    setTemPermissao(true);
+  } else {
+    console.log('❌ NÃO TEM permissão canProcessPayment');
+    setErro('Você não tem permissão para fechar o caixa. Apenas usuários com permissão podem realizar esta ação.');
+    setCarregandoDados(false);
+  }
+
+  const handleBeforeUnload = () => {
+    // Limpa algo se necessário
+  };
+  
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+  };
+}, []);
+
 
   // Calcular total automaticamente
   useEffect(() => {
@@ -80,15 +174,20 @@ export default function FechamentoCaixaPage() {
       const response = await fetch('/api/caixa/status');
       const data = await response.json();
       
-      if (data.success && data.data.status === 'aberto') {
+      console.log('📊 Resposta da API /status:', data);
+      
+      if (data.success && data.data && data.data.status === 'aberto') {
         setCaixaAtual(data.data);
         calcularResumo(data.data);
+        setErro(''); // Limpa qualquer erro anterior
       } else {
-        setErro('Não há caixa aberto para fechar');
+        setErro(data.error || 'Não há caixa aberto para fechar');
+        setCaixaAtual(null);
       }
     } catch (error) {
       console.error('Erro ao carregar caixa:', error);
       setErro('Erro ao carregar dados do caixa');
+      setCaixaAtual(null);
     } finally {
       setCarregandoDados(false);
     }
@@ -136,7 +235,8 @@ export default function FechamentoCaixaPage() {
     setContador(reset);
   };
 
-  const handleFecharCaixa = async () => {
+  // Funções para os modais
+  const handleAbrirModalConfirmacao = () => {
     if (!temPermissao) {
       setErro('Você não tem permissão para fechar o caixa.');
       return;
@@ -147,37 +247,66 @@ export default function FechamentoCaixaPage() {
       return;
     }
 
-    if (!confirm('Tem certeza que deseja fechar o caixa? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+    // Abre o modal em vez do confirm
+    setModalConfirmacao({
+      aberto: true,
+      valorFinal: parseFloat(valorFinal),
+      observacao: observacao
+    });
+  };
 
+  const handleConfirmarFechamento = async () => {
     try {
       setCarregando(true);
       setErro('');
+      setModalConfirmacao({ aberto: false, valorFinal: 0, observacao: '' });
+
+      console.log('📤 Enviando fechamento:', { 
+        valorFinal: modalConfirmacao.valorFinal, 
+        usuario 
+      });
 
       const response = await fetch('/api/caixa/fechar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          valorFinal: parseFloat(valorFinal),
+          valorFinal: modalConfirmacao.valorFinal,
           usuario,
-          observacao,
+          observacao: modalConfirmacao.observacao,
           contagemNotas: modoContagem === 'contador' ? contador : null
         }),
       });
 
       const data = await response.json();
+      console.log('📥 Resposta do fechamento:', data);
 
       if (data.success) {
-        alert(`✅ Caixa fechado com sucesso!\n\nDiferença: R$ ${data.data.resumo?.diferenca.toFixed(2)}\nStatus: ${data.data.resumo?.statusDiferenca === 'ok' ? '✅ Bateu' : data.data.resumo?.statusDiferenca === 'sobra' ? '💰 Sobra' : '⚠️ Faltou'}`);
-        router.push('/dashboard');
+        setResultadoFechamento({
+          aberto: true,
+          sucesso: true,
+          diferenca: data.data.resumo?.diferenca || 0,
+          status: data.data.resumo?.statusDiferenca || 'ok',
+          mensagem: 'Caixa fechado com sucesso!'
+        });
       } else {
-        setErro(data.error || 'Erro ao fechar caixa');
+        setResultadoFechamento({
+          aberto: true,
+          sucesso: false,
+          diferenca: 0,
+          status: 'erro',
+          mensagem: data.error || 'Erro ao fechar caixa'
+        });
+        setCarregando(false);
       }
     } catch (error) {
-      setErro('Erro de conexão com o servidor');
-      console.error(error);
-    } finally {
+      console.error('❌ Erro no fechamento:', error);
+      setResultadoFechamento({
+        aberto: true,
+        sucesso: false,
+        diferenca: 0,
+        status: 'erro',
+        mensagem: 'Erro de conexão com o servidor'
+      });
       setCarregando(false);
     }
   };
@@ -229,10 +358,10 @@ export default function FechamentoCaixaPage() {
               </h2>
               <p className="text-gray-600 mb-6">{erro}</p>
               <button
-                onClick={() => router.push('/caixa')}
+                onClick={() => router.push('/dashboard')}
                 className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
-                Voltar ao Caixa
+                Voltar ao Dashboard
               </button>
             </div>
           </div>
@@ -264,14 +393,6 @@ export default function FechamentoCaixaPage() {
                 Aberto em: {caixaAtual?.abertura ? formatarData(caixaAtual.abertura.data) : '---'}
               </p>
             </div>
-            
-            {/* Indicador de Permissão */}
-            {temPermissao && (
-              <div className="ml-auto flex items-center gap-2 bg-green-100 text-green-800 px-3 py-2 rounded-full">
-                <CheckCircle className="h-5 w-5" />
-                <span className="text-sm font-medium">Permissão: canProcessPayment</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -622,13 +743,13 @@ export default function FechamentoCaixaPage() {
         {/* Botões */}
         <div className="flex gap-4">
           <button
-            onClick={() => router.push('/caixa')}
+            onClick={() => router.push('/dashboard')}
             className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium"
           >
             Cancelar
           </button>
           <button
-            onClick={handleFecharCaixa}
+            onClick={handleAbrirModalConfirmacao}
             disabled={carregando || !valorFinal || !temPermissao}
             className={`flex-1 py-3 text-white rounded-xl font-medium ${
               !temPermissao
@@ -651,13 +772,227 @@ export default function FechamentoCaixaPage() {
               </p>
               {!temPermissao && (
                 <p className="text-sm text-red-600 mt-2">
-                  <strong>⚠️ Permissão necessária:</strong> Apenas usuários com a permissão "canProcessPayment" podem fechar o caixa.
+                  <strong>⚠️ Permissão necessária:</strong> Apenas usuários com a permissão podem fechar o caixa.
                 </p>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de Confirmação */}
+      {modalConfirmacao.aberto && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-start mb-6">
+              <div className="bg-red-100 p-3 rounded-full mr-4">
+                <AlertTriangle className="h-8 w-8 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Confirmar Fechamento do Caixa</h3>
+                <p className="text-gray-600 mt-1">Esta ação não pode ser desfeita.</p>
+              </div>
+            </div>
+            
+            {/* Resumo dos Valores */}
+            <div className="space-y-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-bold text-gray-800 mb-3 flex items-center">
+                  <Calculator className="h-5 w-5 mr-2 text-blue-600" />
+                  Resumo do Fechamento
+                </h4>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Valor Inicial:</span>
+                    <span className="font-bold">{formatarMoeda(resumoCalculado?.valorInicial || 0)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Vendas:</span>
+                    <span className="font-bold text-green-600">+ {formatarMoeda(resumoCalculado?.totalVendas || 0)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Saídas:</span>
+                    <span className="font-bold text-red-600">- {formatarMoeda(resumoCalculado?.totalSaidas || 0)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between pt-2 border-t border-blue-200">
+                    <span className="text-gray-700 font-bold">Valor Esperado:</span>
+                    <span className="text-blue-600 font-bold">{formatarMoeda(resumoCalculado?.valorEsperado || 0)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-700 font-bold">Valor Informado:</span>
+                    <span className="text-gray-800 font-bold">{formatarMoeda(modalConfirmacao.valorFinal)}</span>
+                  </div>
+                  
+                  <div className={`flex justify-between pt-2 border-t ${
+                    !modalConfirmacao.valorFinal ? 'border-gray-200' :
+                    Math.abs(modalConfirmacao.valorFinal - (resumoCalculado?.valorEsperado || 0)) < 0.01 ? 
+                      'border-green-200' :
+                    modalConfirmacao.valorFinal > (resumoCalculado?.valorEsperado || 0) ?
+                      'border-blue-200' :
+                      'border-red-200'
+                  }`}>
+                    <span className="text-gray-700 font-bold">Diferença:</span>
+                    <span className={`font-bold ${
+                      !modalConfirmacao.valorFinal ? 'text-gray-800' :
+                      Math.abs(modalConfirmacao.valorFinal - (resumoCalculado?.valorEsperado || 0)) < 0.01 ? 
+                        'text-green-600' :
+                      modalConfirmacao.valorFinal > (resumoCalculado?.valorEsperado || 0) ?
+                        'text-blue-600' :
+                        'text-red-600'
+                    }`}>
+                      {modalConfirmacao.valorFinal ? (
+                        <>
+                          {modalConfirmacao.valorFinal >= (resumoCalculado?.valorEsperado || 0) ? '+' : '-'}
+                          {formatarMoeda(Math.abs(modalConfirmacao.valorFinal - (resumoCalculado?.valorEsperado || 0)))}
+                        </>
+                      ) : 'R$ 0,00'}
+                    </span>
+                  </div>
+                  
+                  <div className="text-sm mt-1">
+                    {!modalConfirmacao.valorFinal ? '---' :
+                     Math.abs(modalConfirmacao.valorFinal - (resumoCalculado?.valorEsperado || 0)) < 0.01 ? 
+                       <span className="text-green-600">✅ Caixa bateu</span> :
+                     modalConfirmacao.valorFinal > (resumoCalculado?.valorEsperado || 0) ?
+                       <span className="text-blue-600">💰 Sobra no caixa</span> :
+                       <span className="text-red-600">⚠️ Faltou no caixa</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+
+              <div className="bg-gray-50 p-3 rounded-lg mb-4">
+            <p className="text-sm text-gray-600 mb-1">Operador responsável:</p>
+            <p className="font-medium text-gray-800">{usuario}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Aberto por: {caixaAtual?.abertura?.usuario || '---'}
+            </p>
+          </div>
+              
+              {modalConfirmacao.observacao && (
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-1">Observação:</p>
+                  <p className="text-gray-800">{modalConfirmacao.observacao}</p>
+                </div>
+              )}
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <AlertCircle className="h-5 w-5 text-yellow-600 mr-3" />
+                  <span className="text-sm text-yellow-800">
+                    <strong>Atenção:</strong> Após confirmar, o caixa será bloqueado e não poderá receber novas vendas.
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setModalConfirmacao({ aberto: false, valorFinal: 0, observacao: '' })}
+                className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarFechamento}
+                className="flex-1 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center justify-center"
+              >
+                <Lock className="h-5 w-5 mr-2" />
+                Confirmar Fechamento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Resultado */}
+      {resultadoFechamento.aberto && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl">
+            <div className={`p-4 rounded-full mb-6 mx-auto w-20 h-20 flex items-center justify-center ${
+              resultadoFechamento.sucesso
+                ? resultadoFechamento.status === 'ok' ? 'bg-green-100' :
+                  resultadoFechamento.status === 'sobra' ? 'bg-blue-100' :
+                  'bg-yellow-100'
+                : 'bg-red-100'
+            }`}>
+              {resultadoFechamento.sucesso ? (
+                resultadoFechamento.status === 'ok' ? (
+                  <CheckCircle className="h-10 w-10 text-green-600" />
+                ) : resultadoFechamento.status === 'sobra' ? (
+                  <span className="text-3xl">💰</span>
+                ) : (
+                  <AlertTriangle className="h-10 w-10 text-yellow-600" />
+                )
+              ) : (
+                <XCircle className="h-10 w-10 text-red-600" />
+              )}
+            </div>
+            
+            <h3 className={`text-xl font-bold text-center mb-2 ${
+              resultadoFechamento.sucesso
+                ? resultadoFechamento.status === 'ok' ? 'text-green-800' :
+                  resultadoFechamento.status === 'sobra' ? 'text-blue-800' :
+                  'text-yellow-800'
+                : 'text-red-800'
+            }`}>
+              {resultadoFechamento.sucesso ? 'Sucesso!' : 'Erro'}
+            </h3>
+            
+            <p className="text-gray-600 text-center mb-4">
+              {resultadoFechamento.mensagem}
+            </p>
+            
+            {resultadoFechamento.sucesso && resultadoFechamento.diferenca !== undefined && (
+              <div className={`p-4 rounded-lg mb-4 text-center ${
+                resultadoFechamento.status === 'ok' ? 'bg-green-50 border border-green-200' :
+                resultadoFechamento.status === 'sobra' ? 'bg-blue-50 border border-blue-200' :
+                'bg-yellow-50 border border-yellow-200'
+              }`}>
+                <p className="text-sm text-gray-600 mb-1">Diferença:</p>
+                <p className={`text-2xl font-bold ${
+                  resultadoFechamento.status === 'ok' ? 'text-green-600' :
+                  resultadoFechamento.status === 'sobra' ? 'text-blue-600' :
+                  'text-red-600'
+                }`}>
+                  {resultadoFechamento.diferenca >= 0 ? '+' : ''}{formatarMoeda(resultadoFechamento.diferenca)}
+                </p>
+                <p className="text-sm mt-1">
+                  {resultadoFechamento.status === 'ok' ? '✅ Caixa bateu perfeitamente!' :
+                   resultadoFechamento.status === 'sobra' ? '💰 Sobra no caixa' :
+                   '⚠️ Faltou no caixa'}
+                </p>
+              </div>
+            )}
+            
+            <button
+              onClick={() => {
+                setResultadoFechamento({ aberto: false, sucesso: false, diferenca: 0, status: '', mensagem: '' });
+                if (resultadoFechamento.sucesso) {
+                  setTimeout(() => {
+                    router.push('/dashboard');
+                  }, 300);
+                }
+              }}
+              className={`w-full py-3 rounded-lg font-medium ${
+                resultadoFechamento.sucesso
+                  ? resultadoFechamento.status === 'ok' ? 'bg-green-600 hover:bg-green-700' :
+                    resultadoFechamento.status === 'sobra' ? 'bg-blue-600 hover:bg-blue-700' :
+                    'bg-yellow-600 hover:bg-yellow-700'
+                  : 'bg-red-600 hover:bg-red-700'
+              } text-white`}
+            >
+              {resultadoFechamento.sucesso ? 'Ir para Dashboard' : 'Fechar'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

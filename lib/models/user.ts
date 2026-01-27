@@ -54,6 +54,10 @@ export const roleTemplates = {
     canProcessPayment: true,
     canGiveDiscount: true,
     canCancelPayment: true,
+    canOpenCashier: true,
+    canCloseCashier: true,
+    canViewCashier: true,
+    canManageCashWithdrawals: true,
   },
   gerente: {
     canManageUsers: false,

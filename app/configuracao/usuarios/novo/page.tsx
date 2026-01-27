@@ -29,6 +29,12 @@ const todasPermissoes: Permissao[] = [
   { id: 'canAccessSettings', nome: 'Acessar Configurações', descricao: 'Pode acessar todas as configurações', categoria: 'Sistema' },
   { id: 'canViewReports', nome: 'Visualizar Relatórios', descricao: 'Pode acessar a aba de relatórios', categoria: 'Sistema' },
   
+  //Caixa
+  { id: 'canOpenCashier', nome: 'Abrir Caixa', descricao: 'Pode abrir o caixa do sistema', categoria: 'Caixa' },
+  { id: 'canCloseCashier', nome: 'Fechar Caixa', descricao: 'Pode fechar o caixa do sistema', categoria: 'Caixa' },
+  { id: 'canViewCashier', nome: 'Visualizar Caixa', descricao: 'Pode visualizar o status do caixa', categoria: 'Caixa' },
+  { id: 'canManageCashWithdrawals', nome: 'Gerenciar Retiradas', descricao: 'Pode fazer retiradas do caixa', categoria: 'Caixa' },
+
   // Produtos
   { id: 'canManageProducts', nome: 'Gerenciar Produtos', descricao: 'Pode adicionar/editar/excluir produtos', categoria: 'Cardápio' },
   { id: 'canManageCategories', nome: 'Gerenciar Categorias', descricao: 'Pode gerenciar categorias de produtos', categoria: 'Cardápio' },

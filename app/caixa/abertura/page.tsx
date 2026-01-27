@@ -1,4 +1,4 @@
-// app/caixa/abertura/page.tsx - VERSÃO CORRIGIDA
+// app/caixa/abertura/page.tsx - VERSÃO CORRIGIDA COM NOME DO USUÁRIO
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -46,9 +46,26 @@ export default function AberturaCaixaPage() {
     return inicial;
   });
 
+  // Função para obter nome do usuário do localStorage
+  const getUsuarioNome = (): string => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return 'Operador';
+      
+      const user = JSON.parse(userStr);
+      // Tenta todas as possibilidades
+      return user?.nome || user?.name || user?.username || user?.email?.split('@')[0] || 'Operador';
+    } catch (error) {
+      console.error('Erro ao obter nome do usuário:', error);
+      return 'Operador';
+    }
+  };
+
   useEffect(() => {
-    const nome = localStorage.getItem('usuario_nome') || 'Operador';
-    setUsuario(nome);
+    // Obter nome do usuário diretamente do localStorage
+    const nomeUsuario = getUsuarioNome();
+    setUsuario(nomeUsuario);
+    console.log('🔍 Nome do usuário obtido (abertura):', nomeUsuario);
   }, []);
 
   // Calcular total automaticamente
@@ -86,7 +103,6 @@ export default function AberturaCaixaPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert('Caixa aberto com sucesso!');
         router.push('/dashboard');
       } else {
         setErro(data.error || 'Erro ao abrir caixa');
@@ -227,42 +243,42 @@ export default function AberturaCaixaPage() {
                     </div>
                     
                     <div className="flex items-center justify-between">
-  <button
-    onClick={() => decrementarContador(den.valor)}
-    className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
-    type="button"
-  >
-    <Minus className="h-4 w-4" />
-  </button>
-  
-  <div className="text-center flex flex-col items-center">
-    {/* Input para digitar quantidade */}
-    <input
-      type="number"
-      min="0"
-      value={contador[den.valor] || 0}
-      onChange={(e) => {
-        const novaQuantidade = parseInt(e.target.value) || 0;
-        setContador(prev => ({
-          ...prev,
-          [den.valor]: Math.max(0, novaQuantidade) // Não permite negativo
-        }));
-      }}
-      className="w-16 text-center text-2xl font-bold text-gray-800 bg-transparent border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
-    />
-    <div className="text-sm text-gray-500 mt-1">
-      {formatarMoeda(den.valor * (contador[den.valor] || 0))}
-    </div>
-  </div>
-  
-  <button
-    onClick={() => incrementarContador(den.valor)}
-    className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition-colors"
-    type="button"
-  >
-    <Plus className="h-4 w-4" />
-  </button>
-</div>
+                      <button
+                        onClick={() => decrementarContador(den.valor)}
+                        className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
+                        type="button"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      
+                      <div className="text-center flex flex-col items-center">
+                        {/* Input para digitar quantidade */}
+                        <input
+                          type="number"
+                          min="0"
+                          value={contador[den.valor] || 0}
+                          onChange={(e) => {
+                            const novaQuantidade = parseInt(e.target.value) || 0;
+                            setContador(prev => ({
+                              ...prev,
+                              [den.valor]: Math.max(0, novaQuantidade) // Não permite negativo
+                            }));
+                          }}
+                          className="w-16 text-center text-2xl font-bold text-gray-800 bg-transparent border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
+                        />
+                        <div className="text-sm text-gray-500 mt-1">
+                          {formatarMoeda(den.valor * (contador[den.valor] || 0))}
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => incrementarContador(den.valor)}
+                        className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition-colors"
+                        type="button"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -340,6 +356,9 @@ export default function AberturaCaixaPage() {
                 readOnly
                 className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Nome obtido do seu perfil de usuário
+              </p>
             </div>
 
             {/* Info */}
@@ -349,6 +368,9 @@ export default function AberturaCaixaPage() {
                 <div>
                   <p className="text-sm text-blue-800">
                     Após a abertura você será redirecionado para o dashboard.
+                  </p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    <strong>Operador:</strong> {usuario}
                   </p>
                 </div>
               </div>

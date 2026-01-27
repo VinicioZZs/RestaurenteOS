@@ -3,9 +3,25 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: 'admin' | 'garcom' | 'caixa'  ;
-    permissions?: string[]; // Adicione esta linha
-
+  role: 'admin' | 'garcom' | 'caixa';
+  permissions?: {
+    canProcessPayment?: boolean;
+    canManageUsers?: boolean;
+    canAccessSettings?: boolean;
+    canViewReports?: boolean;
+    canManageProducts?: boolean;
+    canManageCategories?: boolean;
+    canManageAdicionais?: boolean;
+    canOpenComanda?: boolean;
+    canCloseComanda?: boolean;
+    canRemoveItem?: boolean;
+    canClearComanda?: boolean;
+    canDeleteComanda?: boolean;
+    canGiveDiscount?: boolean;
+    canCancelPayment?: boolean;
+  };
+  // ADICIONE ESTA LINHA PARA COMPATIBILIDADE ↓↓↓
+  permissoes?: any; // Permite acesso à propriedade em português
 }
 
 interface LoginResponse {
@@ -61,11 +77,27 @@ export function logout(): void {
 }
 
 export function getCurrentUser(): User | null {
-  // ✅ Pega o usuário completo do localStorage
   const userStr = localStorage.getItem('user');
+  console.log('🔍 [getCurrentUser] userStr do localStorage:', userStr); // DEBUG
+  
   if (userStr) {
     try {
-      return JSON.parse(userStr);
+      const parsed = JSON.parse(userStr);
+      console.log('🔍 [getCurrentUser] Usuário parseado:', parsed);
+      
+      // NORMALIZAR NOME: garantir que exista a propriedade 'name'
+      if (parsed) {
+        // Se tem 'nome' (português) mas não tem 'name' (inglês), copia
+        if (parsed.nome && !parsed.name) {
+          parsed.name = parsed.nome;
+        }
+        // Se tem 'name' mas não tem 'nome', também copia
+        else if (parsed.name && !parsed.nome) {
+          parsed.nome = parsed.name;
+        }
+      }
+      
+      return parsed;
     } catch (e) {
       console.error('Erro ao parsear usuário:', e);
     }
