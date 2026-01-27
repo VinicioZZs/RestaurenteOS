@@ -3,7 +3,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: 'admin' | 'garcom' | 'caixa';
+  role: 'admin' | 'garcom' | 'caixa'  ;
     permissions?: string[]; // Adicione esta linha
 
 }

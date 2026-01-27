@@ -583,29 +583,48 @@ export default function ComandaPage() {
     verificarAdicionaisDoProduto(produtoId, produto);
   };
 
-  const adicionarItemDiretamente = (produtoId: string, produto: Produto) => {
-    const produtoSeguro = produto || {
-      id: produtoId,
-      nome: 'Produto não encontrado',
-      preco: 0,
-      categoria: 'Sem categoria',
-      imagem: '/placeholder-product.jpg'
+  const adicionarItemDiretamente = (produtoId: string, produto: Produto, observacao: string = '') => {
+  const produtoSeguro = produto || {
+    id: produtoId,
+    nome: 'Produto não encontrado',
+    preco: 0,
+    categoria: 'Sem categoria',
+    imagem: '/placeholder-product.jpg'
+  };
+  
+  // Verificar se já existe um item NÃO SALVO com o mesmo produto e observação
+  const itemExistenteIndex = itensNaoSalvos.findIndex(item => 
+    item.produtoId === produtoId && 
+    item.observacao === observacao &&
+    item.isNew === true
+  );
+  
+  if (itemExistenteIndex >= 0) {
+    // Atualizar quantidade do item existente
+    const novosItens = [...itensNaoSalvos];
+    novosItens[itemExistenteIndex] = {
+      ...novosItens[itemExistenteIndex],
+      quantidade: novosItens[itemExistenteIndex].quantidade + 1
     };
-    
+    setItensNaoSalvos(novosItens);
+  } else {
+    // Criar novo item
     const novoItem: ItemComanda = {
       id: Date.now() + Math.random(),
       produtoId,
       quantidade: 1,
       precoUnitario: produtoSeguro.preco,
       produto: produtoSeguro,
-      observacao: '',
-      isNew: true
+      observacao: observacao, // Agora recebe a observação
+      isNew: true // Sempre marcado como novo até ser salvo
     };
     
     setItensNaoSalvos(prev => [...prev, novoItem]);
-    setModificado(true);
-    console.log('➕ Item adicionado, modificado = true');
-  };
+  }
+  
+  setModificado(true);
+  console.log('➕ Item adicionado/atualizado, modificado = true');
+};
 
   const removerItem = (itemId: number, tipo: 'salvo' | 'naoSalvo') => {
     if (tipo === 'salvo') {
@@ -650,63 +669,73 @@ export default function ComandaPage() {
     console.log('📝 Observação atualizada, modificado = true');
   };
 
-  const salvarItens = async (retornarAoDashboard = false): Promise<boolean> => {
-    if (itensNaoSalvos.length === 0 && !modificado) {
-      console.log('📭 Nenhuma alteração para salvar');
-      if (retornarAoDashboard) {
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 300);
-        return true;
-      }
+ const salvarItens = async (retornarAoDashboard = false): Promise<boolean> => {
+  if (itensNaoSalvos.length === 0 && !modificado) {
+    console.log('📭 Nenhuma alteração para salvar');
+    if (retornarAoDashboard) {
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 300);
       return true;
     }
+    return true;
+  }
+  
+  console.log('💾 Iniciando salvamento da comanda...');
+  
+  try {
+    // REMOVER isNew dos itens NÃO SALVOS e transferir para SALVOS
+    const itensParaSalvar = itensNaoSalvos.map(item => ({
+      ...item,
+      isNew: false // IMPORTANTE: Remover a flag de novo
+    }));
     
-    console.log('💾 Iniciando salvamento da comanda...');
+    // Combinar itens salvos existentes + novos itens (sem isNew)
+    const todosItensCombinados = [...itensSalvos, ...itensParaSalvar];
     
-    try {
-      const todosItensParaProcessar = [...itensSalvos, ...itensNaoSalvos];
+    // Agrupar por produtoId + observação (APÓS remover isNew)
+    const itensAgrupados = new Map();
+    
+    todosItensCombinados.forEach(item => {
+      const chave = `${item.produtoId}-${item.observacao || 'sem-obs'}`;
       
-      const itensAgrupados = new Map();
+      if (itensAgrupados.has(chave)) {
+        const existente = itensAgrupados.get(chave);
+        existente.quantidade += item.quantidade;
+      } else {
+        itensAgrupados.set(chave, {
+          ...item,
+          id: Date.now() + Math.random(),
+          isNew: false // Garantir que não tenha isNew
+        });
+      }
+    });
+    
+    const itensFinalizados = Array.from(itensAgrupados.values());
+    const totalAgrupado = itensFinalizados.reduce((sum, item) => 
+      sum + (item.precoUnitario * item.quantidade), 0
+    );
+    
+    const numeroMesaParaSalvar = mesa?.numero || mesaId;
+    
+    const resultado = await salvarComandaNoDB(
+      mesaId,
+      numeroMesaParaSalvar,
+      itensFinalizados,
+      totalAgrupado
+    );
+    
+    if (resultado.success) {
+      console.log('✅ Comanda salva com sucesso');
       
-      todosItensParaProcessar.forEach(item => {
-        const chave = `${item.produtoId}-${item.observacao || 'sem-obs'}`;
-        
-        if (itensAgrupados.has(chave)) {
-          const existente = itensAgrupados.get(chave);
-          existente.quantidade += item.quantidade;
-        } else {
-          itensAgrupados.set(chave, {
-            ...item,
-            id: Date.now() + Math.random()
-          });
-        }
-      });
+      // ATUALIZAR ESTADOS CORRETAMENTE
+      setItensSalvos(itensFinalizados); // Todos os itens agora são "salvos"
+      setItensNaoSalvos([]); // Limpar itens não salvos
+      setModificado(false);
       
-      const itensParaSalvar = Array.from(itensAgrupados.values());
-      const totalAgrupado = itensParaSalvar.reduce((sum, item) => 
-        sum + (item.precoUnitario * item.quantidade), 0
-      );
-      
-      const numeroMesaParaSalvar = mesa?.numero || mesaId;
-      
-      const resultado = await salvarComandaNoDB(
-        mesaId,
-        numeroMesaParaSalvar,
-        itensParaSalvar,
-        totalAgrupado
-      );
-      
-      if (resultado.success) {
-        console.log('✅ Comanda salva com sucesso');
-        
-        setItensSalvos(itensParaSalvar);
-        setItensNaoSalvos([]);
-        setModificado(false);
-        
-        if (resultado.data?._id) {
-          setComandaId(resultado.data._id);
-        }
+      if (resultado.data?._id) {
+        setComandaId(resultado.data._id);
+      }
         
         // Disparar evento para atualizar dashboard
         if (typeof window !== 'undefined') {
@@ -741,18 +770,18 @@ export default function ComandaPage() {
         }
         
         return true;
-        
-      } else {
-        alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
-        return false;
-      }
-      
-    } catch (error) {
-      console.error('❌ Erro completo ao salvar itens:', error);
-      alert('Erro ao salvar itens: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+    } else {
+      alert('Erro ao salvar comanda: ' + (resultado.error?.message || 'Erro desconhecido'));
       return false;
     }
-  };
+    
+  } catch (error) {
+    console.error('❌ Erro completo ao salvar itens:', error);
+    alert('Erro ao salvar itens: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+    return false;
+  }
+};
+
 
   const descartarAlteracoes = () => {
     if (!modificado && itensNaoSalvos.length === 0) return;
@@ -1068,73 +1097,68 @@ export default function ComandaPage() {
   };
 
   const handleConfirmarAdicionais = async (
-    produtoId: string, 
-    adicionaisSelecionados: Array<{
-      adicionalId: string;
-      quantidade: number;
-      precoUnitario: number;
-      nome: string;
-    }>,
-    itemId?: number
-  ) => {
-    const produto = produtosReais.find(p => p.id === produtoId);
-    if (!produto) return;
+  produtoId: string, 
+  adicionaisSelecionados: Array<{
+    adicionalId: string;
+    quantidade: number;
+    precoUnitario: number;
+    nome: string;
+  }>,
+  itemId?: number
+) => {
+  const produto = produtosReais.find(p => p.id === produtoId);
+  if (!produto) return;
+  
+  const precoAdicionais = adicionaisSelecionados.reduce((total, adicional) => 
+    total + (adicional.precoUnitario * adicional.quantidade), 0);
+  
+  const precoTotal = produto.preco + precoAdicionais;
+  
+  const observacao = adicionaisSelecionados.length > 0
+    ? `Adicionais: ${adicionaisSelecionados.map(a => 
+        `${a.nome}${a.quantidade > 1 ? ` (${a.quantidade}x)` : ''}`
+      ).join(', ')}`
+    : '';
+  
+  // Se estiver editando um item existente
+  if (itemId && itemEditando) {
+    // Verificar se é um item salvo ou não salvo
+    const itemIndexSalvo = itensSalvos.findIndex(item => item.id === itemId);
+    const itemIndexNaoSalvo = itensNaoSalvos.findIndex(item => item.id === itemId);
     
-    const precoAdicionais = adicionaisSelecionados.reduce((total, adicional) => 
-      total + (adicional.precoUnitario * adicional.quantidade), 0);
+    const novoItem: ItemComanda = {
+      id: itemId,
+      produtoId,
+      quantidade: 1,
+      precoUnitario: precoTotal,
+      produto,
+      observacao,
+      isNew: itemIndexNaoSalvo >= 0 ? true : false // Manter o status original
+    };
     
-    const precoTotal = produto.preco + precoAdicionais;
-    
-    const observacao = adicionaisSelecionados.length > 0
-      ? `Adicionais: ${adicionaisSelecionados.map(a => 
-          `${a.nome}${a.quantidade > 1 ? ` (${a.quantidade}x)` : ''}`
-        ).join(', ')}`
-      : '';
-    
-    if (itemId && itemEditando) {
-      const novoItem: ItemComanda = {
-        id: itemId,
-        produtoId,
-        quantidade: 1,
-        precoUnitario: precoTotal,
-        produto,
-        observacao,
-        isNew: true
-      };
-      
-      const itemIndexSalvo = itensSalvos.findIndex(item => item.id === itemId);
-      const itemIndexNaoSalvo = itensNaoSalvos.findIndex(item => item.id === itemId);
-      
-      if (itemIndexSalvo !== -1) {
-        const novosItens = [...itensSalvos];
-        novosItens[itemIndexSalvo] = novoItem;
-        setItensSalvos(novosItens);
-      } else if (itemIndexNaoSalvo !== -1) {
-        const novosItens = [...itensNaoSalvos];
-        novosItens[itemIndexNaoSalvo] = novoItem;
-        setItensNaoSalvos(novosItens);
-      }
-      
-    } else {
-      const novoItem: ItemComanda = {
-        id: Date.now() + Math.random(),
-        produtoId,
-        quantidade: 1,
-        precoUnitario: precoTotal,
-        produto,
-        observacao,
-        isNew: true
-      };
-      
-      setItensNaoSalvos(prev => [...prev, novoItem]);
+    if (itemIndexSalvo !== -1) {
+      // Atualizar item salvo
+      const novosItens = [...itensSalvos];
+      novosItens[itemIndexSalvo] = novoItem;
+      setItensSalvos(novosItens);
+    } else if (itemIndexNaoSalvo !== -1) {
+      // Atualizar item não salvo
+      const novosItens = [...itensNaoSalvos];
+      novosItens[itemIndexNaoSalvo] = novoItem;
+      setItensNaoSalvos(novosItens);
     }
     
-    setModificado(true);
-    setMostrarModalAdicionais(false);
-    setProdutoSelecionado(null);
-    setProdutoIdSelecionado('');
-    setItemEditando(null);
-  };
+  } else {
+    // Adicionar novo item usando a função corrigida
+    adicionarItemDiretamente(produtoId, produto, observacao);
+  }
+  
+  setModificado(true);
+  setMostrarModalAdicionais(false);
+  setProdutoSelecionado(null);
+  setProdutoIdSelecionado('');
+  setItemEditando(null);
+};
 
   // ========== FUNÇÕES DE APRESENTAÇÃO ==========
 

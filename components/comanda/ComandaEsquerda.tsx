@@ -160,11 +160,17 @@ export default function ComandaEsquerda({
 
   // Abrir modal de remoção (com verificação de permissão)
   const abrirModalRemocao = (itemId: number, tipo: 'salvo' | 'naoSalvo', produtoNome: string, quantidadeAtual: number, precoUnitario: number) => {
-    if (!temPermissao('canRemoveItem')) {
-      alert('Você não tem permissão para remover itens!');
-      return;
-    }
-    
+  console.log('🔍 Tentando abrir modal de remoção:', {
+    itemId,
+    tipo,
+    temPermissao: temPermissao('canRemoveItem'),
+    usuarioLogado,
+    isNew: tipo === 'naoSalvo' ? 'SIM (não salvo)' : 'NÃO (salvo)'
+  });
+  
+  // Para itens NÃO SALVOS (isNew=true), permitir remover SEM verificação de permissão
+  if (tipo === 'naoSalvo') {
+    console.log('✅ Item não salvo - permitindo remoção sem verificação');
     setModalRemocao({
       isOpen: true,
       itemId,
@@ -173,7 +179,24 @@ export default function ComandaEsquerda({
       quantidadeAtual,
       precoUnitario
     });
-  };
+    return;
+  }
+  
+  // Para itens SALVOS, verificar permissão
+  if (!temPermissao('canRemoveItem')) {
+    alert('Você não tem permissão para remover itens!');
+    return;
+  }
+  
+  setModalRemocao({
+    isOpen: true,
+    itemId,
+    tipo,
+    produtoNome,
+    quantidadeAtual,
+    precoUnitario
+  });
+};
 
   // Confirmar remoção (chamada pelo modal)
   const handleConfirmarRemocao = (quantidadeRemover: number) => {
@@ -253,33 +276,53 @@ export default function ComandaEsquerda({
 
   // ✅ Renderização condicional baseada em permissões
   const renderizarBotaoRemover = (item: any, isNaoSalvo: boolean) => {
-    if (!temPermissao('canRemoveItem')) {
-      return (
-        <span 
-          className="text-gray-400 text-sm flex-shrink-0 cursor-not-allowed"
-          title="Sem permissão para remover"
-        >
-          ✕
-        </span>
-      );
-    }
-    
+  // Se for item NÃO SALVO, sempre mostrar botão de remover
+  if (isNaoSalvo) {
     return (
       <button 
         onClick={() => abrirModalRemocao(
           item.id, 
-          isNaoSalvo ? 'naoSalvo' : 'salvo',
+          'naoSalvo',
           item.produto.nome,
           item.quantidade,
           item.precoUnitario
         )}
         className="text-red-500 hover:text-red-700 text-sm flex-shrink-0"
-        title="Remover item"
+        title="Remover item (não salvo)"
       >
         ✕
       </button>
     );
-  };
+  }
+  
+  // Se for item SALVO, verificar permissão
+  if (!temPermissao('canRemoveItem')) {
+    return (
+      <span 
+        className="text-gray-400 text-sm flex-shrink-0 cursor-not-allowed"
+        title="Sem permissão para remover itens salvos"
+      >
+        ✕
+      </span>
+    );
+  }
+  
+  return (
+    <button 
+      onClick={() => abrirModalRemocao(
+        item.id, 
+        'salvo',
+        item.produto.nome,
+        item.quantidade,
+        item.precoUnitario
+      )}
+      className="text-red-500 hover:text-red-700 text-sm flex-shrink-0"
+      title="Remover item"
+    >
+      ✕
+    </button>
+  );
+};
 
   if (carregandoPermissoes) {
     return (
@@ -454,45 +497,23 @@ export default function ComandaEsquerda({
         </div>
 
         {/* Totais */}
-        <div className="p-4 border-t bg-gradient-to-r from-gray-50 to-gray-100 flex-shrink-0">
-          <div className="space-y-3">
-            {/* Total maior */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <div>
-                <span className="font-bold text-gray-900 text-lg">Total:</span>
-                <p className="text-sm text-gray-600 mt-1">Valor da comanda</p>
-              </div>
-              <span className="text-2xl font-bold text-blue-600">R$ {totalComanda.toFixed(2)}</span>
+          <div className="p-3 border-t bg-gradient-to-r from-gray-50 to-gray-100 flex-shrink-0">
+          <div className="flex gap-3">
+            {/* Total */}
+            <div className="flex-1 bg-white p-3 rounded-lg border border-gray-200 text-center">
+              <div className="text-xs text-gray-500 mb-1">Total</div>
+              <div className="text-lg font-bold text-blue-600">R$ {totalComanda.toFixed(2)}</div>
             </div>
             
-            {/* Restante maior */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <div>
-                <span className="font-bold text-gray-900 text-lg">Restante:</span>
-                <p className="text-sm text-gray-600 mt-1">A pagar</p>
-              </div>
-              <span className={`text-2xl font-bold ${
+            {/* Restante */}
+            <div className="flex-1 bg-white p-3 rounded-lg border border-gray-200 text-center">
+              <div className="text-xs text-gray-500 mb-1">Restante</div>
+              <div className={`text-lg font-bold ${
                 restantePagar > 0 ? 'text-red-600' : 'text-green-600'
               }`}>
                 R$ {restantePagar.toFixed(2)}
-              </span>
-            </div>
-            
-            {/* ✅ Botão para dar desconto (se tiver permissão) */}
-            {temPermissao('canGiveDiscount') && (
-              <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                <div>
-                  <span className="font-bold text-gray-900 text-lg">Desconto</span>
-                  <p className="text-sm text-gray-600 mt-1">Aplicar desconto na comanda</p>
-                </div>
-                <button
-                  onClick={handleDarDesconto}
-                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-lg hover:from-green-600 hover:to-green-700"
-                >
-                  💰 Dar Desconto
-                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
