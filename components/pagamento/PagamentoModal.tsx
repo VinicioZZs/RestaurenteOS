@@ -1,9 +1,9 @@
-// components/pagamento/PagamentoModal.tsx - COM PERMISSÕES
+// components/pagamento/PagamentoModal.tsx - COM MEIOS DE PAGAMENTO PERSONALIZADOS
 'use client';
 
 import { useState, useEffect } from 'react';
 
-// Interfaces (mantidas iguais)
+// Interfaces
 interface ProdutoInfo {
   nome: string;
   categoria: string;
@@ -24,11 +24,18 @@ interface ItemPagador {
   descricao?: string;
 }
 
-interface FormaPagamento {
-  id: string;
+interface MeioPagamentoPersonalizado {
+  _id: string;
   nome: string;
+  descricao?: string;
+  tipo: 'dinheiro' | 'cartao' | 'pix' | 'outros' | 'personalizado';
   taxa: number;
-  aceitaTroco?: boolean;
+  ativo: boolean;
+  permiteTroco: boolean;
+  permiteDividir: boolean;
+  icone: string;
+  cor: string;
+  ordem: number;
 }
 
 interface Pagador {
@@ -67,20 +74,11 @@ interface PagamentoModalProps {
   onClose: () => void;
   onConfirmar: (data: any) => void;
   onSalvarParcial?: (data: any) => void;
-  formasPagamentoCustomizadas?: FormaPagamento[];
   comandaId?: string;
   mesaId?: string;
   comandaOriginal?: any;
   onAtualizarComanda?: (comandaId: string, dados: any) => Promise<any>;
 }
-
-const formasPagamentoPadrao: FormaPagamento[] = [
-  { id: 'dinheiro', nome: 'Dinheiro', taxa: 0, aceitaTroco: true },
-  { id: 'cartao_debito', nome: 'Cartão Débito', taxa: 1.5, aceitaTroco: false },
-  { id: 'cartao_credito', nome: 'Cartão Crédito', taxa: 3.5, aceitaTroco: false },
-  { id: 'pix', nome: 'PIX', taxa: 0, aceitaTroco: false },
-  { id: 'vale', nome: 'Vale', taxa: 0, aceitaTroco: false },
-];
 
 export default function PagamentoModal({ 
   mesa, 
@@ -89,15 +87,15 @@ export default function PagamentoModal({
   onClose, 
   onConfirmar,
   onSalvarParcial,
-  formasPagamentoCustomizadas = formasPagamentoPadrao,
   comandaId,
   mesaId,
   comandaOriginal,
   onAtualizarComanda
 }: PagamentoModalProps) {
-  const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>(formasPagamentoCustomizadas);
-  
   // ESTADOS
+  const [meiosPagamentoPersonalizados, setMeiosPagamentoPersonalizados] = useState<MeioPagamentoPersonalizado[]>([]);
+  const [carregandoMeiosPagamento, setCarregandoMeiosPagamento] = useState(true);
+  
   const [pagadores, setPagadores] = useState<Pagador[]>([
     { 
       id: '1', 
@@ -126,7 +124,7 @@ export default function PagamentoModal({
   const [modoParcial, setModoParcial] = useState(false);
   const [carregando, setCarregando] = useState(false);
   
-  // ✅ NOVO: Estado para usuário logado e permissões
+  // Estado para usuário logado e permissões
   const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
   const [carregandoPermissoes, setCarregandoPermissoes] = useState(true);
 
@@ -139,7 +137,104 @@ export default function PagamentoModal({
     return inicial;
   });
 
-  // ✅ NOVO: Carregar usuário logado
+  // Carregar meios de pagamento personalizados
+  useEffect(() => {
+    async function carregarMeiosPagamento() {
+      try {
+        setCarregandoMeiosPagamento(true);
+        const response = await fetch('/api/meios-pagamento?ativos=true');
+        const data = await response.json();
+        
+        if (data.success) {
+          // Ordenar por ordem
+          const meiosOrdenados = data.data.sort((a: MeioPagamentoPersonalizado, b: MeioPagamentoPersonalizado) => 
+            a.ordem - b.ordem
+          );
+          setMeiosPagamentoPersonalizados(meiosOrdenados);
+        } else {
+          console.warn('Não foi possível carregar meios de pagamento personalizados');
+          // Fallback para formas padrão
+          setMeiosPagamentoPersonalizados(criarFormasPagamentoPadrao());
+        }
+      } catch (error) {
+        console.error('Erro ao carregar meios de pagamento:', error);
+        // Fallback para formas padrão
+        setMeiosPagamentoPersonalizados(criarFormasPagamentoPadrao());
+      } finally {
+        setCarregandoMeiosPagamento(false);
+      }
+    }
+
+    carregarMeiosPagamento();
+  }, []);
+
+  // Criar formas de pagamento padrão (fallback)
+  const criarFormasPagamentoPadrao = (): MeioPagamentoPersonalizado[] => {
+    return [
+      { 
+        _id: 'dinheiro', 
+        nome: 'Dinheiro', 
+        tipo: 'dinheiro',
+        taxa: 0, 
+        ativo: true,
+        permiteTroco: true,
+        permiteDividir: true,
+        icone: '💵',
+        cor: '#10B981',
+        ordem: 1
+      },
+      { 
+        _id: 'cartao_debito', 
+        nome: 'Cartão Débito', 
+        tipo: 'cartao',
+        taxa: 1.5, 
+        ativo: true,
+        permiteTroco: false,
+        permiteDividir: true,
+        icone: '💳',
+        cor: '#3B82F6',
+        ordem: 2
+      },
+      { 
+        _id: 'cartao_credito', 
+        nome: 'Cartão Crédito', 
+        tipo: 'cartao',
+        taxa: 3.5, 
+        ativo: true,
+        permiteTroco: false,
+        permiteDividir: true,
+        icone: '💳',
+        cor: '#8B5CF6',
+        ordem: 3
+      },
+      { 
+        _id: 'pix', 
+        nome: 'PIX', 
+        tipo: 'pix',
+        taxa: 0, 
+        ativo: true,
+        permiteTroco: false,
+        permiteDividir: false,
+        icone: '📱',
+        cor: '#32CD32',
+        ordem: 4
+      },
+      { 
+        _id: 'vale', 
+        nome: 'Vale', 
+        tipo: 'outros',
+        taxa: 0, 
+        ativo: true,
+        permiteTroco: false,
+        permiteDividir: true,
+        icone: '🧾',
+        cor: '#F59E0B',
+        ordem: 5
+      },
+    ];
+  };
+
+  // Carregar usuário logado
   useEffect(() => {
     const carregarUsuario = () => {
       try {
@@ -158,18 +253,16 @@ export default function PagamentoModal({
     carregarUsuario();
   }, []);
 
-  // ✅ NOVO: Funções de verificação de permissões
+  // Funções de verificação de permissões
   const temPermissao = (permissao: string): boolean => {
     if (!usuarioLogado) return false;
     
-    // Admin tem todas as permissões
     if (usuarioLogado.role === 'admin') return true;
     
-    // Verifica permissão específica
     return usuarioLogado.permissoes[permissao] === true;
   };
 
-  // ✅ NOVO: Função para cancelar pagamento
+  // Função para cancelar pagamento
   const handleCancelarPagamento = (pagadorId: string) => {
     if (!temPermissao('canCancelPayment')) {
       alert('Você não tem permissão para cancelar pagamentos!');
@@ -193,7 +286,7 @@ export default function PagamentoModal({
     }
   };
 
-  // ✅ NOVO: Função para processar pagamento (marcar como pago)
+  // Função para processar pagamento (marcar como pago)
   const handleProcessarPagamento = (pagadorId: string) => {
     if (!temPermissao('canProcessPayment')) {
       alert('Você não tem permissão para processar pagamentos!');
@@ -210,9 +303,9 @@ export default function PagamentoModal({
     
     const totalPagador = calcularTotalPagador(pagador);
     
-    // Verificar se precisa valor pago (para dinheiro)
-    const forma = formasPagamento.find(f => f.id === pagador.formaPagamento);
-    if (forma?.aceitaTroco && (!pagador.valorPago || pagador.valorPago < totalPagador)) {
+    // Verificar se precisa valor pago (para meios que aceitam troco)
+    const meio = meiosPagamentoPersonalizados.find(m => m._id === pagador.formaPagamento);
+    if (meio?.permiteTroco && (!pagador.valorPago || pagador.valorPago < totalPagador)) {
       alert('Para pagamento em dinheiro, é necessário informar o valor pago!');
       return;
     }
@@ -235,7 +328,6 @@ export default function PagamentoModal({
 
   const carregarPagamentoParcial = () => {
     try {
-      // Tenta carregar do localStorage
       const dadosSalvos = localStorage.getItem(`pagamento_parcial_${comandaId}`);
       if (dadosSalvos) {
         const { pagadores: pagadoresSalvos, quantidadesDisponiveis: quantidadesSalvas } = JSON.parse(dadosSalvos);
@@ -261,7 +353,17 @@ export default function PagamentoModal({
       (sum, item) => sum + (item.precoUnitario * item.quantidade), 
       0
     );
-    return totalItens - pagador.desconto + pagador.acrescimo;
+    
+    // Aplicar taxa do meio de pagamento se houver
+    let totalComTaxa = totalItens;
+    if (pagador.formaPagamento && pagador.pago) {
+      const meio = meiosPagamentoPersonalizados.find(m => m._id === pagador.formaPagamento);
+      if (meio && meio.taxa > 0) {
+        totalComTaxa += (totalItens * meio.taxa) / 100;
+      }
+    }
+    
+    return totalComTaxa - pagador.desconto + pagador.acrescimo;
   };
 
   const calcularTroco = (pagador: Pagador): number => {
@@ -298,6 +400,18 @@ export default function PagamentoModal({
     return pagadores
       .filter(p => !p.pago)
       .reduce((total, pagador) => total + calcularTotalPagador(pagador), 0);
+  };
+
+  // Função para obter taxa do meio de pagamento
+  const getTaxaMeioPagamento = (meioId: string): number => {
+    const meio = meiosPagamentoPersonalizados.find(m => m._id === meioId);
+    return meio?.taxa || 0;
+  };
+
+  // Função para verificar se meio aceita troco
+  const meioAceitaTroco = (meioId: string): boolean => {
+    const meio = meiosPagamentoPersonalizados.find(m => m._id === meioId);
+    return meio?.permiteTroco || false;
   };
 
   // ========== FUNÇÕES PRINCIPAIS ==========
@@ -479,7 +593,6 @@ export default function PagamentoModal({
   };
 
   const abrirModalDescontoAcrescimo = (pagadorId: string, tipo: 'desconto' | 'acrescimo') => {
-    // ✅ NOVO: Verificar permissão para dar desconto
     if (tipo === 'desconto' && !temPermissao('canGiveDiscount')) {
       alert('Você não tem permissão para dar descontos!');
       return;
@@ -536,10 +649,8 @@ export default function PagamentoModal({
     if (!pagador) return;
     
     if (pagador.pago) {
-      // Desmarcar como pago (cancelar pagamento)
       handleCancelarPagamento(pagadorId);
     } else {
-      // Marcar como pago (processar pagamento)
       handleProcessarPagamento(pagadorId);
     }
   };
@@ -588,7 +699,6 @@ export default function PagamentoModal({
   };
 
   const dividirIgualmente = () => {
-    // Verifica se há pagadores ativos (não pagos)
     const pagadoresAtivos = pagadores.filter(p => !p.pago);
     
     if (pagadoresAtivos.length === 0) {
@@ -596,29 +706,24 @@ export default function PagamentoModal({
       return;
     }
     
-    // Cria uma cópia dos pagadores mantendo TODOS
     const novosPagadores: Pagador[] = pagadores.map(pagador => ({
       ...pagador,
-      itens: [] // Limpa os itens de TODOS os pagadores
+      itens: []
     }));
     
-    // Resetar quantidades disponíveis para as quantidades originais
     const novasQuantidades: Record<number, number> = {};
     itens.forEach(item => {
       novasQuantidades[item.id] = item.quantidade;
     });
     
-    // Distribui os itens igualmente apenas entre pagadores não pagos
     itens.forEach(item => {
       const quantidadeTotal = item.quantidade;
       const quantidadePorPagador = Math.floor(quantidadeTotal / pagadoresAtivos.length);
       const resto = quantidadeTotal % pagadoresAtivos.length;
       
-      // Atribui aos pagadores ativos
       pagadoresAtivos.forEach((pagador, index) => {
         const quantidade = index === 0 ? quantidadePorPagador + resto : quantidadePorPagador;
         if (quantidade > 0) {
-          // Encontra o índice deste pagador na lista
           const pagadorIndex = novosPagadores.findIndex(p => p.id === pagador.id);
           if (pagadorIndex !== -1) {
             const itemPagador: ItemPagador = {
@@ -628,10 +733,8 @@ export default function PagamentoModal({
               descricao: item.produto.nome
             };
             
-            // CORREÇÃO: Especifica o tipo do array itens
             const itensAtuais: ItemPagador[] = novosPagadores[pagadorIndex].itens || [];
             
-            // Adiciona o item ao pagador
             novosPagadores[pagadorIndex] = {
               ...novosPagadores[pagadorIndex],
               itens: [...itensAtuais, itemPagador]
@@ -640,11 +743,9 @@ export default function PagamentoModal({
         }
       });
       
-      // Marca como totalmente atribuído
       novasQuantidades[item.id] = 0;
     });
     
-    // Atualiza os estados
     setPagadores(novosPagadores);
     setQuantidadesDisponiveis(novasQuantidades);
     
@@ -684,14 +785,11 @@ export default function PagamentoModal({
       return false;
     }
     
-    const pagadoresDinheiro = pagadoresNaoPagos.filter(p => {
-      const forma = formasPagamento.find(f => f.id === p.formaPagamento);
-      return forma?.aceitaTroco && p.pago === false;
-    });
-    
-    for (const pagador of pagadoresDinheiro) {
+    for (const pagador of pagadoresNaoPagos) {
       const totalPagador = calcularTotalPagador(pagador);
-      if (pagador.valorPago && pagador.valorPago < totalPagador) {
+      const meio = meiosPagamentoPersonalizados.find(m => m._id === pagador.formaPagamento);
+      
+      if (meio?.permiteTroco && pagador.valorPago && pagador.valorPago < totalPagador) {
         alert(`Atenção: ${pagador.nome} está pagando R$ ${pagador.valorPago?.toFixed(2)} mas deve R$ ${totalPagador.toFixed(2)}`);
         return false;
       }
@@ -711,8 +809,8 @@ export default function PagamentoModal({
         })),
         total: calcularTotalGeral(),
         itens,
-        formasPagamentoUtilizadas: formasPagamento.filter(fp => 
-          pagadores.some(p => p.formaPagamento === fp.id)
+        formasPagamentoUtilizadas: meiosPagamentoPersonalizados.filter(fp => 
+          pagadores.some(p => p.formaPagamento === fp._id)
         ),
         timestamp: new Date().toISOString(),
         status: 'parcial'
@@ -758,14 +856,11 @@ export default function PagamentoModal({
       return false;
     }
     
-    const pagadoresDinheiroPagos = pagadoresPagos.filter(p => {
-      const forma = formasPagamento.find(f => f.id === p.formaPagamento);
-      return forma?.aceitaTroco;
-    });
-    
-    for (const pagador of pagadoresDinheiroPagos) {
+    for (const pagador of pagadoresPagos) {
       const totalPagador = calcularTotalPagador(pagador);
-      if (pagador.valorPago && pagador.valorPago < totalPagador) {
+      const meio = meiosPagamentoPersonalizados.find(m => m._id === pagador.formaPagamento);
+      
+      if (meio?.permiteTroco && pagador.valorPago && pagador.valorPago < totalPagador) {
         alert(`Atenção: ${pagador.nome} está pagando R$ ${pagador.valorPago?.toFixed(2)} mas deve R$ ${totalPagador.toFixed(2)}`);
         return false;
       }
@@ -782,7 +877,6 @@ export default function PagamentoModal({
     try {
       const pagadoresPagos = pagadores.filter(p => p.pago);
       
-      // Dados para salvar
       const dadosParaSalvar = {
         pagadores,
         quantidadesDisponiveis,
@@ -800,19 +894,17 @@ export default function PagamentoModal({
         })),
         totalPago: getValorJaPago(),
         totalFaltaPagar: getValorFaltaPagar(),
-        formasPagamentoUtilizadas: formasPagamento.filter(fp => 
-          pagadoresPagos.some(p => p.formaPagamento === fp.id)
+        formasPagamentoUtilizadas: meiosPagamentoPersonalizados.filter(fp => 
+          pagadoresPagos.some(p => p.formaPagamento === fp._id)
         ),
         timestamp: new Date().toISOString(),
         status: 'parcial'
       };
       
-      // SALVAR LOCALMENTE (sempre fazemos isso)
       if (comandaId) {
         localStorage.setItem(`pagamento_parcial_${comandaId}`, JSON.stringify(dadosParaSalvar));
       }
       
-      // TENTAR SALVAR NO MONGODB SE A FUNÇÃO EXISTIR
       if (onAtualizarComanda && comandaId) {
         try {
           await onAtualizarComanda(comandaId, {
@@ -826,19 +918,16 @@ export default function PagamentoModal({
           setModoParcial(true);
           alert(`✅ Pagamento parcial salvo com sucesso!\n\n${pagadoresPagos.length} cliente(s) pagaram.\nR$ ${getValorJaPago().toFixed(2)} já pagos.\nR$ ${getValorFaltaPagar().toFixed(2)} faltam pagar.`);
           
-          // Fecha o modal após salvar
           onClose();
         } catch (error) {
           console.error('Erro ao salvar no MongoDB:', error);
-          // Mesmo se falhar no MongoDB, salvamos localmente
           alert('✅ Pagamento salvo localmente! (Erro ao conectar com o servidor)');
           setModoParcial(true);
           onClose();
         }
       } else {
-        // Se não tem função MongoDB, apenas salva localmente
         setModoParcial(true);
-        alert('✅ Pagamento salvo localmente! (MongoDB não configurado)');
+        alert('✅ Pagamento salvo localmente!');
         onClose();
       }
     } catch (error) {
@@ -887,10 +976,8 @@ export default function PagamentoModal({
       const result = await response.json();
       
       if (result.success) {
-        // Sucesso: Limpa e volta para o dashboard
         window.location.href = '/dashboard';
       } else {
-        // Erro retornado pela API
         window.alert("Erro do servidor: " + (result.error || "Erro desconhecido"));
       }
       
@@ -910,11 +997,6 @@ export default function PagamentoModal({
     return item ? item.quantidade : 0;
   };
 
-  const formaPagamentoAceitaTroco = (formaPagamentoId: string): boolean => {
-    const forma = formasPagamento.find(f => f.id === formaPagamentoId);
-    return forma?.aceitaTroco || false;
-  };
-
   const limparPagamentoParcial = () => {
     if (comandaId && window.confirm('Deseja limpar o pagamento parcial salvo anteriormente?')) {
       localStorage.removeItem(`pagamento_parcial_${comandaId}`);
@@ -923,7 +1005,7 @@ export default function PagamentoModal({
     }
   };
 
-  // ✅ NOVO: Renderizar botão de desconto com permissão
+  // Renderizar botão de desconto com permissão
   const renderizarBotaoDesconto = (pagadorId: string) => {
     if (!temPermissao('canGiveDiscount')) {
       return (
@@ -947,7 +1029,7 @@ export default function PagamentoModal({
     );
   };
 
-  // ✅ NOVO: Renderizar botão de cancelar pagamento com permissão
+  // Renderizar botão de cancelar pagamento com permissão
   const renderizarBotaoCancelarPagamento = (pagadorId: string, pagador: Pagador) => {
     if (!pagador.pago || !temPermissao('canCancelPayment')) {
       return null;
@@ -964,7 +1046,7 @@ export default function PagamentoModal({
     );
   };
 
-  // ✅ NOVO: Indicador de permissões no header
+  // Indicador de permissões no header
   const renderizarIndicadorPermissoes = () => {
     if (!usuarioLogado || carregandoPermissoes) return null;
     
@@ -1017,6 +1099,11 @@ export default function PagamentoModal({
                     Salvando...
                   </span>
                 )}
+                {carregandoMeiosPagamento && (
+                  <span className="text-sm bg-gray-100 text-gray-800 px-2 py-1 rounded font-medium">
+                    Carregando meios...
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap gap-3 mt-2 text-sm">
                 <div className="flex items-center gap-1">
@@ -1052,7 +1139,6 @@ export default function PagamentoModal({
                   </>
                 )}
               </div>
-              {/* ✅ NOVO: Indicador de permissões */}
               {renderizarIndicadorPermissoes()}
             </div>
             <div className="flex items-center gap-2">
@@ -1273,8 +1359,9 @@ export default function PagamentoModal({
               {pagadores.map((pagador) => {
                 const totalPagador = calcularTotalPagador(pagador);
                 const troco = calcularTroco(pagador);
-                const formaPagamento = formasPagamento.find(f => f.id === pagador.formaPagamento);
-                const precisaTroco = formaPagamento?.aceitaTroco || false;
+                const meioPagamento = meiosPagamentoPersonalizados.find(m => m._id === pagador.formaPagamento);
+                const precisaTroco = meioPagamento?.permiteTroco || false;
+                const taxa = meioPagamento?.taxa || 0;
                 
                 return (
                   <div key={pagador.id} className={`border rounded-lg p-3 text-sm ${pagador.pago ? 'bg-green-50 border-green-200' : ''}`}>
@@ -1335,6 +1422,11 @@ export default function PagamentoModal({
                         )}
                         <div className="text-xs text-gray-600">
                           {pagador.itens.length} itens • R$ {totalPagador.toFixed(2)}
+                          {taxa > 0 && pagador.pago && (
+                            <span className="text-yellow-600 ml-1">
+                              (inclui {taxa}% taxa)
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
@@ -1358,7 +1450,6 @@ export default function PagamentoModal({
                     
                     {!pagador.pago && (
                       <div className="grid grid-cols-2 gap-1 mb-2">
-                        {/* ✅ NOVO: Botão de desconto com permissão */}
                         {renderizarBotaoDesconto(pagador.id)}
                         
                         <button
@@ -1413,9 +1504,10 @@ export default function PagamentoModal({
                       disabled={pagador.pago}
                     >
                       <option value="">Forma de pagamento...</option>
-                      {formasPagamento.map((forma) => (
-                        <option key={forma.id} value={forma.id}>
-                          {forma.nome} {forma.taxa > 0 ? `(${forma.taxa}%)` : ''}
+                      {meiosPagamentoPersonalizados.map((meio) => (
+                        <option key={meio._id} value={meio._id}>
+                          {meio.icone} {meio.nome} 
+                          {meio.taxa > 0 && ` (${meio.taxa}%)`}
                         </option>
                       ))}
                     </select>
@@ -1473,7 +1565,6 @@ export default function PagamentoModal({
                       )}
                     </div>
                     
-                    {/* ✅ NOVO: Botão para cancelar pagamento (se já estiver pago) */}
                     {renderizarBotaoCancelarPagamento(pagador.id, pagador)}
                   </div>
                 );
@@ -1544,15 +1635,15 @@ export default function PagamentoModal({
                   <div>
                     <div className="text-xs font-medium mb-1">Formas utilizadas:</div>
                     <div className="flex flex-wrap gap-1">
-                      {formasPagamento
-                        .filter(forma => pagadores.some(p => p.formaPagamento === forma.id))
-                        .map(forma => {
-                          const pagadoresComEstaForma = pagadores.filter(p => p.formaPagamento === forma.id);
+                      {meiosPagamentoPersonalizados
+                        .filter(meio => pagadores.some(p => p.formaPagamento === meio._id))
+                        .map(meio => {
+                          const pagadoresComEstaForma = pagadores.filter(p => p.formaPagamento === meio._id);
                           const totalEstaForma = pagadoresComEstaForma.reduce((sum, p) => sum + calcularTotalPagador(p), 0);
                           
                           return (
-                            <div key={forma.id} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                              <span className="font-medium">{forma.nome}:</span>
+                            <div key={meio._id} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                              <span className="font-medium">{meio.icone} {meio.nome}:</span>
                               <span className="ml-1">R$ {totalEstaForma.toFixed(2)}</span>
                             </div>
                           );
@@ -1601,7 +1692,6 @@ export default function PagamentoModal({
                 </button>
               </div>
               
-              {/* ✅ NOVO: Botão finalizar com verificação de permissão */}
               <button
                 onClick={handleFinalizarPagamento}
                 className={`w-full py-2.5 rounded-lg font-bold hover:bg-green-600 disabled:cursor-not-allowed text-sm ${
@@ -1624,7 +1714,7 @@ export default function PagamentoModal({
               </button>
             </div>
             
-            {/* ✅ NOVO: Aviso de permissões limitadas */}
+            {/* Aviso de permissões limitadas */}
             {usuarioLogado && (!temPermissao('canGiveDiscount') || !temPermissao('canCancelPayment') || !temPermissao('canProcessPayment')) && (
               <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="text-xs text-yellow-800">
@@ -1638,12 +1728,44 @@ export default function PagamentoModal({
               </div>
             )}
             
+            {/* Lista de meios de pagamento disponíveis */}
+            <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="text-xs font-medium text-blue-800 mb-1">Meios de Pagamento Disponíveis</div>
+              <div className="space-y-1">
+                {meiosPagamentoPersonalizados.length > 0 ? (
+                  meiosPagamentoPersonalizados.map((meio) => (
+                    <div key={meio._id} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center">
+                        <span className="mr-1">{meio.icone}</span>
+                        <span className="text-blue-700">{meio.nome}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {meio.taxa > 0 && (
+                          <span className="text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded text-xs">
+                            {meio.taxa}%
+                          </span>
+                        )}
+                        {meio.permiteTroco && (
+                          <span className="text-green-600 bg-green-100 px-1 py-0.5 rounded text-xs">
+                            Troco
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-600 italic">
+                    Nenhum meio de pagamento configurado
+                  </div>
+                )}
+              </div>
+            </div>
+            
             {!onAtualizarComanda && (
               <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="text-xs text-yellow-800">
                   <div className="font-medium">⚠️ Modo Local</div>
                   <p className="mt-0.5">Os pagamentos serão salvos apenas neste dispositivo.</p>
-                  <p className="mt-0.5 text-xs">Para salvar no servidor, configure a conexão com o MongoDB.</p>
                 </div>
               </div>
             )}

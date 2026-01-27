@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { BarChart3, Users, Settings, Package, Tag, PlusCircle, Menu, X, ChevronRight, Home } from 'lucide-react';
+import { BarChart3, Users, Settings, Package, Tag, PlusCircle, Menu, X, ChevronRight, Home, CreditCard  } from 'lucide-react';
 
 interface UsuarioLogado {
   _id: string;
@@ -66,22 +66,30 @@ export default function ConfiguracaoLayout({
 
   // ✅ NOVO: Itens de menu com verificação de permissão
   const menuItemsComPermissao = [
-    {
-      title: 'Usuários',
-      href: '/configuracao/usuarios',
-      icon: Users,
-      description: 'Gerencie usuários e permissões',
-      permissao: 'canManageUsers',
-      mostraSeNaoTiverPermissao: false // Não mostra se não tiver permissão
-    },
-    {
-      title: 'Produtos',
-      href: '/configuracao/produtos',
-      icon: Package,
-      description: 'Gerencie o cardápio',
-      permissao: 'canManageProducts',
-      mostraSeNaoTiverPermissao: false
-    },
+  {
+    title: 'Usuários',
+    href: '/configuracao/usuarios',
+    icon: Users,
+    description: 'Gerencie usuários e permissões',
+    permissao: 'canManageUsers',
+    mostraSeNaoTiverPermissao: false
+  },
+  {
+    title: 'Pagamentos',
+    href: '/configuracao/pagamentos',
+    icon: CreditCard, // Importe: import { CreditCard } from 'lucide-react';
+    description: 'Configure meios de pagamento',
+    permissao: 'canManagePayments', // Nova permissão
+    mostraSeNaoTiverPermissao: false
+  },
+  {
+    title: 'Produtos',
+    href: '/configuracao/produtos',
+    icon: Package,
+    description: 'Gerencie o cardápio',
+    permissao: 'canManageProducts',
+    mostraSeNaoTiverPermissao: false
+  },
     {
       title: 'Categorias',
       href: '/configuracao/categorias',

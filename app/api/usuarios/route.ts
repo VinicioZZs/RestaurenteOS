@@ -1,4 +1,4 @@
-// app/api/usuarios/route.ts (COMPLETO - COM GET E POST)
+// app/api/usuarios/route.ts (ATUALIZADO COM canManagePayments)
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 import bcrypt from 'bcryptjs';
@@ -19,6 +19,7 @@ interface Permissoes {
   canProcessPayment: boolean;
   canGiveDiscount: boolean;
   canCancelPayment: boolean;
+  canManagePayments: boolean; // ✅ NOVA PERMISSÃO ADICIONADA
 }
 
 type UserRole = 'admin' | 'gerente' | 'garcom' | 'caixa';
@@ -39,9 +40,10 @@ const roleTemplates: Record<UserRole, Permissoes> = {
     canProcessPayment: true,
     canGiveDiscount: true,
     canCancelPayment: true,
+    canManagePayments: true, // ✅ ADMIN TEM ACESSO
   },
   gerente: {
-    canManageUsers: false,
+    canManageUsers: true,
     canAccessSettings: true,
     canViewReports: true,
     canManageProducts: true,
@@ -55,6 +57,7 @@ const roleTemplates: Record<UserRole, Permissoes> = {
     canProcessPayment: true,
     canGiveDiscount: true,
     canCancelPayment: true,
+    canManagePayments: true, // ✅ GERENTE TEM ACESSO
   },
   garcom: {
     canManageUsers: false,
@@ -71,6 +74,7 @@ const roleTemplates: Record<UserRole, Permissoes> = {
     canProcessPayment: false,
     canGiveDiscount: false,
     canCancelPayment: false,
+    canManagePayments: false, // ✅ GARÇOM NÃO TEM ACESSO
   },
   caixa: {
     canManageUsers: false,
@@ -87,6 +91,7 @@ const roleTemplates: Record<UserRole, Permissoes> = {
     canProcessPayment: true,
     canGiveDiscount: true,
     canCancelPayment: true,
+    canManagePayments: false, // ✅ CAIXA NÃO TEM ACESSO
   }
 };
 
@@ -194,12 +199,18 @@ export async function POST(request: NextRequest) {
     const role: UserRole = (body.role || 'garcom') as UserRole;
     const permissoes: Permissoes = body.permissoes || roleTemplates[role];
     
+    // Garantir que todas as permissões estão presentes
+    const permissoesCompletas = {
+      ...roleTemplates[role], // Começa com o template padrão
+      ...permissoes, // Sobrescreve com permissões específicas
+    };
+    
     const usuarioData = {
       nome: body.nome.trim(),
       email: body.email.toLowerCase().trim(),
       senhaHash,
       role,
-      permissoes,
+      permissoes: permissoesCompletas,
       ativo: body.ativo !== undefined ? body.ativo : true,
       criadoEm: new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
@@ -207,6 +218,7 @@ export async function POST(request: NextRequest) {
     };
     
     console.log('📤 Salvando usuário no banco...');
+    console.log('🔐 Permissões do usuário:', permissoesCompletas);
     
     const result = await db.collection('usuarios').insertOne(usuarioData);
     

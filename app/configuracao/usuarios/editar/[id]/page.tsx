@@ -115,6 +115,8 @@ const todasPermissoes = [
   { id: 'canProcessPayment', nome: 'Processar Pagamento', descricao: 'Pode realizar pagamentos', categoria: 'Financeiro' },
   { id: 'canGiveDiscount', nome: 'Dar Desconto', descricao: 'Pode aplicar descontos', categoria: 'Financeiro' },
   { id: 'canCancelPayment', nome: 'Cancelar Pagamento', descricao: 'Pode cancelar pagamentos', categoria: 'Financeiro' },
+  { id: 'canManagePayments', nome: 'Gerenciar Meios de Pagamento', descricao: 'Pode configurar formas de pagamento personalizadas', categoria: 'Financeiro' },
+
 ];
 
 const categoriasPermissoes = Array.from(new Set(todasPermissoes.map(p => p.categoria)));

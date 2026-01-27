@@ -29,7 +29,7 @@ const todasPermissoes: Permissao[] = [
   { id: 'canAccessSettings', nome: 'Acessar Configurações', descricao: 'Pode acessar todas as configurações', categoria: 'Sistema' },
   { id: 'canViewReports', nome: 'Visualizar Relatórios', descricao: 'Pode acessar a aba de relatórios', categoria: 'Sistema' },
   
-  //Caixa
+  // Caixa
   { id: 'canOpenCashier', nome: 'Abrir Caixa', descricao: 'Pode abrir o caixa do sistema', categoria: 'Caixa' },
   { id: 'canCloseCashier', nome: 'Fechar Caixa', descricao: 'Pode fechar o caixa do sistema', categoria: 'Caixa' },
   { id: 'canViewCashier', nome: 'Visualizar Caixa', descricao: 'Pode visualizar o status do caixa', categoria: 'Caixa' },
@@ -51,6 +51,9 @@ const todasPermissoes: Permissao[] = [
   { id: 'canProcessPayment', nome: 'Processar Pagamento', descricao: 'Pode realizar pagamentos', categoria: 'Financeiro' },
   { id: 'canGiveDiscount', nome: 'Dar Desconto', descricao: 'Pode aplicar descontos', categoria: 'Financeiro' },
   { id: 'canCancelPayment', nome: 'Cancelar Pagamento', descricao: 'Pode cancelar pagamentos', categoria: 'Financeiro' },
+  
+  // ✅ NOVA PERMISSÃO: Gerenciar Meios de Pagamento
+  { id: 'canManagePayments', nome: 'Gerenciar Meios de Pagamento', descricao: 'Pode configurar formas de pagamento personalizadas', categoria: 'Financeiro' },
 ];
 
 const categoriasPermissoes = Array.from(new Set(todasPermissoes.map(p => p.categoria)));
@@ -465,19 +468,24 @@ export default function NovoUsuarioPage({ params }: { params?: { id: string } })
                 </div>
                 
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Permissões Principais</p>
-                  <div className="mt-2 space-y-1">
-                    {formData.permissoes.canManageUsers && (
-                      <p className="text-sm text-green-600">✓ Gerencia Usuários</p>
-                    )}
-                    {formData.permissoes.canManageProducts && (
-                      <p className="text-sm text-green-600">✓ Gerencia Produtos</p>
-                    )}
-                    {formData.permissoes.canCloseComanda && (
-                      <p className="text-sm text-green-600">✓ Fecha Comandas</p>
-                    )}
-                  </div>
+                <p className="text-sm text-gray-600">Permissões Principais</p>
+                <div className="mt-2 space-y-1">
+                  {formData.permissoes.canManageUsers && (
+                    <p className="text-sm text-green-600">✓ Gerencia Usuários</p>
+                  )}
+                  {formData.permissoes.canManageProducts && (
+                    <p className="text-sm text-green-600">✓ Gerencia Produtos</p>
+                  )}
+                  {formData.permissoes.canCloseComanda && (
+                    <p className="text-sm text-green-600">✓ Fecha Comandas</p>
+                  )}
+                  {/* ✅ ADICIONE ESTA LINHA */}
+                  {formData.permissoes.canManagePayments && (
+                    <p className="text-sm text-green-600">✓ Gerencia Meios de Pagamento</p>
+                  )}
                 </div>
+              </div>
+
                 
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-sm text-gray-600">Aviso</p>
