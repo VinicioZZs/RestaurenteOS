@@ -1,3 +1,4 @@
+// app/api/relatorios/route.ts
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import ComandaFechada from '@/app/models/comanda_fechada';
@@ -5,116 +6,148 @@ import ComandaFechada from '@/app/models/comanda_fechada';
 export async function GET(request: Request) {
   try {
     console.log('🚀 Iniciando busca de relatórios...');
-    await connectDB();
+    const db = await connectDB(); // Mova esta linha para cá
+    if (!db) {
+      return NextResponse.json({
+        success: false,
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
     
     const { searchParams } = new URL(request.url);
     const periodo = searchParams.get('periodo') || 'hoje';
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');
-    const tipoVenda = searchParams.get('tipoVenda'); // Novo: 'todos', 'comanda', 'balcao'
+    const tipoVenda = searchParams.get('tipoVenda') || 'todos'; // 'todos', 'comanda', 'balcao'
     
     console.log('📋 Parâmetros recebidos:', { periodo, dataInicio, dataFim, tipoVenda });
     
-    // Conta total de documentos
-    const totalGeral = await ComandaFechada.countDocuments();
-    console.log(`📊 Total de comandas na coleção: ${totalGeral}`);
-    
-    if (totalGeral === 0) {
-      console.log('⚠️ Coleção "comandas_fechadas" está vazia');
-      return NextResponse.json({
-        success: true,
-        data: {
-          totalVendas: 0,
-          totalComandas: 0,
-          totalBalcao: 0,
-          ticketMedio: 0,
-          produtosMaisVendidos: [],
-          categoriasMaisVendidas: [],
-          vendasPorPeriodo: [],
-          mesasMaisUtilizadas: [],
-          comandasFechadas: [],
-          resumoPorTipoVenda: {
-            comanda: { quantidade: 0, total: 0 },
-            balcao: { quantidade: 0, total: 0 }
-          }
-        }
-      });
-    }
-    
-    // Filtro de data
-    let filtroData: any = {};
-    const hoje = new Date();
-    
-    switch (periodo) {
-      case 'hoje':
-        const inicioHoje = new Date(hoje.setHours(0, 0, 0, 0));
-        const fimHoje = new Date();
-        fimHoje.setHours(23, 59, 59, 999);
-        filtroData = {
-          fechadoEm: {
+    // Função para criar filtro de data
+    const criarFiltroData = (baseDate?: Date) => {
+      let filtro: any = {};
+      const hoje = baseDate || new Date();
+      
+      switch (periodo) {
+        case 'hoje':
+          const inicioHoje = new Date(hoje.setHours(0, 0, 0, 0));
+          const fimHoje = new Date();
+          fimHoje.setHours(23, 59, 59, 999);
+          filtro = {
             $gte: inicioHoje,
             $lt: fimHoje
-          }
-        };
-        break;
-      case 'ontem':
-        const ontem = new Date();
-        ontem.setDate(ontem.getDate() - 1);
-        const inicioOntem = new Date(ontem.setHours(0, 0, 0, 0));
-        const fimOntem = new Date(ontem.setHours(23, 59, 59, 999));
-        filtroData = {
-          fechadoEm: {
+          };
+          break;
+        case 'ontem':
+          const ontem = new Date(hoje);
+          ontem.setDate(ontem.getDate() - 1);
+          const inicioOntem = new Date(ontem.setHours(0, 0, 0, 0));
+          const fimOntem = new Date(ontem.setHours(23, 59, 59, 999));
+          filtro = {
             $gte: inicioOntem,
             $lt: fimOntem
-          }
-        };
-        break;
-      case 'semana':
-        const semanaPassada = new Date();
-        semanaPassada.setDate(semanaPassada.getDate() - 7);
-        filtroData = {
-          fechadoEm: { $gte: semanaPassada }
-        };
-        break;
-      case 'mes':
-        const mesPassado = new Date();
-        mesPassado.setMonth(mesPassado.getMonth() - 1);
-        filtroData = {
-          fechadoEm: { $gte: mesPassado }
-        };
-        break;
-      case 'personalizado':
-        if (dataInicio && dataFim) {
-          const inicio = new Date(dataInicio);
-          const fim = new Date(dataFim);
-          fim.setHours(23, 59, 59, 999);
-          
-          filtroData = {
-            fechadoEm: {
+          };
+          break;
+        case 'semana':
+          const semanaPassada = new Date(hoje);
+          semanaPassada.setDate(semanaPassada.getDate() - 7);
+          filtro = {
+            $gte: semanaPassada
+          };
+          break;
+        case 'mes':
+          const mesPassado = new Date(hoje);
+          mesPassado.setMonth(mesPassado.getMonth() - 1);
+          filtro = {
+            $gte: mesPassado
+          };
+          break;
+        case 'personalizado':
+          if (dataInicio && dataFim) {
+            const inicio = new Date(dataInicio);
+            const fim = new Date(dataFim);
+            fim.setHours(23, 59, 59, 999);
+            filtro = {
               $gte: inicio,
               $lte: fim
-            }
-          };
-        }
-        break;
+            };
+          }
+          break;
+      }
+      
+      return filtro;
+    };
+
+    // Arrays para armazenar dados combinados
+    let todasVendas: any[] = [];
+    let filtroComanda: any = {};
+    let filtroBalcao: any = {};
+
+    // Aplicar filtro de data para ambas as coleções
+    const filtroData = criarFiltroData();
+    if (Object.keys(filtroData).length > 0) {
+      filtroComanda.fechadoEm = filtroData;
+      filtroBalcao.dataVenda = filtroData;
     }
-    
-    // 🔥 ADICIONAR FILTRO POR TIPO DE VENDA (comanda ou balcão)
-    if (tipoVenda && tipoVenda !== 'todos') {
-      filtroData.tipo = tipoVenda;
+
+    // 1. Buscar vendas de comanda
+    if (tipoVenda === 'todos' || tipoVenda === 'comanda') {
+      const comandasFechadas = await ComandaFechada.find(filtroComanda)
+        .sort({ fechadoEm: -1 })
+        .lean();
+      
+      console.log(`✅ ${comandasFechadas.length} vendas de comanda encontradas`);
+      
+      // Transformar comandas no formato unificado
+      comandasFechadas.forEach(comanda => {
+        todasVendas.push({
+          id: comanda._id,
+          tipo: 'comanda',
+          numeroMesa: comanda.numeroMesa || 'N/A',
+          nomeMesa: comanda.nomeMesa || 'Comanda',
+          total: comanda.total || 0,
+          itens: comanda.itens || [],
+          pagamentos: comanda.pagamentos || [],
+          fechadoEm: comanda.fechadoEm,
+          operador: comanda.operador || 'Sistema',
+          status: 'finalizado'
+        });
+      });
     }
-    
-    console.log('🔍 Filtro aplicado:', JSON.stringify(filtroData, null, 2));
-    
-    // Busca comandas fechadas E vendas de balcão
-    const comandasFechadas = await ComandaFechada.find(filtroData)
-      .sort({ fechadoEm: -1 })
-      .lean();
-    
-    console.log(`✅ ${comandasFechadas.length} vendas encontradas após filtro`);
+
+    // 2. Buscar vendas do balcão
+     if (tipoVenda === 'todos' || tipoVenda === 'balcao') {
+      // db já está definido aqui
+      const vendasBalcao = await db.collection('vendas_balcao_completas')
+        .find(filtroBalcao)
+        .sort({ dataVenda: -1 })
+        .toArray();
+      
+      console.log(`✅ ${vendasBalcao.length} vendas do balcão encontradas`);
+      
+      // Transformar vendas do balcão no formato unificado
+      vendasBalcao.forEach(venda => {
+        todasVendas.push({
+          id: venda._id,
+          tipo: 'balcao',
+          numeroMesa: 'BALCÃO',
+          nomeMesa: 'Balcão',
+          total: venda.total || 0,
+          itens: venda.itens || [],
+          pagamentos: venda.pagadores?.map((p: any) => ({
+            forma: p.formaPagamento || p.nome || 'Dinheiro',
+            valor: p.valor || 0
+          })) || [],
+          fechadoEm: venda.dataVenda || venda.criadoEm,
+          operador: venda.operador || 'Balcão',
+          status: venda.status || 'finalizado'
+        });
+      });
+    }
+
+    console.log(`📊 Total de vendas combinadas: ${todasVendas.length}`);
     
     // Se não tem vendas no período, retorna vazio
-    if (comandasFechadas.length === 0) {
+    if (todasVendas.length === 0) {
       return NextResponse.json({
         success: true,
         data: {
@@ -130,6 +163,10 @@ export async function GET(request: Request) {
           resumoPorTipoVenda: {
             comanda: { quantidade: 0, total: 0 },
             balcao: { quantidade: 0, total: 0 }
+          },
+          distribuiçãoVendas: {
+            comanda: 0,
+            balcao: 0
           }
         }
       });
@@ -147,12 +184,12 @@ export async function GET(request: Request) {
     let comandaCount = 0;
     let balcaoCount = 0;
     
-    comandasFechadas.forEach((comanda: any) => {
-      const vendaTotal = comanda.total || 0;
+    todasVendas.forEach((venda: any) => {
+      const vendaTotal = venda.total || 0;
       totalVendas += vendaTotal;
       
       // Contar por tipo de venda
-      if (comanda.tipo === 'balcao') {
+      if (venda.tipo === 'balcao') {
         totalBalcaoVendas += vendaTotal;
         balcaoCount += 1;
       } else {
@@ -160,21 +197,22 @@ export async function GET(request: Request) {
         comandaCount += 1;
       }
       
-      // Por mesa (só para comandas)
-      const mesaNum = comanda.numeroMesa || 'BALCÃO';
-      if (!mesasMap[mesaNum]) {
-        mesasMap[mesaNum] = {
-          mesa: mesaNum,
-          tipo: comanda.tipo || 'comanda',
+      // Por mesa
+      const mesaKey = `${venda.tipo}-${venda.numeroMesa}`;
+      if (!mesasMap[mesaKey]) {
+        mesasMap[mesaKey] = {
+          mesa: venda.numeroMesa,
+          nomeMesa: venda.nomeMesa,
+          tipo: venda.tipo,
           quantidade: 0,
           total: 0
         };
       }
-      mesasMap[mesaNum].quantidade += 1;
-      mesasMap[mesaNum].total += vendaTotal;
+      mesasMap[mesaKey].quantidade += 1;
+      mesasMap[mesaKey].total += vendaTotal;
       
       // Por período
-      const data = new Date(comanda.fechadoEm);
+      const data = new Date(venda.fechadoEm);
       let periodoKey: string;
       
       if (periodo === 'hoje') {
@@ -196,19 +234,30 @@ export async function GET(request: Request) {
       periodoMap[periodoKey].quantidade += 1;
       
       // Contar por tipo no período
-      if (comanda.tipo === 'balcao') {
+      if (venda.tipo === 'balcao') {
         periodoMap[periodoKey].balcao += 1;
       } else {
         periodoMap[periodoKey].comandas += 1;
       }
       
-      // Processa itens (baseado na sua estrutura REAL)
-      comanda.itens?.forEach((item: any) => {
+      // Processa itens
+      venda.itens?.forEach((item: any) => {
         if (!item) return;
         
         // Produto
-        const produtoId = item.produtoId?.toString() || item.produtoNome || item.nome || 'desconhecido';
-        const produtoNome = item.produtoNome || item.nome || 'Produto sem nome';
+        const produtoId = item.produtoId?.toString() || 
+                         item.produto?.id?.toString() || 
+                         item.id?.toString() || 
+                         'desconhecido';
+        
+        const produtoNome = item.produtoNome || 
+                          item.produto?.nome || 
+                          item.nome || 
+                          'Produto sem nome';
+        
+        const produtoCategoria = item.categoria || 
+                               item.produto?.categoria || 
+                               'Sem categoria';
         
         if (!produtosMap[produtoId]) {
           produtosMap[produtoId] = {
@@ -216,27 +265,27 @@ export async function GET(request: Request) {
             nome: produtoNome,
             quantidade: 0,
             total: 0,
-            categoria: item.categoria || 'Sem categoria',
+            categoria: produtoCategoria,
             vendasComanda: 0,
             vendasBalcao: 0
           };
         }
         
         const quantidade = item.quantidade || 1;
-        const precoUnitario = item.precoUnitario || 0;
+        const precoUnitario = item.precoUnitario || item.preco || 0;
         
         produtosMap[produtoId].quantidade += quantidade;
         produtosMap[produtoId].total += precoUnitario * quantidade;
         
         // Contar por tipo de venda no produto
-        if (comanda.tipo === 'balcao') {
+        if (venda.tipo === 'balcao') {
           produtosMap[produtoId].vendasBalcao += quantidade;
         } else {
           produtosMap[produtoId].vendasComanda += quantidade;
         }
         
         // Categoria
-        const categoria = item.categoria || 'Sem categoria';
+        const categoria = produtoCategoria;
         if (!categoriasMap[categoria]) {
           categoriasMap[categoria] = {
             nome: categoria,
@@ -250,7 +299,7 @@ export async function GET(request: Request) {
         categoriasMap[categoria].total += precoUnitario * quantidade;
         
         // Contar por tipo de venda na categoria
-        if (comanda.tipo === 'balcao') {
+        if (venda.tipo === 'balcao') {
           categoriasMap[categoria].vendasBalcao += quantidade;
         } else {
           categoriasMap[categoria].vendasComanda += quantidade;
@@ -280,14 +329,36 @@ export async function GET(request: Request) {
       return new Date(anoA, mesA - 1, diaA).getTime() - new Date(anoB, mesB - 1, diaB).getTime();
     });
     
-    const totalVendasCount = comandasFechadas.length;
+    const totalVendasCount = todasVendas.length;
     const ticketMedio = totalVendasCount > 0 ? totalVendas / totalVendasCount : 0;
     
     // Resumo por tipo de venda
     const resumoPorTipoVenda = {
-      comanda: { quantidade: comandaCount, total: totalComandaVendas },
-      balcao: { quantidade: balcaoCount, total: totalBalcaoVendas }
+      comanda: { 
+        quantidade: comandaCount, 
+        total: totalComandaVendas,
+        ticketMedio: comandaCount > 0 ? totalComandaVendas / comandaCount : 0
+      },
+      balcao: { 
+        quantidade: balcaoCount, 
+        total: totalBalcaoVendas,
+        ticketMedio: balcaoCount > 0 ? totalBalcaoVendas / balcaoCount : 0
+      }
     };
+    
+    // Preparar dados para a tabela de vendas detalhadas
+    const vendasDetalhadas = todasVendas.map(venda => ({
+      _id: venda.id,
+      tipo: venda.tipo,
+      numeroMesa: venda.numeroMesa,
+      nomeMesa: venda.nomeMesa,
+      total: venda.total,
+      itens: venda.itens,
+      pagamentos: venda.pagamentos,
+      fechadoEm: venda.fechadoEm,
+      operador: venda.operador,
+      status: venda.status
+    }));
     
     console.log('📈 Estatísticas calculadas:', {
       totalVendas,
@@ -311,13 +382,17 @@ export async function GET(request: Request) {
         categoriasMaisVendidas,
         vendasPorPeriodo,
         mesasMaisUtilizadas,
-        comandasFechadas: comandasFechadas.slice(0, 30), // Aumentei para 30
+        comandasFechadas: vendasDetalhadas.slice(0, 50), // Usando dados combinados
         resumoPorTipoVenda,
-        // Novos campos para gráficos
         distribuiçãoVendas: {
-          comanda: Math.round((totalComandaVendas / totalVendas) * 100) || 0,
-          balcao: Math.round((totalBalcaoVendas / totalVendas) * 100) || 0
-        }
+          comanda: totalVendas > 0 ? Math.round((totalComandaVendas / totalVendas) * 100) : 0,
+          balcao: totalVendas > 0 ? Math.round((totalBalcaoVendas / totalVendas) * 100) : 0
+        },
+        // Adicionar informações extras
+        tiposVenda: [
+          { tipo: 'comanda', quantidade: comandaCount, total: totalComandaVendas },
+          { tipo: 'balcao', quantidade: balcaoCount, total: totalBalcaoVendas }
+        ]
       }
     });
     

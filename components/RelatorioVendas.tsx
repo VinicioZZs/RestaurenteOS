@@ -109,6 +109,9 @@ export default function RelatorioVendas({ comandas }: RelatorioVendasProps) {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Ações
               </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                 Tipo
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -154,6 +157,15 @@ export default function RelatorioVendas({ comandas }: RelatorioVendasProps) {
                       {comandaExpandida === comanda._id ? 'Ocultar' : 'Ver itens'}
                     </button>
                   </td>
+                  <td className="px-4 py-3">
+                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                    comanda.tipo === 'balcao' 
+                      ? 'bg-orange-100 text-orange-800' 
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {comanda.tipo === 'balcao' ? 'BALCÃO' : 'COMANDA'}
+                  </span>
+                </td>
                 </tr>
                 
                 {comandaExpandida === comanda._id && (

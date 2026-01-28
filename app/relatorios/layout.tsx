@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation'; // Mantenha este
 import { 
   BarChart3, 
   Home,
@@ -10,9 +10,10 @@ import {
   X,
   ChevronRight,
   Settings,
-  Lock
+  Lock,
+  TrendingUp // ADICIONE ESTE ÍCONE
 } from 'lucide-react';
-import { getCurrentUser, User } from '@/lib/auth'; // Importar User original
+import { getCurrentUser, User } from '@/lib/auth';
 
 export default function RelatoriosLayout({
   children,
@@ -141,82 +142,104 @@ export default function RelatoriosLayout({
 
           {/* Navigation - ORDEM CORRIGIDA */}
           <nav className="flex-1 px-4 space-y-1">
-            {/* PRIMEIRO: Voltar ao Dashboard */}
-            <Link
-              href="/dashboard"
-              className="group flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900"
-            >
-              <Home className="mr-3 h-5 w-5 text-gray-400" />
-              Voltar ao Dashboard
-            </Link>
-            
-            {/* SEGUNDO: Configurações - SOMENTE SE TIVER ACESSO A RELATÓRIOS */}
-            {temAcessoRelatorios && (
-              <Link
-                href="/configuracao"
-                className={`flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  isConfiguracaoRoute()
-                    ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <Settings className={`mr-3 h-5 w-5 ${
-                  isConfiguracaoRoute() 
-                    ? 'text-blue-600' : 'text-gray-400'
-                }`} />
-                <div className="flex-1">
-                  <div className="font-medium">Configurações</div>
-                </div>
-                {isConfiguracaoRoute() && 
-                  <ChevronRight className="h-4 w-4 text-blue-600" />}
-              </Link>
-            )}
-            
-            {/* SEPARADOR - Mostrar apenas se houver itens depois */}
-            {(temAcessoRelatorios || isRelatoriosRoute()) && (
-              <div className="px-3 pt-4 pb-2">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Opções
-                </p>
-              </div>
-            )}
-            
-            {/* TERCEIRO: Relatórios (página atual) */}
-            <Link
-              href="/relatorios"
-              className={`flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
-                isRelatoriosRoute()
-                  ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <BarChart3 className={`mr-3 h-5 w-5 ${
-                isRelatoriosRoute() ? 'text-blue-600' : 'text-gray-400'
-              }`} />
-              <div className="flex-1">
-                <div className="font-medium">Relatórios</div>
-                {!temAcessoRelatorios && (
-                  <div className="text-xs text-amber-600 mt-1 flex items-center">
-                    <Lock className="h-3 w-3 mr-1" />
-                    Acesso limitado
-                  </div>
-                )}
-              </div>
-              {isRelatoriosRoute() && <ChevronRight className="h-4 w-4 text-blue-600" />}
-            </Link>
+  {/* PRIMEIRO: Voltar ao Dashboard */}
+  <Link
+    href="/dashboard"
+    className="group flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900"
+  >
+    <Home className="mr-3 h-5 w-5 text-gray-400" />
+    Voltar ao Dashboard
+  </Link>
+  
+  {/* SEGUNDO: Configurações - SOMENTE SE TIVER ACESSO A RELATÓRIOS */}
+  {temAcessoRelatorios && (
+    <Link
+      href="/configuracao"
+      className={`flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+        isConfiguracaoRoute()
+          ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
+          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+      }`}
+    >
+      <Settings className={`mr-3 h-5 w-5 ${
+        isConfiguracaoRoute() 
+          ? 'text-blue-600' : 'text-gray-400'
+      }`} />
+      <div className="flex-1">
+        <div className="font-medium">Configurações</div>
+      </div>
+      {isConfiguracaoRoute() && 
+        <ChevronRight className="h-4 w-4 text-blue-600" />}
+    </Link>
+  )}
+  
+  {/* SEPARADOR - Mostrar apenas se houver itens depois */}
+  {(temAcessoRelatorios || isRelatoriosRoute()) && (
+    <div className="px-3 pt-4 pb-2">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        Módulos de Relatórios
+      </p>
+    </div>
+  )}
+  
+  {/* ============================================= */}
+  {/* ⭐ BOTÃO NOVO: Gestão e Produtos */}
+  {/* ============================================= */}
+  <Link
+    href="/relatorios/gestao"  // URL da nova página
+    className={`flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+      pathname === '/relatorios/gestao'  // Verifica se está na página de gestão
+        ? 'bg-purple-50 text-purple-700 border-l-4 border-purple-600'
+        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+    }`}
+  >
+    <TrendingUp className={`mr-3 h-5 w-5 ${
+      pathname === '/relatorios/gestao' 
+        ? 'text-purple-600' : 'text-gray-400'
+    }`} />
+    <div className="flex-1">
+      <div className="font-medium">Gestão & Produtos</div>
+      <div className="text-xs text-gray-500 mt-1">Análise avançada e compras</div>
+    </div>
+    {pathname === '/relatorios/gestao' && 
+      <ChevronRight className="h-4 w-4 text-purple-600" />}
+  </Link>
+  
+  {/* ============================================= */}
+  {/* ⭐ BOTÃO ORIGINAL: Relatórios Tradicionais */}
+  {/* ============================================= */}
+  <Link
+  href="/relatorios"
+  className={`flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+    pathname === '/relatorios' && !pathname.startsWith('/relatorios/gestao')
+      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
+      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+  }`}
+>
+  <BarChart3 className={`mr-3 h-5 w-5 ${
+    pathname === '/relatorios' && !pathname.startsWith('/relatorios/gestao') 
+      ? 'text-blue-600' : 'text-gray-400'
+  }`} />
+  <div className="flex-1">
+    <div className="font-medium">Relatórios Tradicionais</div>
+    <div className="text-xs text-gray-500 mt-1">Visão geral e detalhes</div>
+  </div>
+  {pathname === '/relatorios' && !pathname.startsWith('/relatorios/gestao') && 
+    <ChevronRight className="h-4 w-4 text-blue-600" />}
+</Link>
 
-            {/* MENSAGEM DE PERMISSÃO INSUFICIENTE */}
-            {!temAcessoRelatorios && !isRelatoriosRoute() && (
-              <div className="px-3 py-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center">
-                  <Lock className="h-4 w-4 text-amber-600 mr-2" />
-                  <span className="text-sm text-amber-700">
-                    Permissão insuficiente para outras opções
-                  </span>
-                </div>
-              </div>
-            )}
-          </nav>
+  {/* MENSAGEM DE PERMISSÃO INSUFICIENTE */}
+  {!temAcessoRelatorios && !isRelatoriosRoute() && (
+    <div className="px-3 py-4 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="flex items-center">
+        <Lock className="h-4 w-4 text-amber-600 mr-2" />
+        <span className="text-sm text-amber-700">
+          Permissão insuficiente para outras opções
+        </span>
+      </div>
+    </div>
+  )}
+</nav>
 
           {/* Footer da Sidebar com info do usuário */}
           <div className="px-4 pt-4 border-t border-gray-200">
@@ -362,69 +385,81 @@ export default function RelatoriosLayout({
             </div>
             
             <nav className="flex-1 p-4 space-y-2">
-              {/* Primeiro: Voltar ao Dashboard */}
-              <Link
-                href="/dashboard"
-                className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <Home className="mr-3 h-5 w-5" />
-                Voltar ao Dashboard
-              </Link>
-              
-              {/* Segundo: Configurações - SOMENTE SE TIVER ACESSO */}
-              {temAcessoRelatorios && (
-                <Link
-                  href="/configuracao"
-                  className="flex items-center px-3 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <Settings className="mr-3 h-5 w-5 text-gray-400" />
-                  <div className="flex-1">
-                    <div>Configurações</div>
-                  </div>
-                </Link>
-              )}
-              
-              {/* Separador visual para mobile - Mostrar apenas se houver itens */}
-              {(temAcessoRelatorios || isRelatoriosRoute()) && (
-                <div className="pt-2 pb-1">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Opções
-                  </div>
-                </div>
-              )}
-              
-              {/* Terceiro: Relatórios */}
-              <Link
-                href="/relatorios"
-                className="flex items-center px-3 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <BarChart3 className="mr-3 h-5 w-5 text-gray-400" />
-                <div className="flex-1">
-                  <div>Relatórios</div>
-                  {!temAcessoRelatorios && (
-                    <div className="text-xs text-amber-600 mt-1 flex items-center">
-                      <Lock className="h-3 w-3 mr-1" />
-                      Apenas visualização
-                    </div>
-                  )}
-                </div>
-              </Link>
+  {/* Primeiro: Voltar ao Dashboard */}
+  <Link
+    href="/dashboard"
+    className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100"
+    onClick={() => setSidebarOpen(false)}
+  >
+    <Home className="mr-3 h-5 w-5" />
+    Voltar ao Dashboard
+  </Link>
+  
+  {/* Segundo: Configurações - SOMENTE SE TIVER ACESSO */}
+  {temAcessoRelatorios && (
+    <Link
+      href="/configuracao"
+      className="flex items-center px-3 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
+      onClick={() => setSidebarOpen(false)}
+    >
+      <Settings className="mr-3 h-5 w-5 text-gray-400" />
+      <div className="flex-1">
+        <div>Configurações</div>
+      </div>
+    </Link>
+  )}
+  
+  {/* Separador visual para mobile */}
+  {(temAcessoRelatorios || isRelatoriosRoute()) && (
+    <div className="pt-2 pb-1">
+      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        Módulos
+      </div>
+    </div>
+  )}
+  
+  {/* ============================================= */}
+  {/* ⭐ BOTÃO NOVO MOBILE: Gestão e Produtos */}
+  {/* ============================================= */}
+  <Link
+    href="/relatorios/gestao"
+    className="flex items-center px-3 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
+    onClick={() => setSidebarOpen(false)}
+  >
+    <TrendingUp className="mr-3 h-5 w-5 text-gray-400" />
+    <div className="flex-1">
+      <div>Gestão & Produtos</div>
+      <div className="text-xs text-gray-500 mt-1">Análise avançada</div>
+    </div>
+  </Link>
+  
+  {/* ============================================= */}
+  {/* ⭐ BOTÃO ORIGINAL MOBILE: Relatórios Tradicionais */}
+  {/* ============================================= */}
+  <Link
+    href="/relatorios"
+    className="flex items-center px-3 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
+    onClick={() => setSidebarOpen(false)}
+  >
+    <BarChart3 className="mr-3 h-5 w-5 text-gray-400" />
+    <div className="flex-1">
+      <div>Relatórios Tradicionais</div>
+      <div className="text-xs text-gray-500 mt-1">Visão geral</div>
+    </div>
+  </Link>
 
-              {/* Mensagem de permissão para mobile */}
-              {!temAcessoRelatorios && (
-                <div className="px-3 py-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-start">
-                    <Lock className="h-4 w-4 text-amber-600 mr-2 mt-0.5" />
-                    <span className="text-sm text-amber-700">
-                      Para acessar todas as opções, solicite permissões de relatórios ao administrador.
-                    </span>
-                  </div>
-                </div>
-              )}
-            </nav>
+  {/* Mensagem de permissão para mobile */}
+  {!temAcessoRelatorios && (
+    <div className="px-3 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="flex items-start">
+        <Lock className="h-4 w-4 text-amber-600 mr-2 mt-0.5" />
+        <span className="text-sm text-amber-700">
+          Para acessar todas as opções, solicite permissões ao administrador.
+        </span>
+      </div>
+    </div>
+  )}
+</nav>
           </div>
         </div>
       )}
