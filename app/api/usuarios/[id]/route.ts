@@ -20,6 +20,7 @@ interface Permissoes {
   canGiveDiscount: boolean;
   canCancelPayment: boolean;
   canManagePayments: boolean; // ✅ NOVA PERMISSÃO
+  canAccessBalcao: boolean;
 }
 
 type UserRole = 'admin' | 'gerente' | 'garcom' | 'caixa';
@@ -41,6 +42,7 @@ const roleTemplates: Record<UserRole, Permissoes> = {
     canGiveDiscount: true,
     canCancelPayment: true,
     canManagePayments: true, // ✅ ADMIN TEM ACESSO
+    canAccessBalcao: true,
   },
   gerente: {
     canManageUsers: true,
@@ -58,6 +60,8 @@ const roleTemplates: Record<UserRole, Permissoes> = {
     canGiveDiscount: true,
     canCancelPayment: true,
     canManagePayments: true, // ✅ GERENTE TEM ACESSO
+    canAccessBalcao: true,
+
   },
   garcom: {
     canManageUsers: false,
@@ -75,6 +79,7 @@ const roleTemplates: Record<UserRole, Permissoes> = {
     canGiveDiscount: false,
     canCancelPayment: false,
     canManagePayments: false, // ✅ GARÇOM NÃO TEM ACESSO
+    canAccessBalcao: false,
   },
   caixa: {
     canManageUsers: false,
@@ -92,6 +97,7 @@ const roleTemplates: Record<UserRole, Permissoes> = {
     canGiveDiscount: true,
     canCancelPayment: true,
     canManagePayments: false, // ✅ CAIXA NÃO TEM ACESSO
+    canAccessBalcao: true,
   }
 };
 

@@ -1,17 +1,17 @@
-// components/pagamento/PagamentoModal.tsx - COM MEIOS DE PAGAMENTO PERSONALIZADOS
+// components/balcao/BalcaoPagamentoModal.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 
-// Interfaces
+// Interfaces adaptadas para balcão
 interface ProdutoInfo {
   nome: string;
   categoria: string;
 }
 
-interface ItemComanda {
+interface ItemVenda {
   id: number;
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
   precoUnitario: number;
   produto: ProdutoInfo;
@@ -19,6 +19,7 @@ interface ItemComanda {
 
 interface ItemPagador {
   itemId: number;
+  produtoId: string;
   quantidade: number;
   precoUnitario: number;
   descricao?: string;
@@ -64,34 +65,21 @@ interface UsuarioLogado {
   };
 }
 
-interface PagamentoModalProps {
-  mesa: {
-    numero: string;
-    nome: string;
-  };
-  itens: ItemComanda[];
+interface BalcaoPagamentoModalProps {
+  itens: ItemVenda[];
   total: number;
   onClose: () => void;
   onConfirmar: (data: any) => void;
-  onSalvarParcial?: (data: any) => void;
-  comandaId?: string;
-  mesaId?: string;
-  comandaOriginal?: any;
-  onAtualizarComanda?: (comandaId: string, dados: any) => Promise<any>;
+  operador: string;
 }
 
-export default function PagamentoModal({ 
-  mesa, 
+export default function BalcaoPagamentoModal({ 
   itens, 
   total, 
   onClose, 
   onConfirmar,
-  onSalvarParcial,
-  comandaId,
-  mesaId,
-  comandaOriginal,
-  onAtualizarComanda
-}: PagamentoModalProps) {
+  operador
+}: BalcaoPagamentoModalProps) {
   // ESTADOS
   const [meiosPagamentoPersonalizados, setMeiosPagamentoPersonalizados] = useState<MeioPagamentoPersonalizado[]>([]);
   const [carregandoMeiosPagamento, setCarregandoMeiosPagamento] = useState(true);
@@ -99,7 +87,7 @@ export default function PagamentoModal({
   const [pagadores, setPagadores] = useState<Pagador[]>([
     { 
       id: '1', 
-      nome: 'Cliente 1', 
+      nome: 'Cliente Balcão', 
       itens: [], 
       desconto: 0, 
       acrescimo: 0,
@@ -121,7 +109,6 @@ export default function PagamentoModal({
   const [valorDescontoAcrescimo, setValorDescontoAcrescimo] = useState('');
   const [editandoNome, setEditandoNome] = useState<string | null>(null);
   const [novoNome, setNovoNome] = useState('');
-  const [modoParcial, setModoParcial] = useState(false);
   const [carregando, setCarregando] = useState(false);
   
   // Estado para usuário logado e permissões
@@ -153,12 +140,10 @@ export default function PagamentoModal({
           setMeiosPagamentoPersonalizados(meiosOrdenados);
         } else {
           console.warn('Não foi possível carregar meios de pagamento personalizados');
-          // Fallback para formas padrão
           setMeiosPagamentoPersonalizados(criarFormasPagamentoPadrao());
         }
       } catch (error) {
         console.error('Erro ao carregar meios de pagamento:', error);
-        // Fallback para formas padrão
         setMeiosPagamentoPersonalizados(criarFormasPagamentoPadrao());
       } finally {
         setCarregandoMeiosPagamento(false);
@@ -166,6 +151,25 @@ export default function PagamentoModal({
     }
 
     carregarMeiosPagamento();
+  }, []);
+
+  // Carregar usuário logado
+  useEffect(() => {
+    const carregarUsuario = () => {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setUsuarioLogado(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      } finally {
+        setCarregandoPermissoes(false);
+      }
+    };
+
+    carregarUsuario();
   }, []);
 
   // Criar formas de pagamento padrão (fallback)
@@ -234,25 +238,6 @@ export default function PagamentoModal({
     ];
   };
 
-  // Carregar usuário logado
-  useEffect(() => {
-    const carregarUsuario = () => {
-      try {
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          setUsuarioLogado(user);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar usuário:', error);
-      } finally {
-        setCarregandoPermissoes(false);
-      }
-    };
-
-    carregarUsuario();
-  }, []);
-
   // Funções de verificação de permissões
   const temPermissao = (permissao: string): boolean => {
     if (!usuarioLogado) return false;
@@ -260,91 +245,6 @@ export default function PagamentoModal({
     if (usuarioLogado.role === 'admin') return true;
     
     return usuarioLogado.permissoes[permissao] === true;
-  };
-
-  // Função para cancelar pagamento
-  const handleCancelarPagamento = (pagadorId: string) => {
-    if (!temPermissao('canCancelPayment')) {
-      alert('Você não tem permissão para cancelar pagamentos!');
-      return;
-    }
-    
-    const pagador = pagadores.find(p => p.id === pagadorId);
-    if (!pagador) return;
-    
-    if (confirm(`Cancelar pagamento de ${pagador.nome}?`)) {
-      setPagadores(prev => prev.map(p => 
-        p.id === pagadorId ? { 
-          ...p, 
-          pago: false,
-          dataPagamento: undefined,
-          valorPago: 0,
-          troco: 0
-        } : p
-      ));
-      alert('Pagamento cancelado!');
-    }
-  };
-
-  // Função para processar pagamento (marcar como pago)
-  const handleProcessarPagamento = (pagadorId: string) => {
-    if (!temPermissao('canProcessPayment')) {
-      alert('Você não tem permissão para processar pagamentos!');
-      return;
-    }
-    
-    const pagador = pagadores.find(p => p.id === pagadorId);
-    if (!pagador) return;
-    
-    if (!pagador.formaPagamento) {
-      alert('É necessário definir uma forma de pagamento antes de processar!');
-      return;
-    }
-    
-    const totalPagador = calcularTotalPagador(pagador);
-    
-    // Verificar se precisa valor pago (para meios que aceitam troco)
-    const meio = meiosPagamentoPersonalizados.find(m => m._id === pagador.formaPagamento);
-    if (meio?.permiteTroco && (!pagador.valorPago || pagador.valorPago < totalPagador)) {
-      alert('Para pagamento em dinheiro, é necessário informar o valor pago!');
-      return;
-    }
-    
-    setPagadores(prev => prev.map(p => 
-      p.id === pagadorId ? { 
-        ...p, 
-        pago: true,
-        dataPagamento: new Date().toISOString()
-      } : p
-    ));
-  };
-
-  // Carregar dados salvos anteriormente
-  useEffect(() => {
-    if (comandaId) {
-      carregarPagamentoParcial();
-    }
-  }, [comandaId]);
-
-  const carregarPagamentoParcial = () => {
-    try {
-      const dadosSalvos = localStorage.getItem(`pagamento_parcial_${comandaId}`);
-      if (dadosSalvos) {
-        const { pagadores: pagadoresSalvos, quantidadesDisponiveis: quantidadesSalvas } = JSON.parse(dadosSalvos);
-        
-        if (pagadoresSalvos && pagadoresSalvos.length > 0) {
-          setPagadores(pagadoresSalvos);
-        }
-        
-        if (quantidadesSalvas) {
-          setQuantidadesDisponiveis(quantidadesSalvas);
-        }
-        
-        setModoParcial(true);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar pagamento parcial:', error);
-    }
   };
 
   // ========== FUNÇÕES AUXILIARES ==========
@@ -400,18 +300,6 @@ export default function PagamentoModal({
     return pagadores
       .filter(p => !p.pago)
       .reduce((total, pagador) => total + calcularTotalPagador(pagador), 0);
-  };
-
-  // Função para obter taxa do meio de pagamento
-  const getTaxaMeioPagamento = (meioId: string): number => {
-    const meio = meiosPagamentoPersonalizados.find(m => m._id === meioId);
-    return meio?.taxa || 0;
-  };
-
-  // Função para verificar se meio aceita troco
-  const meioAceitaTroco = (meioId: string): boolean => {
-    const meio = meiosPagamentoPersonalizados.find(m => m._id === meioId);
-    return meio?.permiteTroco || false;
   };
 
   // ========== FUNÇÕES PRINCIPAIS ==========
@@ -479,6 +367,7 @@ export default function PagamentoModal({
           } else {
             const novoItem: ItemPagador = {
               itemId,
+              produtoId: item.produtoId,
               quantidade,
               precoUnitario: item.precoUnitario,
               descricao: item.produto.nome
@@ -501,24 +390,14 @@ export default function PagamentoModal({
     
     setItemDividindo(itemId);
     
-    const pagadoresNaoPagos = pagadores.filter(p => !p.pago);
     const divisao: Record<string, number> = {};
     
-    if (pagadoresNaoPagos.length > 0) {
-      const qtdBase = Math.floor(disponivel / pagadoresNaoPagos.length);
-      const resto = disponivel % pagadoresNaoPagos.length;
-      
-      pagadoresNaoPagos.forEach((pagador, index) => {
-        divisao[pagador.id] = index === 0 ? qtdBase + resto : qtdBase;
-      });
-    } else {
-      const qtdBase = Math.floor(disponivel / pagadores.length);
-      const resto = disponivel % pagadores.length;
-      
-      pagadores.forEach((pagador, index) => {
-        divisao[pagador.id] = index === 0 ? qtdBase + resto : qtdBase;
-      });
-    }
+    const qtdBase = Math.floor(disponivel / pagadores.length);
+    const resto = disponivel % pagadores.length;
+    
+    pagadores.forEach((pagador, index) => {
+      divisao[pagador.id] = index === 0 ? qtdBase + resto : qtdBase;
+    });
     
     setQuantidadesDivisao(divisao);
   };
@@ -573,6 +452,7 @@ export default function PagamentoModal({
         
         const itemVirtual: ItemPagador = {
           itemId: Date.now() + Math.random(),
+          produtoId: 'virtual_' + Date.now(),
           quantidade: 1,
           precoUnitario: valorPorPagador,
           descricao: 'Valor restante'
@@ -649,9 +529,36 @@ export default function PagamentoModal({
     if (!pagador) return;
     
     if (pagador.pago) {
-      handleCancelarPagamento(pagadorId);
+      // Cancelar pagamento
+      setPagadores(prev => prev.map(p => 
+        p.id === pagadorId ? { 
+          ...p, 
+          pago: false,
+          dataPagamento: undefined
+        } : p
+      ));
     } else {
-      handleProcessarPagamento(pagadorId);
+      // Processar pagamento
+      if (!pagador.formaPagamento) {
+        alert('É necessário definir uma forma de pagamento antes de processar!');
+        return;
+      }
+      
+      const totalPagador = calcularTotalPagador(pagador);
+      const meio = meiosPagamentoPersonalizados.find(m => m._id === pagador.formaPagamento);
+      
+      if (meio?.permiteTroco && (!pagador.valorPago || pagador.valorPago < totalPagador)) {
+        alert('Para pagamento em dinheiro, é necessário informar o valor pago!');
+        return;
+      }
+      
+      setPagadores(prev => prev.map(p => 
+        p.id === pagadorId ? { 
+          ...p, 
+          pago: true,
+          dataPagamento: new Date().toISOString()
+        } : p
+      ));
     }
   };
 
@@ -677,7 +584,7 @@ export default function PagamentoModal({
     setPagadores([
       { 
         id: '1', 
-        nome: 'Cliente 1', 
+        nome: 'Cliente Balcão', 
         itens: [], 
         desconto: 0, 
         acrescimo: 0,
@@ -695,17 +602,9 @@ export default function PagamentoModal({
     setQuantidadesDisponiveis(inicial);
     setItemDividindo(null);
     setQuantidadesDivisao({});
-    setModoParcial(false);
   };
 
   const dividirIgualmente = () => {
-    const pagadoresAtivos = pagadores.filter(p => !p.pago);
-    
-    if (pagadoresAtivos.length === 0) {
-      alert('Todos os pagadores estão marcados como pagos! Desmarque algum para dividir igualmente.');
-      return;
-    }
-    
     const novosPagadores: Pagador[] = pagadores.map(pagador => ({
       ...pagador,
       itens: []
@@ -718,16 +617,17 @@ export default function PagamentoModal({
     
     itens.forEach(item => {
       const quantidadeTotal = item.quantidade;
-      const quantidadePorPagador = Math.floor(quantidadeTotal / pagadoresAtivos.length);
-      const resto = quantidadeTotal % pagadoresAtivos.length;
+      const quantidadePorPagador = Math.floor(quantidadeTotal / pagadores.length);
+      const resto = quantidadeTotal % pagadores.length;
       
-      pagadoresAtivos.forEach((pagador, index) => {
+      pagadores.forEach((pagador, index) => {
         const quantidade = index === 0 ? quantidadePorPagador + resto : quantidadePorPagador;
         if (quantidade > 0) {
           const pagadorIndex = novosPagadores.findIndex(p => p.id === pagador.id);
           if (pagadorIndex !== -1) {
             const itemPagador: ItemPagador = {
               itemId: item.id,
+              produtoId: item.produtoId,
               quantidade,
               precoUnitario: item.precoUnitario,
               descricao: item.produto.nome
@@ -749,19 +649,7 @@ export default function PagamentoModal({
     setPagadores(novosPagadores);
     setQuantidadesDisponiveis(novasQuantidades);
     
-    alert(`Itens divididos igualmente entre ${pagadoresAtivos.length} pagador(es)!`);
-  };
-
-  const getTextoBotaoDividir = () => {
-    const valorAtribuido = getValorAtribuido();
-    
-    if (valorAtribuido === 0) {
-      return '💰 Dividir valor total';
-    } else if (valorAtribuido < total) {
-      return `💰 Dividir restante (R$ ${getValorRestante().toFixed(2)})`;
-    } else {
-      return '✅ Tudo atribuído';
-    }
+    alert(`Itens divididos igualmente entre ${pagadores.length} pagador(es)!`);
   };
 
   const calcularTotalGeral = (): number => {
@@ -798,197 +686,6 @@ export default function PagamentoModal({
     return true;
   };
 
-  const handleSalvarProgresso = () => {
-    if (onSalvarParcial) {
-      const data = {
-        mesa: mesa.numero,
-        pagadores: pagadores.map(p => ({
-          ...p,
-          total: calcularTotalPagador(p),
-          troco: calcularTroco(p)
-        })),
-        total: calcularTotalGeral(),
-        itens,
-        formasPagamentoUtilizadas: meiosPagamentoPersonalizados.filter(fp => 
-          pagadores.some(p => p.formaPagamento === fp._id)
-        ),
-        timestamp: new Date().toISOString(),
-        status: 'parcial'
-      };
-      onSalvarParcial(data);
-      alert('Progresso salvo com sucesso!');
-    }
-  };
-
-  const salvarParcialLocal = () => {
-    try {
-      const dadosParaSalvar = {
-        pagadores,
-        quantidadesDisponiveis,
-        mesa,
-        itens,
-        total,
-        timestamp: new Date().toISOString()
-      };
-      
-      if (comandaId) {
-        localStorage.setItem(`pagamento_parcial_${comandaId}`, JSON.stringify(dadosParaSalvar));
-      }
-      
-      return dadosParaSalvar;
-    } catch (error) {
-      console.error('Erro ao salvar pagamento parcial:', error);
-      return null;
-    }
-  };
-
-  const validarPagamentoParcial = (): boolean => {
-    const pagadoresPagos = pagadores.filter(p => p.pago);
-    
-    if (pagadoresPagos.length === 0) {
-      alert('Selecione pelo menos um pagador como pago para salvar parcialmente.');
-      return false;
-    }
-    
-    const pagadoresPagosSemForma = pagadoresPagos.filter(p => !p.formaPagamento);
-    if (pagadoresPagosSemForma.length > 0) {
-      alert(`Atenção: ${pagadoresPagosSemForma.length} pagador(es) pagos sem forma de pagamento definida`);
-      return false;
-    }
-    
-    for (const pagador of pagadoresPagos) {
-      const totalPagador = calcularTotalPagador(pagador);
-      const meio = meiosPagamentoPersonalizados.find(m => m._id === pagador.formaPagamento);
-      
-      if (meio?.permiteTroco && pagador.valorPago && pagador.valorPago < totalPagador) {
-        alert(`Atenção: ${pagador.nome} está pagando R$ ${pagador.valorPago?.toFixed(2)} mas deve R$ ${totalPagador.toFixed(2)}`);
-        return false;
-      }
-    }
-    
-    return true;
-  };
-
-  const handleSalvarContinuarComanda = async () => {
-    if (!validarPagamentoParcial()) return;
-    
-    setCarregando(true);
-    
-    try {
-      const pagadoresPagos = pagadores.filter(p => p.pago);
-      
-      const dadosParaSalvar = {
-        pagadores,
-        quantidadesDisponiveis,
-        mesa,
-        itens,
-        total,
-        pagadoresPagos: pagadoresPagos.map(p => ({
-          ...p,
-          total: calcularTotalPagador(p),
-          troco: calcularTroco(p)
-        })),
-        pagadoresNaoPagos: pagadores.filter(p => !p.pago).map(p => ({
-          ...p,
-          total: calcularTotalPagador(p)
-        })),
-        totalPago: getValorJaPago(),
-        totalFaltaPagar: getValorFaltaPagar(),
-        formasPagamentoUtilizadas: meiosPagamentoPersonalizados.filter(fp => 
-          pagadoresPagos.some(p => p.formaPagamento === fp._id)
-        ),
-        timestamp: new Date().toISOString(),
-        status: 'parcial'
-      };
-      
-      if (comandaId) {
-        localStorage.setItem(`pagamento_parcial_${comandaId}`, JSON.stringify(dadosParaSalvar));
-      }
-      
-      if (onAtualizarComanda && comandaId) {
-        try {
-          await onAtualizarComanda(comandaId, {
-            status: 'parcial',
-            pagamentosParciais: dadosParaSalvar,
-            totalPago: getValorJaPago(),
-            totalRestante: getValorFaltaPagar(),
-            atualizadoEm: new Date().toISOString()
-          });
-          
-          setModoParcial(true);
-          alert(`✅ Pagamento parcial salvo com sucesso!\n\n${pagadoresPagos.length} cliente(s) pagaram.\nR$ ${getValorJaPago().toFixed(2)} já pagos.\nR$ ${getValorFaltaPagar().toFixed(2)} faltam pagar.`);
-          
-          onClose();
-        } catch (error) {
-          console.error('Erro ao salvar no MongoDB:', error);
-          alert('✅ Pagamento salvo localmente! (Erro ao conectar com o servidor)');
-          setModoParcial(true);
-          onClose();
-        }
-      } else {
-        setModoParcial(true);
-        alert('✅ Pagamento salvo localmente!');
-        onClose();
-      }
-    } catch (error) {
-      console.error('Erro ao salvar pagamento parcial:', error);
-      alert('❌ Erro ao salvar pagamento. Tente novamente.');
-    } finally {
-      setCarregando(false);
-    }
-  };
-
-  const handleFinalizarPagamento = async () => {
-    if (!validarPagamento()) return;
-    
-    setCarregando(true);
-    
-    try {
-      const totalGeral = calcularTotalGeral();
-      const numeroMesaPadrao = mesa.numero.toString().padStart(2, '0');
-
-      const dataPagamento = {
-        comandaId: comandaId,
-        mesa: numeroMesaPadrao,
-        mesaId: mesaId,
-        pagadores: pagadores.map(p => ({
-          ...p,
-          total: calcularTotalPagador(p),
-          troco: calcularTroco(p)
-        })),
-        total: totalGeral,
-        itens,
-        timestamp: new Date().toISOString(),
-        status: 'finalizado'
-      };
-      
-      const response = await fetch('/api/comandas/fechar-completo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          comandaId: comandaId,
-          mesaId: mesaId,
-          numeroMesa: numeroMesaPadrao,
-          dados: dataPagamento
-        }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        window.location.href = '/dashboard';
-      } else {
-        window.alert("Erro do servidor: " + (result.error || "Erro desconhecido"));
-      }
-      
-    } catch (error: any) {
-      console.error('Erro ao finalizar:', error);
-      window.alert("Erro ao conectar com o servidor.");
-    } finally {
-      setCarregando(false);
-    }
-  };
-
   const getQuantidadeAtribuida = (itemId: number, pagadorId: string): number => {
     const pagador = pagadores.find(p => p.id === pagadorId);
     if (!pagador) return 0;
@@ -997,11 +694,63 @@ export default function PagamentoModal({
     return item ? item.quantidade : 0;
   };
 
-  const limparPagamentoParcial = () => {
-    if (comandaId && window.confirm('Deseja limpar o pagamento parcial salvo anteriormente?')) {
-      localStorage.removeItem(`pagamento_parcial_${comandaId}`);
-      resetarDivisao();
-      alert('Pagamento parcial anterior foi limpo!');
+  // Função para processar a venda do balcão
+  const handleFinalizarVendaBalcao = async () => {
+    if (!validarPagamento()) return;
+    
+    setCarregando(true);
+    
+    try {
+      const totalGeral = calcularTotalGeral();
+      const pagadoresFinal = pagadores.map(p => ({
+        ...p,
+        total: calcularTotalPagador(p),
+        troco: calcularTroco(p)
+      }));
+
+      const dataVenda = {
+        tipo: 'balcao',
+        itens: itens.map(item => ({
+          produtoId: item.produtoId,
+          produtoNome: item.produto.nome,
+          quantidade: item.quantidade,
+          precoUnitario: item.precoUnitario,
+          total: item.precoUnitario * item.quantidade
+        })),
+        pagadores: pagadoresFinal,
+        total: totalGeral,
+        operador: operador,
+        formasPagamentoUtilizadas: meiosPagamentoPersonalizados.filter(fp => 
+          pagadores.some(p => p.formaPagamento === fp._id)
+        ),
+        timestamp: new Date().toISOString(),
+        status: 'finalizado',
+        dataVenda: new Date()
+      };
+      
+      console.log('📤 Enviando venda do balcão:', dataVenda);
+
+      const response = await fetch('/api/balcao/venda-completa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataVenda)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('✅ Venda do balcão finalizada com sucesso!');
+        onConfirmar(result.data);
+        onClose();
+      } else {
+        throw new Error(result.error || 'Erro ao processar venda');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao finalizar venda do balcão:', error);
+      alert(`Erro: ${error.message}`);
+    } finally {
+      setCarregando(false);
     }
   };
 
@@ -1029,20 +778,12 @@ export default function PagamentoModal({
     );
   };
 
-  // Renderizar botão de cancelar pagamento com permissão
-  const renderizarBotaoCancelarPagamento = (pagadorId: string, pagador: Pagador) => {
-    if (!pagador.pago || !temPermissao('canCancelPayment')) {
-      return null;
-    }
-  };
-
   // Indicador de permissões no header
   const renderizarIndicadorPermissoes = () => {
     if (!usuarioLogado || carregandoPermissoes) return null;
     
     const permissoesAtivas = [
       temPermissao('canGiveDiscount') && '💰 Descontos',
-      temPermissao('canCancelPayment') && '❌ Cancelar Pagamentos',
       temPermissao('canProcessPayment') && '✅ Processar Pagamentos',
     ].filter(Boolean);
     
@@ -1078,15 +819,10 @@ export default function PagamentoModal({
           <div className="flex justify-between items-center">
             <div className="flex-1">
               <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold">Divisão de Conta - {mesa.nome}</h2>
-                {modoParcial && (
-                  <span className="text-sm bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-medium">
-                    PAGAMENTO PARCIAL
-                  </span>
-                )}
+                <h2 className="text-xl font-bold">Pagamento - Balcão</h2>
                 {carregando && (
                   <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
-                    Salvando...
+                    Processando...
                   </span>
                 )}
                 {carregandoMeiosPagamento && (
@@ -1112,35 +848,14 @@ export default function PagamentoModal({
                     R$ {getValorRestante().toFixed(2)}
                   </span>
                 </div>
-                {modoParcial && (
-                  <>
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-600">Já pago:</span>
-                      <span className="font-bold text-green-600">
-                        R$ {getValorJaPago().toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-600">Falta:</span>
-                      <span className="font-bold text-orange-600">
-                        R$ {getValorFaltaPagar().toFixed(2)}
-                      </span>
-                    </div>
-                  </>
-                )}
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-600">Operador:</span>
+                  <span className="font-bold">{operador}</span>
+                </div>
               </div>
               {renderizarIndicadorPermissoes()}
             </div>
             <div className="flex items-center gap-2">
-              {modoParcial && (
-                <button 
-                  onClick={limparPagamentoParcial}
-                  className="px-2 py-1 text-xs border border-red-300 text-red-600 rounded hover:bg-red-50"
-                  title="Limpar pagamento parcial"
-                >
-                  Limpar
-                </button>
-              )}
               <button 
                 onClick={resetarDivisao}
                 className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
@@ -1165,7 +880,7 @@ export default function PagamentoModal({
           {/* COLUNA 1: ITENS */}
           <div className="w-1/3 border-r p-3 overflow-y-auto">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="font-bold text-base">Itens da Comanda</h3>
+              <h3 className="font-bold text-base">Itens da Venda</h3>
               <div className="flex gap-2">
                 <button
                   onClick={dividirIgualmente}
@@ -1243,67 +958,58 @@ export default function PagamentoModal({
                         <div className="font-medium mb-1">
                           Dividir {disponivel}x entre:
                         </div>
-                        {pagadores.map((pagador) => {
-                          const pagadoresNaoPagos = pagadores.filter(p => !p.pago);
-                          const mostrarPagador = pagadoresNaoPagos.length > 0 
-                            ? !pagador.pago 
-                            : true;
-                          
-                          if (!mostrarPagador) return null;
-                          
-                          return (
-                            <div key={pagador.id} className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-1">
-                                <span className="truncate max-w-[80px]">{pagador.nome}</span>
-                                {pagador.pago && (
-                                  <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">
-                                    Pago
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-0.5">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const atual = quantidadesDivisao[pagador.id] || 0;
-                                    if (atual > 0) {
-                                      setQuantidadesDivisao(prev => ({
-                                        ...prev,
-                                        [pagador.id]: atual - 1
-                                      }));
-                                    }
-                                  }}
-                                  className="w-5 h-5 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                                  disabled={pagador.pago}
-                                >
-                                  -
-                                </button>
-                                <span className="w-6 text-center text-xs">
-                                  {quantidadesDivisao[pagador.id] || 0}
+                        {pagadores.map((pagador) => (
+                          <div key={pagador.id} className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1">
+                              <span className="truncate max-w-[80px]">{pagador.nome}</span>
+                              {pagador.pago && (
+                                <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">
+                                  Pago
                                 </span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const atual = quantidadesDivisao[pagador.id] || 0;
-                                    const totalAtribuindo = Object.values(quantidadesDivisao)
-                                      .reduce((a, b) => a + b, 0);
-                                    
-                                    if (atual < disponivel && totalAtribuindo < disponivel) {
-                                      setQuantidadesDivisao(prev => ({
-                                        ...prev,
-                                        [pagador.id]: atual + 1
-                                      }));
-                                    }
-                                  }}
-                                  className="w-5 h-5 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                                  disabled={pagador.pago}
-                                >
-                                  +
-                                </button>
-                              </div>
+                              )}
                             </div>
-                          );
-                        })}
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const atual = quantidadesDivisao[pagador.id] || 0;
+                                  if (atual > 0) {
+                                    setQuantidadesDivisao(prev => ({
+                                      ...prev,
+                                      [pagador.id]: atual - 1
+                                    }));
+                                  }
+                                }}
+                                className="w-5 h-5 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                disabled={pagador.pago}
+                              >
+                                -
+                              </button>
+                              <span className="w-6 text-center text-xs">
+                                {quantidadesDivisao[pagador.id] || 0}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const atual = quantidadesDivisao[pagador.id] || 0;
+                                  const totalAtribuindo = Object.values(quantidadesDivisao)
+                                    .reduce((a, b) => a + b, 0);
+                                  
+                                  if (atual < disponivel && totalAtribuindo < disponivel) {
+                                    setQuantidadesDivisao(prev => ({
+                                      ...prev,
+                                      [pagador.id]: atual + 1
+                                    }));
+                                  }
+                                }}
+                                className="w-5 h-5 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                disabled={pagador.pago}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                         
                         <div className="flex gap-1 mt-2">
                           <button
@@ -1554,8 +1260,6 @@ export default function PagamentoModal({
                         </button>
                       )}
                     </div>
-                    
-                    {renderizarBotaoCancelarPagamento(pagador.id, pagador)}
                   </div>
                 );
               })}
@@ -1647,52 +1351,23 @@ export default function PagamentoModal({
             {/* Botões de ação */}
             <div className="space-y-2">
               <button
-                onClick={handleSalvarContinuarComanda}
-                disabled={carregando}
-                className={`w-full py-2.5 rounded-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
-                  onAtualizarComanda 
-                    ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                    : 'bg-yellow-500 text-white hover:bg-yellow-600'
-                }`}
-              >
-                {carregando ? (
-                  <>⏳ Salvando...</>
-                ) : onAtualizarComanda ? (
-                  <>💳 Salvar Parcial & Continuar</>
-                ) : (
-                  <>💾 Salvar Localmente & Continuar</>
-                )}
-              </button>
-              
-              <div className="grid grid-cols-2 gap-2">
-                {onSalvarParcial && (
-                  <button
-                    onClick={handleSalvarProgresso}
-                    className="py-2 border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 text-sm"
-                  >
-                    Salvar Progresso
-                  </button>
-                )}
-                
-                <button
-                  onClick={() => alert('Comanda enviada para impressão!')}
-                  className="py-2 border border-purple-500 text-purple-600 rounded-lg hover:bg-purple-50 text-sm"
-                >
-                  📄 Imprimir
-                </button>
-              </div>
-              
-              <button
-                onClick={handleFinalizarPagamento}
+                onClick={handleFinalizarVendaBalcao}
+                disabled={carregando || !temPermissao('canProcessPayment')}
                 className={`w-full py-2.5 rounded-lg font-bold hover:bg-green-600 disabled:cursor-not-allowed text-sm ${
                   temPermissao('canProcessPayment')
                     ? 'bg-green-500 text-white hover:bg-green-600'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
-                disabled={!temPermissao('canProcessPayment') || pagadores.filter(p => !p.pago).some(p => !p.formaPagamento) || carregando}
                 title={!temPermissao('canProcessPayment') ? 'Sem permissão para processar pagamentos' : ''}
               >
-                ✅ Finalizar Pagamento Total
+                {carregando ? '⏳ Processando...' : '✅ Finalizar Venda Balcão'}
+              </button>
+              
+              <button
+                onClick={() => alert('Comanda enviada para impressão!')}
+                className="w-full py-2 border border-purple-500 text-purple-600 rounded-lg hover:bg-purple-50 text-sm"
+              >
+                📄 Imprimir Comprovante
               </button>
               
               <button
@@ -1705,13 +1380,12 @@ export default function PagamentoModal({
             </div>
             
             {/* Aviso de permissões limitadas */}
-            {usuarioLogado && (!temPermissao('canGiveDiscount') || !temPermissao('canCancelPayment') || !temPermissao('canProcessPayment')) && (
+            {usuarioLogado && (!temPermissao('canGiveDiscount') || !temPermissao('canProcessPayment')) && (
               <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="text-xs text-yellow-800">
                   <div className="font-medium">⚠️ Permissões Limitadas</div>
                   <p className="mt-0.5">
                     {!temPermissao('canGiveDiscount') && '• Não pode dar descontos\n'}
-                    {!temPermissao('canCancelPayment') && '• Não pode cancelar pagamentos\n'}
                     {!temPermissao('canProcessPayment') && '• Não pode finalizar pagamentos'}
                   </p>
                 </div>
@@ -1750,27 +1424,6 @@ export default function PagamentoModal({
                 )}
               </div>
             </div>
-            
-            {!onAtualizarComanda && (
-              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="text-xs text-yellow-800">
-                  <div className="font-medium">⚠️ Modo Local</div>
-                  <p className="mt-0.5">Os pagamentos serão salvos apenas neste dispositivo.</p>
-                </div>
-              </div>
-            )}
-            
-            {modoParcial && (
-              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
-                <div className="text-xs text-green-800">
-                  <div className="font-medium">📝 Pagamento Parcial Ativo</div>
-                  <p className="mt-0.5">Alguns clientes já pagaram. Comanda continua aberta.</p>
-                  {comandaId && (
-                    <p className="mt-0.5 text-xs">Comanda ID: {comandaId}</p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

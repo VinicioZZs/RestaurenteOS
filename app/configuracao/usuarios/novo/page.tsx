@@ -34,6 +34,8 @@ const todasPermissoes: Permissao[] = [
   { id: 'canCloseCashier', nome: 'Fechar Caixa', descricao: 'Pode fechar o caixa do sistema', categoria: 'Caixa' },
   { id: 'canViewCashier', nome: 'Visualizar Caixa', descricao: 'Pode visualizar o status do caixa', categoria: 'Caixa' },
   { id: 'canManageCashWithdrawals', nome: 'Gerenciar Retiradas', descricao: 'Pode fazer retiradas do caixa', categoria: 'Caixa' },
+    { id: 'canAccessBalcao ', nome: 'Acessar Balcão', descricao: 'Pode fazer acessar e fazer vendas no balcão', categoria: 'Caixa' },
+
 
   // Produtos
   { id: 'canManageProducts', nome: 'Gerenciar Produtos', descricao: 'Pode adicionar/editar/excluir produtos', categoria: 'Cardápio' },
@@ -52,8 +54,11 @@ const todasPermissoes: Permissao[] = [
   { id: 'canGiveDiscount', nome: 'Dar Desconto', descricao: 'Pode aplicar descontos', categoria: 'Financeiro' },
   { id: 'canCancelPayment', nome: 'Cancelar Pagamento', descricao: 'Pode cancelar pagamentos', categoria: 'Financeiro' },
   
-  // ✅ NOVA PERMISSÃO: Gerenciar Meios de Pagamento
+  // Gerenciar Meios de Pagamento
   { id: 'canManagePayments', nome: 'Gerenciar Meios de Pagamento', descricao: 'Pode configurar formas de pagamento personalizadas', categoria: 'Financeiro' },
+
+  // Acessa balcão
+
 ];
 
 const categoriasPermissoes = Array.from(new Set(todasPermissoes.map(p => p.categoria)));

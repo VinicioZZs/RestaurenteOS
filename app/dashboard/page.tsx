@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Plus, Clock, LogOut, Settings, AlertCircle, Lock, Unlock } from 'lucide-react'; 
 import { getCurrentUser, hasRole } from '@/lib/auth'; 
-import { BarChart3 } from 'lucide-react';
+import { BarChart3 , ShoppingBag } from 'lucide-react';
 import { login } from '@/lib/auth'; // Já está importado
 
 
@@ -386,6 +386,10 @@ const obterTituloPreset = () => {
   };
 
   // ========== USE EFFECTS ==========
+  useEffect(() => {
+  console.log('🔍 Permissões do usuário logado:', usuarioLogado?.permissoes);
+  console.log('Tem acesso ao balcão?', usuarioLogado?.permissoes?.canAccessBalcao);
+}, [usuarioLogado]);
 
   useEffect(() => {
     // Verificar login primeiro
@@ -1089,8 +1093,8 @@ const formatarTituloMesa = (mesa: Mesa) => {
 
       {/* SEÇÃO DE BUSCA - ADICIONE ISSO */}
       <div className="mb-8">
-        <div className="flex flex-col md:flex-row gap-4 items-center">
-          <div className="flex-1 w-full">
+  <div className="flex flex-col md:flex-row gap-4 items-center">
+      <div className="flex-1 w-full">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
@@ -1104,7 +1108,7 @@ const formatarTituloMesa = (mesa: Mesa) => {
                   }
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Digite o número da mesa..."
+                placeholder="Digite o número da mesa e clique na lupa ou aperte enter..."
                 className="w-full pl-12 pr-12 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
               />
               <button
@@ -1116,22 +1120,20 @@ const formatarTituloMesa = (mesa: Mesa) => {
               </button>
             </div>
             
-            <p className="text-sm text-gray-500 mt-2 ml-1">
-              Pressione <kbd className="px-2 py-1 bg-gray-100 rounded border">Enter</kbd> ou clique na lupa
-            </p>
+            
           </div>
           
           {usuarioLogado?.permissoes?.canOpenComanda && (
-            <button
-              onClick={() => setMostrarModalCriar(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition w-full md:w-auto justify-center shadow-md hover:shadow-lg"
-            >
-              <Plus size={20} />
-              <span>Criar {obterTituloPreset()}</span>
-            </button>
-          )}
-        </div>
-      </div>
+      <button
+        onClick={() => setMostrarModalCriar(true)}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition w-full md:w-auto justify-center shadow-md hover:shadow-lg h-[48px]" // ← ADICIONE h-[48px] para altura fixa
+      >
+        <Plus size={20} />
+        <span>Criar {obterTituloPreset()}</span>
+      </button>
+    )}
+  </div>
+</div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
         {mesas.length > 0 ? (
@@ -1348,6 +1350,24 @@ const formatarTituloMesa = (mesa: Mesa) => {
           </div>
         </div>
       )}
+
+    {usuarioLogado?.permissoes?.canAccessBalcao && caixaStatus === 'aberto' && (
+  <button
+    onClick={() => router.push('/balcao')}
+    className="fixed bottom-6 right-6 h-16 w-16 hover:w-56 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-full shadow-xl hover:shadow-2xl z-50 flex items-center justify-start transition-all duration-300 ease-in-out group overflow-hidden"
+    title="Venda de Balcão"
+  >
+    {/* Container do Ícone - Mantém o ícone centralizado quando fechado */}
+    <div className="min-w-[64px] flex items-center justify-center">
+      <ShoppingBag className="h-8 w-8 group-hover:scale-110 transition-transform" />
+    </div>
+
+    {/* Texto que aparece no hover */}
+    <span className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-bold pr-6">
+      Acessar o balcão
+    </span>
+  </button>
+)}
 
       <div className="mt-8 pt-8 border-t border-gray-200 text-center text-gray-500 text-sm">
         <p>MongoDB • {mesas.length} mesas • Caixa Aberto</p>

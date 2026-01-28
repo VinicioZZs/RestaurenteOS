@@ -116,6 +116,11 @@ const todasPermissoes = [
   { id: 'canGiveDiscount', nome: 'Dar Desconto', descricao: 'Pode aplicar descontos', categoria: 'Financeiro' },
   { id: 'canCancelPayment', nome: 'Cancelar Pagamento', descricao: 'Pode cancelar pagamentos', categoria: 'Financeiro' },
   { id: 'canManagePayments', nome: 'Gerenciar Meios de Pagamento', descricao: 'Pode configurar formas de pagamento personalizadas', categoria: 'Financeiro' },
+    { id: 'canOpenCashier', nome: 'Abrir Caixa', descricao: 'Pode abrir o caixa do sistema', categoria: 'Caixa' },
+  { id: 'canCloseCashier', nome: 'Fechar Caixa', descricao: 'Pode fechar o caixa do sistema', categoria: 'Caixa' },
+  { id: 'canViewCashier', nome: 'Visualizar Caixa', descricao: 'Pode visualizar o status do caixa', categoria: 'Caixa' },
+  { id: 'canManageCashWithdrawals', nome: 'Gerenciar Retiradas', descricao: 'Pode fazer retiradas do caixa', categoria: 'Caixa' },
+    { id: 'canAccessBalcao', nome: 'Acessar Balcão', descricao: 'Pode fazer acessar e fazer vendas no balcão', categoria: 'Caixa' },
 
 ];
 

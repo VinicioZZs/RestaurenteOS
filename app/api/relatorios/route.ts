@@ -11,8 +11,9 @@ export async function GET(request: Request) {
     const periodo = searchParams.get('periodo') || 'hoje';
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');
+    const tipoVenda = searchParams.get('tipoVenda'); // Novo: 'todos', 'comanda', 'balcao'
     
-    console.log('📋 Parâmetros recebidos:', { periodo, dataInicio, dataFim });
+    console.log('📋 Parâmetros recebidos:', { periodo, dataInicio, dataFim, tipoVenda });
     
     // Conta total de documentos
     const totalGeral = await ComandaFechada.countDocuments();
@@ -25,12 +26,17 @@ export async function GET(request: Request) {
         data: {
           totalVendas: 0,
           totalComandas: 0,
+          totalBalcao: 0,
           ticketMedio: 0,
           produtosMaisVendidos: [],
           categoriasMaisVendidas: [],
           vendasPorPeriodo: [],
           mesasMaisUtilizadas: [],
-          comandasFechadas: []
+          comandasFechadas: [],
+          resumoPorTipoVenda: {
+            comanda: { quantidade: 0, total: 0 },
+            balcao: { quantidade: 0, total: 0 }
+          }
         }
       });
     }
@@ -93,28 +99,38 @@ export async function GET(request: Request) {
         break;
     }
     
+    // 🔥 ADICIONAR FILTRO POR TIPO DE VENDA (comanda ou balcão)
+    if (tipoVenda && tipoVenda !== 'todos') {
+      filtroData.tipo = tipoVenda;
+    }
+    
     console.log('🔍 Filtro aplicado:', JSON.stringify(filtroData, null, 2));
     
-    // Busca comandas fechadas
+    // Busca comandas fechadas E vendas de balcão
     const comandasFechadas = await ComandaFechada.find(filtroData)
       .sort({ fechadoEm: -1 })
       .lean();
     
-    console.log(`✅ ${comandasFechadas.length} comandas encontradas após filtro`);
+    console.log(`✅ ${comandasFechadas.length} vendas encontradas após filtro`);
     
-    // Se não tem comandas no período, retorna vazio
+    // Se não tem vendas no período, retorna vazio
     if (comandasFechadas.length === 0) {
       return NextResponse.json({
         success: true,
         data: {
           totalVendas: 0,
           totalComandas: 0,
+          totalBalcao: 0,
           ticketMedio: 0,
           produtosMaisVendidos: [],
           categoriasMaisVendidas: [],
           vendasPorPeriodo: [],
           mesasMaisUtilizadas: [],
-          comandasFechadas: []
+          comandasFechadas: [],
+          resumoPorTipoVenda: {
+            comanda: { quantidade: 0, total: 0 },
+            balcao: { quantidade: 0, total: 0 }
+          }
         }
       });
     }
@@ -126,21 +142,36 @@ export async function GET(request: Request) {
     const periodoMap: Record<string, any> = {};
     
     let totalVendas = 0;
+    let totalComandaVendas = 0;
+    let totalBalcaoVendas = 0;
+    let comandaCount = 0;
+    let balcaoCount = 0;
     
     comandasFechadas.forEach((comanda: any) => {
-      totalVendas += comanda.total || 0;
+      const vendaTotal = comanda.total || 0;
+      totalVendas += vendaTotal;
       
-      // Por mesa
-      const mesaNum = comanda.numeroMesa || 'N/A';
+      // Contar por tipo de venda
+      if (comanda.tipo === 'balcao') {
+        totalBalcaoVendas += vendaTotal;
+        balcaoCount += 1;
+      } else {
+        totalComandaVendas += vendaTotal;
+        comandaCount += 1;
+      }
+      
+      // Por mesa (só para comandas)
+      const mesaNum = comanda.numeroMesa || 'BALCÃO';
       if (!mesasMap[mesaNum]) {
         mesasMap[mesaNum] = {
           mesa: mesaNum,
+          tipo: comanda.tipo || 'comanda',
           quantidade: 0,
           total: 0
         };
       }
       mesasMap[mesaNum].quantidade += 1;
-      mesasMap[mesaNum].total += comanda.total || 0;
+      mesasMap[mesaNum].total += vendaTotal;
       
       // Por período
       const data = new Date(comanda.fechadoEm);
@@ -156,19 +187,28 @@ export async function GET(request: Request) {
         periodoMap[periodoKey] = {
           periodo: periodoKey,
           total: 0,
-          quantidade: 0
+          quantidade: 0,
+          comandas: 0,
+          balcao: 0
         };
       }
-      periodoMap[periodoKey].total += comanda.total || 0;
+      periodoMap[periodoKey].total += vendaTotal;
       periodoMap[periodoKey].quantidade += 1;
+      
+      // Contar por tipo no período
+      if (comanda.tipo === 'balcao') {
+        periodoMap[periodoKey].balcao += 1;
+      } else {
+        periodoMap[periodoKey].comandas += 1;
+      }
       
       // Processa itens (baseado na sua estrutura REAL)
       comanda.itens?.forEach((item: any) => {
         if (!item) return;
         
         // Produto
-        const produtoId = item.produtoId?.toString() || item.nome || 'desconhecido';
-        const produtoNome = item.nome || 'Produto sem nome';
+        const produtoId = item.produtoId?.toString() || item.produtoNome || item.nome || 'desconhecido';
+        const produtoNome = item.produtoNome || item.nome || 'Produto sem nome';
         
         if (!produtosMap[produtoId]) {
           produtosMap[produtoId] = {
@@ -176,7 +216,9 @@ export async function GET(request: Request) {
             nome: produtoNome,
             quantidade: 0,
             total: 0,
-            categoria: item.categoria || 'Sem categoria'
+            categoria: item.categoria || 'Sem categoria',
+            vendasComanda: 0,
+            vendasBalcao: 0
           };
         }
         
@@ -186,31 +228,47 @@ export async function GET(request: Request) {
         produtosMap[produtoId].quantidade += quantidade;
         produtosMap[produtoId].total += precoUnitario * quantidade;
         
+        // Contar por tipo de venda no produto
+        if (comanda.tipo === 'balcao') {
+          produtosMap[produtoId].vendasBalcao += quantidade;
+        } else {
+          produtosMap[produtoId].vendasComanda += quantidade;
+        }
+        
         // Categoria
         const categoria = item.categoria || 'Sem categoria';
         if (!categoriasMap[categoria]) {
           categoriasMap[categoria] = {
             nome: categoria,
             quantidade: 0,
-            total: 0
+            total: 0,
+            vendasComanda: 0,
+            vendasBalcao: 0
           };
         }
         categoriasMap[categoria].quantidade += quantidade;
         categoriasMap[categoria].total += precoUnitario * quantidade;
+        
+        // Contar por tipo de venda na categoria
+        if (comanda.tipo === 'balcao') {
+          categoriasMap[categoria].vendasBalcao += quantidade;
+        } else {
+          categoriasMap[categoria].vendasComanda += quantidade;
+        }
       });
     });
     
     // Converter para arrays ordenados
     const produtosMaisVendidos = Object.values(produtosMap)
       .sort((a: any, b: any) => b.quantidade - a.quantidade)
-      .slice(0, 10);
+      .slice(0, 15);
     
     const categoriasMaisVendidas = Object.values(categoriasMap)
       .sort((a: any, b: any) => b.total - a.total);
     
     const mesasMaisUtilizadas = Object.values(mesasMap)
       .sort((a: any, b: any) => b.quantidade - a.quantidade)
-      .slice(0, 5);
+      .slice(0, 10);
     
     // Ordenar período
     const vendasPorPeriodo = Object.values(periodoMap).sort((a: any, b: any) => {
@@ -222,12 +280,20 @@ export async function GET(request: Request) {
       return new Date(anoA, mesA - 1, diaA).getTime() - new Date(anoB, mesB - 1, diaB).getTime();
     });
     
-    const totalComandas = comandasFechadas.length;
-    const ticketMedio = totalComandas > 0 ? totalVendas / totalComandas : 0;
+    const totalVendasCount = comandasFechadas.length;
+    const ticketMedio = totalVendasCount > 0 ? totalVendas / totalVendasCount : 0;
+    
+    // Resumo por tipo de venda
+    const resumoPorTipoVenda = {
+      comanda: { quantidade: comandaCount, total: totalComandaVendas },
+      balcao: { quantidade: balcaoCount, total: totalBalcaoVendas }
+    };
     
     console.log('📈 Estatísticas calculadas:', {
       totalVendas,
-      totalComandas,
+      totalComandas: comandaCount,
+      totalBalcao: balcaoCount,
+      totalVendasCount,
       ticketMedio,
       produtos: produtosMaisVendidos.length,
       categorias: categoriasMaisVendidas.length,
@@ -238,13 +304,20 @@ export async function GET(request: Request) {
       success: true,
       data: {
         totalVendas,
-        totalComandas,
+        totalComandas: comandaCount,
+        totalBalcao: balcaoCount,
         ticketMedio,
         produtosMaisVendidos,
         categoriasMaisVendidas,
         vendasPorPeriodo,
         mesasMaisUtilizadas,
-        comandasFechadas: comandasFechadas.slice(0, 20) // Limita para performance
+        comandasFechadas: comandasFechadas.slice(0, 30), // Aumentei para 30
+        resumoPorTipoVenda,
+        // Novos campos para gráficos
+        distribuiçãoVendas: {
+          comanda: Math.round((totalComandaVendas / totalVendas) * 100) || 0,
+          balcao: Math.round((totalBalcaoVendas / totalVendas) * 100) || 0
+        }
       }
     });
     
